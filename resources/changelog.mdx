@@ -1,0 +1,311 @@
+---
+title: 'Changelog'
+description: 'Version history and changes for Trezor Connect'
+---
+
+## Connect Version History
+
+<Info>
+  This changelog tracks major releases of @trezor/connect. For the complete commit history, see the [GitHub repository](https://github.com/trezor/trezor-suite).
+</Info>
+
+### Current Versions
+
+| Package | Stable | Canary |
+|---------|--------|--------|
+| npm @trezor/connect | - | 10.0.0-alpha.1 |
+| npm @trezor/connect-web | - | 10.0.0-alpha.1 |
+| npm @trezor/connect-webextension | - | 10.0.0-alpha.1 |
+| npm @trezor/connect-mobile | - | 10.0.0-alpha.1 |
+
+| Deployment | Stable | Canary |
+|------------|--------|--------|
+| connect.trezor.io/ | - | 10.0.0-alpha.1 |
+
+<Note>
+  Use the persistent link [connect.trezor.io/10](https://connect.trezor.io/10/) to access the latest stable version of Connect Explorer.
+</Note>
+
+## Version 10.0.0-alpha.1
+
+<Warning>
+  This is a beta release with breaking changes. Review the migration guide before upgrading.
+</Warning>
+
+**Release Date**: 2024
+
+### Overview
+
+First beta release of version 10. This version removes support for legacy iframe and popup integration methods and replaces them with new Suite-based integration.
+
+### Features
+
+<AccordionGroup>
+  <Accordion title="Tron Support" icon="plus">
+    Added support for Tron cryptocurrency:
+    
+    **New Methods**:
+    - `tronGetAddress`: Get Tron addresses from device
+    - `tronSignTransaction`: Sign Tron transactions
+    
+    **Example**:
+    ```javascript
+    const result = await TrezorConnect.tronGetAddress({
+      path: "m/44'/195'/0'/0/0",
+      showOnTrezor: true
+    });
+    ```
+    
+    **Related Commits**:
+    - feat(connect): tronSignTransaction (57eec2f1a2)
+    - feat(connect): tronGetAddress (f5a2bfb6cb)
+  </Accordion>
+
+  <Accordion title="Suite-based Integration" icon="window">
+    New integration method using Trezor Suite:
+    
+    **Benefits**:
+    - Better security model
+    - Improved user experience
+    - Native Suite integration
+    - Simplified implementation
+    
+    **Migration Required**: See [Migration Guide](/resources/migration-guide)
+    
+    **Related Commits**:
+    - feat(connect): core-in-popup and iframe with popup modes are now removed (a902e2d3cb)
+    - chore: remove connect-iframe (372d11f819)
+  </Accordion>
+
+  <Accordion title="Enhanced THP Support" icon="shield">
+    Improved Trezor Host Protocol implementation:
+    
+    **Changes**:
+    - Better phase management after ThpEndResponse
+    - Moved THP staticKey to DeviceThpCredentials
+    - Enhanced device authenticity verification
+    
+    **Related Commits**:
+    - fix(connect): change THP phase after successful ThpEndResponse (66b6b03416)
+    - chore(connect): move thp staticKey from ThpSettings to DeviceThpCredentials (6aa0bc6a06)
+    - chore(device-authenticity): extract prepareDeviceAuthenticityData (2e061e4cc2)
+  </Accordion>
+
+  <Accordion title="EVM RPC Improvements" icon="ethereum">
+    Better Ethereum and EVM chain support:
+    
+    **Features**:
+    - Custom RPC chain ID validation
+    - EVM-RPC worker implementation
+    - Better error handling
+    
+    **Related Commits**:
+    - chore(connect, blockchain-link): validate custom RPCs chainIds (8977871032)
+    - feat(suite): implement evm-rpc worker into suite (cdf207e01f)
+  </Accordion>
+</AccordionGroup>
+
+### Breaking Changes
+
+<Warning>
+  These changes require code updates when migrating from Connect 9.x.
+</Warning>
+
+<AccordionGroup>
+  <Accordion title="Removed: Legacy Integration Methods" icon="circle-xmark">
+    **Removed**:
+    - connect-iframe package
+    - connect-popup package
+    - Iframe integration mode
+    - Popup integration mode
+    
+    **Migration**: Use new Suite-based integration
+    
+    **Related Commits**:
+    - chore: remove connect-iframe (372d11f819)
+    - feat(connect): core-in-popup and iframe with popup modes are now removed (a902e2d3cb)
+    - chore(connect): move web module into main package (815158241a)
+    - refactor(connect): use CoreInModule directly (e9a5c47c7d)
+    - refactor(connect): flatten TrezorConnectDynamic with CoreInModule (a8038c6a70)
+  </Accordion>
+
+  <Accordion title="Removed: EOS Support" icon="circle-xmark">
+    **Removed**:
+    - All EOS-related methods
+    - EOS test fixtures
+    - EOS blockchain support
+    
+    **Reason**: Low usage and maintenance burden
+    
+    **Alternative**: Continue using Connect 9.x if EOS support is required
+    
+    **Related Commits**:
+    - feat(connect): remove EOS support (16da7214cc)
+    - chore(connect): remove unsupported fixture (5acfbb81d5)
+    - chore(connect): remove unsuppoted fixtures from txcache in tests (e5214e5706)
+  </Accordion>
+
+  <Accordion title="Removed: NEM Support" icon="circle-xmark">
+    **Removed**:
+    - All NEM-related methods
+    - NEM test fixtures
+    - NEM blockchain support
+    
+    **Reason**: Replaced by Symbol (XYM)
+    
+    **Alternative**: 
+    - Continue using Connect 9.x for NEM
+    - Migrate to Symbol (XYM)
+    
+    **Related Commits**:
+    - feat(connect): remove NEM support (b9e7b55832)
+  </Accordion>
+
+  <Accordion title="Module Structure Changes" icon="box">
+    **Changes**:
+    - Web module moved into main package
+    - CoreInModule directly used
+    - Flattened TrezorConnectDynamic
+    
+    **Impact**: Import paths may need updating
+    
+    **Related Commits**:
+    - chore(connect): move web module into main package (815158241a)
+    - refactor(connect): use CoreInModule directly (e9a5c47c7d)
+    - refactor(connect): flatten TrezorConnectDynamic with CoreInModule (a8038c6a70)
+  </Accordion>
+</AccordionGroup>
+
+### Improvements
+
+<AccordionGroup>
+  <Accordion title="Build and Tooling" icon="wrench">
+    **Updates**:
+    - Bumped webpack-related dependencies
+    - Bumped Prettier
+    - Started publishing source maps
+    - Expanded npm install checks for ESM & CJS
+    
+    **Related Commits**:
+    - chore: bump webpack-related deps (3f73273dba)
+    - chore: bump prettier (3e33cbeee4)
+    - chore(npm): start publishing source maps (36f6e9692d)
+    - ci(connect): expand npm install check to cover both ESM & CJS (c15485ed96)
+  </Accordion>
+
+  <Accordion title="Message Signing" icon="signature">
+    **Improvement**: Added validation for sign message size on Trezor Model One (T1B1)
+    
+    **Benefit**: Prevents signing oversized messages that device cannot handle
+    
+    **Related Commits**:
+    - feat(connect): validation for sign message size for T1B1 (d1fb78727e)
+  </Accordion>
+
+  <Accordion title="Testing" icon="flask">
+    **Improvements**:
+    - Don't set up emulator repeatedly if not necessary
+    - Better test performance
+    - Removed unsupported test fixtures
+    
+    **Related Commits**:
+    - test(connect): don't set up emu repeatedly if not necessary (55b93ac8e7)
+    - chore(connect): remove unsupported fixture (5acfbb81d5)
+    - chore(connect): remove unsuppoted fixtures from txcache in tests (e5214e5706)
+  </Accordion>
+
+  <Accordion title="Type Safety" icon="shield-check">
+    **Improvement**: Use AccountDescriptor as branded type
+    
+    **Benefit**: Better type safety and compile-time checks
+    
+    **Related Commits**:
+    - fix: use AccountDescriptor as branded type (47f2cc48d5)
+  </Accordion>
+
+  <Accordion title="Dependencies" icon="puzzle-piece">
+    **Changes**:
+    - Removed deprecated node-libs-browser from suite-native
+    - Updated various dependencies
+    
+    **Related Commits**:
+    - chore(suite-native): remove deprecated node-libs-browser (5ff326e491)
+  </Accordion>
+</AccordionGroup>
+
+### Migration Guide
+
+<Card title="Migrate to Connect 10" icon="arrow-right" href="/resources/migration-guide">
+  Detailed guide for upgrading from Connect 9.x to 10.x
+</Card>
+
+## Previous Versions
+
+<Note>
+  For Connect 9.x and earlier versions, see the [archived Connect repository](https://github.com/trezor/connect).
+</Note>
+
+### Connect 9.x
+
+**Status**: Maintenance mode
+
+**Features**:
+- Iframe and popup integration
+- EOS support
+- NEM support
+- All current cryptocurrency support
+
+**Repository**: [trezor/connect](https://github.com/trezor/connect) (archived)
+
+### Version Comparison
+
+| Feature | Connect 9.x | Connect 10.x |
+|---------|-------------|-------------|
+| Integration Method | Iframe/Popup | Suite-based |
+| Bitcoin Support | ✓ | ✓ |
+| Ethereum Support | ✓ | ✓ |
+| Tron Support | ✗ | ✓ |
+| EOS Support | ✓ | ✗ |
+| NEM Support | ✓ | ✗ |
+| TypeScript | ✓ | ✓ |
+| ESM/CJS Support | ✓ | ✓ |
+| Source Maps | ✗ | ✓ |
+
+## Suite Version History
+
+<Info>
+  Trezor Suite uses calendar versioning (YY.MM.PATCH). For Suite release notes, see the [Releases documentation](/resources/releases).
+</Info>
+
+### Suite Versioning
+
+- **Format**: `YY.MM.PATCH`
+- **Example**: 20.10.1 = First release in October 2020
+- **Beta**: Uses `YY.MM.0` with incremented month
+- **Development**: Same as beta, incremented on release branch creation
+
+See [Versioning](/resources/releases#versioning) for complete details.
+
+## Getting Updates
+
+<CardGroup cols={2}>
+  <Card title="NPM Packages" icon="npm" href="https://www.npmjs.com/package/@trezor/connect">
+    Follow package updates on NPM
+  </Card>
+  
+  <Card title="GitHub Releases" icon="github" href="https://github.com/trezor/trezor-suite/releases">
+    Watch releases on GitHub
+  </Card>
+  
+  <Card title="Connect Explorer" icon="globe" href="https://connect.trezor.io/10">
+    Test latest features
+  </Card>
+  
+  <Card title="Documentation" icon="book" href="/resources/releases">
+    Release process details
+  </Card>
+</CardGroup>
+
+<Note>
+  Subscribe to [Trezor Blog](https://blog.trezor.io) for major release announcements.
+</Note>

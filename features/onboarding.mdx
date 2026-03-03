@@ -1,0 +1,214 @@
+---
+title: User Onboarding Flow
+description: Complete guide to Trezor Suite's device setup and onboarding process
+---
+
+# User Onboarding Flow
+
+Trezor Suite's onboarding process guides users through setting up their Trezor device, from initial connection to final configuration.
+
+## Overview
+
+The onboarding flow can be triggered in several ways:
+
+- **Initial run**: First launch of Suite or after clearing app storage
+- **Uninitialized device**: Connecting a device without a seed
+- **Device wipe**: After wiping a device from Suite and proceeding with setup
+
+## Onboarding Steps
+
+### 1. Welcome
+
+The welcome step handles device connection and initial setup:
+
+- **Device detection**: Prompts users to connect their Trezor in normal mode
+- **Transport layer**: Handles WebUSB or Trezor Bridge communication
+- **Invalid states**: Manages bootloader mode, unreadable devices, and transport issues
+
+#### Data Analytics Consent
+
+During initial run, users are asked to consent to anonymous data collection to help improve Suite:
+
+- Optional and can be changed later in Settings
+- No sensitive personal information is collected
+- Enable Tor to mask IP addresses from third parties
+
+#### Device Security Check
+
+Authenticity verification adjusted based on device state:
+
+- **New device**: No firmware, no seed (verify hologram, seller, package)
+- **Wiped device**: Firmware installed, no seed (confirm previous usage)
+- **Used device**: Has seed and firmware (confirm ownership)
+
+### 2. Firmware Update
+
+The firmware step ensures devices run the latest firmware:
+
+<CodeGroup>
+```typescript Device States
+// Fresh device
+device.firmware === 'none' // No firmware installed
+
+// Update available
+device.firmware === 'valid' // Firmware present, update available
+```
+</CodeGroup>
+
+#### Normal vs Bootloader Mode
+
+- **Normal mode**: Standard device operation
+- **Bootloader mode**: Required for firmware installation (access via button press during connection)
+- These modes are seen as different devices by Suite
+- Devices without firmware are always in bootloader mode
+
+#### Installation Process
+
+1. User clicks "Install firmware"
+2. For devices with firmware: disconnect and reconnect in bootloader mode
+3. Device requests confirmation
+4. Installation proceeds with progress indicator
+5. Device restarts automatically (newer models) or requires manual reconnection (T1B1)
+
+#### Intermediary Firmware
+
+T1B1 devices with old bootloaders require intermediary firmware:
+
+1. Install intermediary firmware (bumps bootloader)
+2. Device reconnects in bootloader mode
+3. Install latest firmware
+
+### 3. Seed Generation
+
+Users choose how to initialize their device:
+
+<CardGroup cols={2}>
+  <Card title="Generate New Seed" icon="plus">
+    Create a new wallet with single seed or Shamir backup (not available on T1B1)
+  </Card>
+  <Card title="Recover from Mnemonic" icon="rotate-left">
+    Restore an existing wallet using recovery seed phrase
+  </Card>
+</CardGroup>
+
+#### Recovery Process
+
+**T2T1 and newer**: Entire process done on device
+
+**T1B1**: Users select:
+- Number of words (12, 18, or 24)
+- Recovery method:
+  - **Standard**: Enter words in Suite UI
+  - **Advanced**: Enter via keyboard matrix on device (more secure)
+
+### 4. Seed Backup
+
+Users are guided to back up their seed:
+
+- **T2T1 and newer**: On-device backup with confirmation prompts
+- **T1B1**: Write down words displayed on device
+- Optional step - can be completed later from Settings
+
+<Warning>
+Never create digital copies of your seed. Write it down on the provided seed card.
+</Warning>
+
+### 5. PIN Setup
+
+Secure the device with a PIN:
+
+- Confirmation prompt via button requests
+- **T1B1**: Enter PIN twice via matrix in Suite
+- **T2T1 and newer**: Enter PIN on device touchscreen
+- Auto-lock activates after PIN is set
+
+<Info>
+PIN matrix positions are randomized for security. Never reveal actual numbers - only grid positions.
+</Info>
+
+### 6. Suite Settings
+
+Configure Suite preferences:
+
+- **Enabled coins**: Select cryptocurrencies to activate
+- **Tor network**: Enable privacy protection
+- **Custom backends**: Configure custom Blockbook servers
+- Settings persist if user has previously configured Suite
+
+### 7. Final Setup
+
+Complete device personalization:
+
+- **Device label**: Name your device
+- **Homescreen**: Choose or upload custom homescreen image
+- Ready to use!
+
+## Technical Details
+
+### Button Requests
+
+The `buttonRequests` array tracks device interaction requirements:
+
+```typescript
+case SUITE.ADD_BUTTON_REQUEST:
+  if (action.payload.code === 'ButtonRequest_FirmwareUpdate') {
+    draft.status = 'waiting-for-confirmation';
+  }
+```
+
+Button requests are cleared after each onboarding step.
+
+### Device Modes
+
+Bootloader mode considerations:
+
+- WebUSB requires pairing twice (normal and bootloader modes)
+- `device.features` fields may be `null` in bootloader mode
+- Firmware version reports bootloader version in bootloader mode
+
+### State Management
+
+Onboarding state stored in:
+
+- `suite.flags.initialRun`: Tracks first run status per device
+- `firmware` reducer: Manages firmware installation flow
+- Persistent storage: Remembers completed steps
+
+## Implementation Files
+
+<CodeGroup>
+```typescript Location
+// Onboarding reducer
+packages/suite/src/reducers/onboarding/
+
+// Firmware reducer  
+packages/suite/src/reducers/firmware/firmwareReducer.ts
+
+// Button request middleware
+packages/suite/src/middlewares/suite/buttonRequestMiddleware.ts
+```
+</CodeGroup>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="For Users">
+    - Verify device authenticity before setup
+    - Write down seed backup on physical card only
+    - Choose a strong, memorable PIN
+    - Complete backup before adding funds
+  </Accordion>
+  
+  <Accordion title="For Developers">
+    - Always check button request codes
+    - Handle device disconnections gracefully
+    - Clear button requests between steps
+    - Support both WebUSB and Bridge transport
+  </Accordion>
+</AccordionGroup>
+
+## Related Resources
+
+- [Device Authenticity](/features/device-authenticity)
+- [Feature Flags](/features/feature-flags)
+- [Message System](/features/message-system)

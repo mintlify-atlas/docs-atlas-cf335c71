@@ -1,0 +1,549 @@
+---
+title: 'Device settings'
+description: 'Configure your Trezor device settings through Suite'
+keywords: ['device settings', 'PIN', 'passphrase', 'device label', 'wipe device', 'display rotation']
+---
+
+# Device settings
+
+Trezor Suite provides comprehensive control over your device configuration. These settings are stored on your device and persist across Suite installations.
+
+<Note>
+Device settings require your device to be connected and unlocked. Changes are applied directly to the device firmware.
+</Note>
+
+## Accessing device settings
+
+Navigate to **Settings → Device** in Suite. You'll see all available device configuration options based on your device model and firmware version.
+
+## Security settings
+
+### PIN configuration
+
+Your PIN protects device access from unauthorized users.
+
+<Tabs>
+  <Tab title="Change PIN">
+    <Steps>
+      <Step title="Navigate to settings">
+        Go to **Settings → Device → PIN**.
+      </Step>
+      
+      <Step title="Click Change PIN">
+        Suite prompts you to confirm on device.
+      </Step>
+      
+      <Step title="Enter current PIN">
+        Use the randomized keypad to enter your current PIN.
+      </Step>
+      
+      <Step title="Enter new PIN twice">
+        Enter your new PIN and confirm it.
+        
+        <Tip>
+        Use 6-9 digits for optimal security. Firmware 1.10.0+ supports up to 50 digits.
+        </Tip>
+      </Step>
+    </Steps>
+  </Tab>
+  
+  <Tab title="Set initial PIN">
+    If you haven't set a PIN yet:
+    
+    1. Click **Set PIN**
+    2. Enter desired PIN on device
+    3. Confirm PIN by entering again
+    4. Device is now PIN-protected
+    
+    <Warning>
+    Always set a PIN. Without it, anyone with physical access can use your device.
+    </Warning>
+  </Tab>
+  
+  <Tab title="Remove PIN">
+    Removing PIN is **not recommended**:
+    
+    1. Click **Remove PIN**
+    2. Confirm on device
+    3. Device will no longer require PIN
+    
+    <Warning>
+    Removing PIN eliminates a critical security layer. Only do this if you have specific reasons.
+    </Warning>
+  </Tab>
+</Tabs>
+
+#### PIN entry security
+
+The PIN entry system includes security features:
+
+- **Randomized layout**: Keypad positions change each time
+- **Increasing delays**: Each failed attempt increases wait time
+- **Wipe after 16 failures**: Device wipes after too many wrong attempts
+- **No visual feedback**: Device shows only dots, not numbers
+
+### Passphrase configuration
+
+Passphrase protection adds an extra layer of security beyond your recovery seed.
+
+<Steps>
+  <Step title="Enable passphrase">
+    Go to **Settings → Device → Passphrase** and toggle **Enable**.
+  </Step>
+  
+  <Step title="Choose entry method">
+    **On device** (recommended):
+    - Enter directly on device screen (T/Safe 3)
+    - Maximum security
+    - Protected from keyloggers
+    
+    **In Suite**:
+    - Type in Suite interface
+    - More convenient
+    - Slightly less secure
+  </Step>
+  
+  <Step title="Using passphrases">
+    After enabling, you'll be prompted for a passphrase when accessing hidden wallets.
+    
+    <Info>
+    Empty passphrase = standard wallet. Any non-empty passphrase = hidden wallet.
+    </Info>
+  </Step>
+</Steps>
+
+<Warning>
+Passphrases cannot be recovered if forgotten. Write them down and store separately from your recovery seed.
+</Warning>
+
+### Wipe code
+
+Set a code that wipes your device when entered.
+
+<Tabs>
+  <Tab title="Set wipe code">
+    <Steps>
+      <Step title="Access wipe code settings">
+        **Settings → Device → Wipe code**
+      </Step>
+      
+      <Step title="Set code">
+        Enter wipe code using the same method as PIN entry.
+        
+        <Note>
+        Wipe code must be different from your PIN.
+        </Note>
+      </Step>
+      
+      <Step title="Confirm code">
+        Re-enter to confirm.
+      </Step>
+    </Steps>
+  </Tab>
+  
+  <Tab title="Remove wipe code">
+    1. **Settings → Device → Wipe code**
+    2. Click **Remove**
+    3. Confirm on device
+  </Tab>
+</Tabs>
+
+<Warning>
+Entering the wipe code immediately erases all device data. Use only in emergency situations.
+</Warning>
+
+## Device customization
+
+### Device label
+
+Set a custom name for your device to identify it easily.
+
+<Steps>
+  <Step title="Edit label">
+    **Settings → Device → Device label** → Click edit icon
+  </Step>
+  
+  <Step title="Enter name">
+    Type a descriptive name (e.g., "My Trezor", "Hardware Wallet #1")
+  </Step>
+  
+  <Step title="Apply">
+    Label is saved to device and appears in Suite device selector.
+  </Step>
+</Steps>
+
+<Info>
+Device labels are stored on the device and are **not** part of metadata/labeling system. They don't sync across Suite installations.
+</Info>
+
+### Homescreen customization
+
+Customize your device's idle screen (Model T and Safe 3 only).
+
+<Steps>
+  <Step title="Access homescreen settings">
+    **Settings → Device → Homescreen**
+  </Step>
+  
+  <Step title="Choose image">
+    Options:
+    - Default Trezor logo
+    - Gallery of pre-installed images
+    - Upload custom image
+  </Step>
+  
+  <Step title="Custom image requirements">
+    If uploading custom image:
+    - Format: PNG or JPEG
+    - Size: 240×240 pixels (Model T), 144×144 (Safe 3)
+    - Will be converted to black and white
+  </Step>
+  
+  <Step title="Apply">
+    Confirm on device to set new homescreen.
+  </Step>
+</Steps>
+
+### Display settings
+
+<Tabs>
+  <Tab title="Display rotation">
+    Rotate the display orientation:
+    
+    - **0°**: Default
+    - **90°**: Right rotation
+    - **180°**: Upside down
+    - **270°**: Left rotation
+    
+    Useful for:
+    - Different mounting positions
+    - Left-handed use
+    - Custom setups
+  </Tab>
+  
+  <Tab title="Auto-lock timing">
+    Set how long device stays unlocked when idle:
+    
+    - 1 minute
+    - 2 minutes (default)
+    - 5 minutes
+    - 10 minutes
+    - Never (not recommended)
+    
+    <Tip>
+    Shorter auto-lock times improve security but require more frequent PIN entry.
+    </Tip>
+  </Tab>
+  
+  <Tab title="Brightness (Model T/Safe 3)">
+    Adjust touchscreen brightness:
+    
+    - Range: 0-255
+    - Default: 128 (medium)
+    - Higher values drain battery faster
+  </Tab>
+</Tabs>
+
+## Advanced settings
+
+### SD card protection
+
+Use microSD card for enhanced security (Model T and Safe 3 only).
+
+<AccordionGroup>
+  <Accordion title="What is SD card protection?">
+    Encrypts device storage using a secret stored on the SD card:
+    
+    - Device requires SD card to function
+    - Adds hardware-level security
+    - Protects against device extraction attacks
+    - SD card acts as physical "key"
+  </Accordion>
+  
+  <Accordion title="Enabling SD card protection">
+    <Steps>
+      <Step title="Insert microSD card">
+        Insert formatted microSD card into device.
+      </Step>
+      
+      <Step title="Enable in settings">
+        **Settings → Device → SD card protection** → Enable
+      </Step>
+      
+      <Step title="Device writes to card">
+        Device generates secret and writes to SD card.
+      </Step>
+      
+      <Step title="Keep card inserted">
+        Device now requires this SD card to operate.
+      </Step>
+    </Steps>
+    
+    <Warning>
+    Losing the SD card means losing access to your device. You'll need your recovery seed to restore on a new device.
+    </Warning>
+  </Accordion>
+  
+  <Accordion title="Disabling SD card protection">
+    1. Insert SD card with protection data
+    2. **Settings → Device → SD card protection**
+    3. Click **Disable**
+    4. Confirm on device
+  </Accordion>
+</AccordionGroup>
+
+### Safety checks
+
+Control device security warnings and checks.
+
+<Tabs>
+  <Tab title="Strict (default)">
+    Maximum security:
+    - Blocks dangerous operations
+    - Prevents known attack vectors
+    - Shows all security warnings
+    - **Recommended for all users**
+  </Tab>
+  
+  <Tab title="Prompt">
+    Balanced approach:
+    - Warns about dangerous operations
+    - Allows override after confirmation
+    - Shows security warnings
+    - For advanced users
+  </Tab>
+  
+  <Tab title="Off">
+    Minimal restrictions:
+    - Allows all operations
+    - Shows no warnings
+    - **Not recommended**
+    - Development/testing only
+  </Tab>
+</Tabs>
+
+<Warning>
+Only disable safety checks if you fully understand the security implications. Keep on "Strict" for normal use.
+</Warning>
+
+### Experimental features
+
+Some firmware versions include experimental features:
+
+- Accessible via **Settings → Device → Experimental**
+- May be unstable or incomplete
+- Use at your own risk
+- Usually disabled by default
+
+<Note>
+Experimental features are not fully tested. Only enable if you understand the risks.
+</Note>
+
+## Device maintenance
+
+### Backup verification
+
+Regularly verify your device backup:
+
+1. **Settings → Device → Backup**
+2. Click **Check backup**
+3. Confirm random words from your recovery seed
+4. Verifies backup is valid without wiping device
+
+<Tip>
+Verify your backup at least every 6 months or after any significant changes.
+</Tip>
+
+### Firmware information
+
+View current firmware details:
+
+- **Settings → Device → Firmware**
+- Shows:
+  - Current firmware version
+  - Available updates
+  - Firmware type (Universal/Bitcoin-only)
+  - Bootloader version
+
+See [Firmware updates](/suite/firmware-updates) for update instructions.
+
+### Device information
+
+Access device technical details:
+
+```plaintext
+Device Information:
+- Model: Trezor Model T
+- Device ID: A1B2C3D4...
+- Firmware: 2.5.1
+- Bootloader: 2.1.0
+- Vendor: SatoshiLabs
+- Serial number: (if available)
+- Bootloader hash: (for verification)
+```
+
+## Wiping device
+
+Completely erase all device data.
+
+<Warning>
+**This is irreversible!** Ensure you have your recovery seed before wiping.
+</Warning>
+
+### When to wipe
+
+- Selling or gifting device
+- Suspicious device behavior
+- Forgotten PIN (after 16 failed attempts, device wipes automatically)
+- Starting fresh setup
+- Recovery testing
+
+### Wipe process
+
+<Steps>
+  <Step title="Access wipe device">
+    **Settings → Device → Wipe device**
+  </Step>
+  
+  <Step title="Read warning">
+    Suite displays warning about data loss.
+  </Step>
+  
+  <Step title="Confirm on device">
+    Device prompts for final confirmation.
+    
+    <Warning>
+    After confirmation, all data is immediately and permanently erased.
+    </Warning>
+  </Step>
+  
+  <Step title="Device reset">
+    Device returns to factory state:
+    - All wallets erased
+    - PIN removed
+    - All settings reset
+    - Ready for new setup
+  </Step>
+</Steps>
+
+### After wiping
+
+To restore access to your funds:
+
+1. Recover device using recovery seed
+2. Set new PIN
+3. Apply passphrase (if previously used)
+4. Suite rediscovers accounts
+
+See [Backup and recovery](/suite/backup-recovery) for detailed recovery instructions.
+
+## Device-specific features
+
+<Tabs>
+  <Tab title="Model One">
+    **Unique features**:
+    - Two-button interface
+    - PIN entry via computer (with randomized layout)
+    - Passphrase entry via computer only
+    
+    **Not available**:
+    - SD card protection
+    - Touchscreen features
+    - Homescreen customization
+    - Shamir Backup
+  </Tab>
+  
+  <Tab title="Model T">
+    **Unique features**:
+    - Touchscreen interface
+    - On-device passphrase entry
+    - Homescreen customization
+    - SD card protection
+    - Shamir Backup support
+    - Brightness control
+    
+    **Enhanced security**:
+    - On-device seed entry (recovery)
+    - On-device passphrase entry
+  </Tab>
+  
+  <Tab title="Safe 3">
+    **All Model T features plus**:
+    - Secure Element chip
+    - Enhanced tamper protection
+    - Latest security features
+    - Optimized performance
+    
+    **Premium security**:
+    - Hardware security module
+    - Certified secure element
+  </Tab>
+</Tabs>
+
+## Troubleshooting settings
+
+<AccordionGroup>
+  <Accordion title="Settings not saving">
+    **Causes**:
+    - Device disconnected during save
+    - Firmware issue
+    - Communication error
+    
+    **Solutions**:
+    - Ensure stable USB connection
+    - Retry setting change
+    - Update firmware if available
+    - Try different USB port/cable
+  </Accordion>
+  
+  <Accordion title="Can't access certain settings">
+    **Reasons**:
+    - Firmware version too old
+    - Feature not available on your model
+    - Device not in correct mode
+    
+    **Check**:
+    - Update to latest firmware
+    - Verify feature compatibility
+    - Ensure device is unlocked
+  </Accordion>
+  
+  <Accordion title="Forgotten PIN">
+    **No recovery possible without seed**:
+    - After 16 failed attempts, device wipes
+    - Must recover using recovery seed
+    - All settings reset
+    - See [Backup and recovery](/suite/backup-recovery)
+  </Accordion>
+</AccordionGroup>
+
+## Settings best practices
+
+<Check>Set strong PIN (6+ digits)</Check>
+<Check>Enable passphrase for significant holdings</Check>
+<Check>Use reasonable auto-lock timing (2-5 minutes)</Check>
+<Check>Keep safety checks on "Strict"</Check>
+<Check>Verify backups regularly</Check>
+<Check>Update firmware when available</Check>
+<Check>Use descriptive device label</Check>
+<Check>Don't disable security features unnecessarily</Check>
+
+## Related topics
+
+<Columns cols={2}>
+  <Card title="Security" icon="lock" href="/suite/security">
+    Security best practices and threat protection
+  </Card>
+  
+  <Card title="Backup and recovery" icon="shield" href="/suite/backup-recovery">
+    Backup and device recovery procedures
+  </Card>
+  
+  <Card title="Device management" icon="plug" href="/suite/device-management">
+    Connecting and managing devices
+  </Card>
+  
+  <Card title="Firmware updates" icon="download" href="/suite/firmware-updates">
+    Updating device firmware
+  </Card>
+</Columns>

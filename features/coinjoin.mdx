@@ -1,0 +1,519 @@
+---
+title: CoinJoin Implementation
+description: Privacy-enhancing Bitcoin mixing protocol integration in Trezor Suite
+---
+
+# CoinJoin Implementation
+
+Trezor Suite integrates CoinJoin, a privacy-enhancing protocol that makes Bitcoin transactions more difficult to trace by mixing coins from multiple users.
+
+## What is CoinJoin?
+
+CoinJoin is a trustless method for combining multiple Bitcoin payments into a single transaction:
+
+<CardGroup cols={2}>
+  <Card title="Privacy Enhancement" icon="shield">
+    Breaks deterministic links between inputs and outputs
+  </Card>
+  <Card title="Trustless" icon="handshake">
+    No third party can steal your funds
+  </Card>
+  <Card title="Collaborative" icon="users">
+    Multiple users participate in each mixing round
+  </Card>
+  <Card title="Trezor Native" icon="microchip">
+    Fully integrated with Trezor hardware wallet
+  </Card>
+</CardGroup>
+
+## How It Works
+
+<Steps>
+  <Step title="Coordinator Selection">
+    Suite connects to CoinJoin coordinator backend via Tor
+  </Step>
+  <Step title="Round Discovery">
+    Client discovers available mixing rounds with required parameters
+  </Step>
+  <Step title="Input Registration">
+    User's UTXOs registered for mixing (requires Trezor confirmation)
+  </Step>
+  <Step title="Output Registration">
+    Anonymous outputs registered through fresh Tor identity
+  </Step>
+  <Step title="Transaction Signing">
+    Trezor signs the collaborative transaction
+  </Step>
+  <Step title="Broadcast">
+    Coordinator broadcasts completed transaction to Bitcoin network
+  </Step>
+</Steps>
+
+## CoinjoinClient
+
+Core client library for CoinJoin operations:
+
+```typescript
+import { CoinjoinClient } from '@trezor/coinjoin';
+
+// Initialize client
+const client = new CoinjoinClient({
+  network: 'mainnet', // or 'testnet', 'regtest'
+  coordinatorUrl: 'https://coordinator.example.com',
+  torIdentityFactory: createTorIdentity,
+  logger: console,
+});
+
+// Enable CoinJoin
+const status = await client.enable();
+
+// Listen for status updates
+client.on('status', (event) => {
+  console.log('Rounds:', event.rounds);
+  console.log('Changed:', event.changed);
+  console.log('Max mining fee:', event.maxMiningFee);
+  console.log('Coordinator fee:', event.coordinatorFeeRate);
+});
+
+// Disable when done
+await client.disable();
+```
+
+### Status Events
+
+Client emits status updates periodically:
+
+```typescript
+interface CoinjoinStatus {
+  // Current mixing rounds
+  rounds: Round[];
+  
+  // Rounds that changed since last update
+  changed: Round[];
+  
+  // Maximum mining fee from recommended rates
+  maxMiningFee: number;
+  
+  // Coordinator fee structure
+  coordinatorFeeRate: CoordinationFeeRate;
+  
+  // Allowed input amount range
+  allowedInputAmounts: AllowedRange;
+}
+```
+
+## CoinJoin Accounts
+
+Dedicated account type for CoinJoin:
+
+### Account Creation
+
+```typescript
+// CoinJoin accounts use special derivation path
+// m/10025'/coin_type'/account'
+
+const coinjoinAccount = {
+  accountType: 'coinjoin',
+  symbol: 'btc',
+  path: "m/10025'/0'/0'",
+  // ... other account properties
+};
+```
+
+### Account Features
+
+<Tabs>
+  <Tab title="Separate UTXO Pool">
+    CoinJoin accounts maintain separate UTXOs from regular accounts to avoid mixing private and mixed coins
+  </Tab>
+  <Tab title="Automatic Mixing">
+    Funds can be configured to automatically participate in mixing rounds
+  </Tab>
+  <Tab title="Privacy Labels">
+    Addresses and UTXOs labeled with anonymity scores
+  </Tab>
+  <Tab title="Custom Backend">
+    Uses dedicated coordinator, not standard Blockbook
+  </Tab>
+</Tabs>
+
+## Development Setup
+
+For local development and testing:
+
+### Prerequisites
+
+<Warning>
+VPN required for communication with affiliate server
+</Warning>
+
+### Running Local Backend
+
+<CodeGroup>
+```bash Docker
+# Start local CoinJoin backend (Regtest only)
+./docker/docker-coinjoin-backend.sh
+
+# Backend control panel accessible at:
+# http://localhost:8080/
+```
+
+```bash Trezor User Env
+# If using trezor-user-env, start with:
+trezor-user-env -r  # -r disables regtest
+```
+</CodeGroup>
+
+### Suite Configuration
+
+<Steps>
+  <Step title="Enable Debug Mode">
+    Go to Settings and click "Settings" header 5 times
+  </Step>
+  <Step title="Enable Bitcoin Regtest">
+    Settings → Crypto → Enable Bitcoin Regtest
+  </Step>
+  <Step title="Set Custom Backend">
+    Set custom backend to `http://localhost:19121/` (default)
+  </Step>
+  <Step title="Optional: Disable Other Coins">
+    For cleaner testing environment
+  </Step>
+  <Step title="Access CoinJoin Account">
+    Navigate to CoinJoin account in Suite
+  </Step>
+</Steps>
+
+<Info>
+CoinJoin accounts use the local backend, but regular accounts need the same bitcoind instance. Keep all Regtest accounts synchronized with the same backend.
+</Info>
+
+## Tor Integration
+
+CoinJoin requires Tor for privacy:
+
+### Identity Management
+
+Each operation uses fresh Tor identity:
+
+```typescript
+// Tor identity factory
+const createTorIdentity = async () => {
+  // Request new Tor circuit
+  const identity = await torController.getIdentity();
+  
+  return {
+    // Unique identifier for this circuit
+    id: identity.id,
+    
+    // SOCKS proxy settings
+    proxy: {
+      host: '127.0.0.1',
+      port: 9050,
+      auth: identity.credentials,
+    },
+  };
+};
+```
+
+### Circuit Isolation
+
+Different phases use different identities:
+
+- **Status polling**: Rotated periodically
+- **Input registration**: Fresh identity
+- **Output registration**: Different fresh identity
+- **Transaction signing**: Another fresh identity
+
+This prevents coordinator from linking user's actions.
+
+## Round Phases
+
+### Phase 1: Input Registration
+
+Users register UTXOs to mix:
+
+```typescript
+interface InputRegistration {
+  // UTXOs to mix
+  inputs: {
+    txid: string;
+    vout: number;
+    amount: number;
+    path: string;
+  }[];
+  
+  // Proof of ownership (from Trezor)
+  ownershipProofs: Buffer[];
+  
+  // Desired anonymity set
+  targetAnonymity: number;
+}
+```
+
+### Phase 2: Connection Confirmation
+
+Confirm continued participation:
+
+- Prevents users from registering and disappearing
+- Small time window to respond
+- Failure causes round restart
+
+### Phase 3: Output Registration
+
+Register receiving addresses anonymously:
+
+```typescript
+interface OutputRegistration {
+  // Fresh addresses from Trezor
+  outputs: {
+    address: string;
+    amount: number;
+  }[];
+  
+  // Issued via different Tor identity
+  // Coordinator cannot link to input registration
+}
+```
+
+### Phase 4: Transaction Signing
+
+Sign the collaborative transaction:
+
+```typescript
+// All participants sign the transaction
+const signature = await TrezorConnect.signTransaction({
+  inputs: coinjoinInputs,
+  outputs: coinjoinOutputs,
+  // Trezor verifies CoinJoin transaction structure
+  coinjoin: true,
+});
+```
+
+### Phase 5: Broadcast
+
+Coordinator broadcasts when all signatures received.
+
+## Fees
+
+### Mining Fees
+
+Network transaction fees:
+
+- Dynamically calculated based on network conditions
+- User can set mining fee rate limit
+- Higher fees for faster confirmation
+- Distributed among participants based on input size
+
+### Coordinator Fees
+
+Service fee structure:
+
+```typescript
+interface CoordinatorFeeRate {
+  // Percentage fee (e.g., 0.003 = 0.3%)
+  rate: number;
+  
+  // Threshold below which no fee charged
+  plebsDontPayThreshold: number;
+  
+  // Minimum fee amount
+  minFee: number;
+}
+```
+
+<Info>
+Small amounts below `plebsDontPayThreshold` don't pay coordinator fees, making CoinJoin accessible for smaller users.
+</Info>
+
+## Anonymity Levels
+
+UTXOs and addresses tagged with anonymity scores:
+
+| Level | Description | Color |
+|-------|-------------|-------|
+| 1 | Never mixed, no privacy | Red |
+| 2-9 | Limited mixing rounds | Orange |
+| 10-49 | Moderate privacy | Yellow |
+| 50+ | Strong privacy | Green |
+
+### Anonymity Set
+
+The anonymity set represents how many participants' outputs are indistinguishable:
+
+```typescript
+// Larger anonymity set = better privacy
+const anonymitySet = round.participants.length * round.outputsPerParticipant;
+```
+
+## State Management
+
+### Redux Integration
+
+```typescript
+interface CoinjoinState {
+  // Client instances per account
+  clients: {
+    [accountKey: string]: CoinjoinClient;
+  };
+  
+  // Current rounds
+  rounds: Round[];
+  
+  // Account CoinJoin settings
+  accounts: {
+    [accountKey: string]: {
+      enabled: boolean;
+      targetAnonymity: number;
+      skipRounds: string[];
+    };
+  };
+  
+  // Session statistics
+  sessions: CoinjoinSession[];
+}
+```
+
+### CoinJoin Actions
+
+<CodeGroup>
+```typescript Actions
+// Enable CoinJoin for account
+dispatch(enableCoinjoin({ accountKey }));
+
+// Disable CoinJoin
+dispatch(disableCoinjoin({ accountKey }));
+
+// Update settings
+dispatch(updateCoinjoinSettings({
+  accountKey,
+  targetAnonymity: 50,
+}));
+
+// Start mixing session
+dispatch(startCoinjoinSession({ accountKey }));
+
+// Stop session
+dispatch(stopCoinjoinSession({ accountKey }));
+```
+</CodeGroup>
+
+## Privacy Considerations
+
+<AccordionGroup>
+  <Accordion title="Avoid Mixing Coins">
+    Never send mixed coins to the same address as non-mixed coins. This defeats the privacy benefit.
+  </Accordion>
+  
+  <Accordion title="Patience Required">
+    CoinJoin rounds take time. More rounds = better privacy but longer wait.
+  </Accordion>
+  
+  <Accordion title="Tor Mandatory">
+    Always use Tor with CoinJoin. Direct connections reveal your IP to coordinator.
+  </Accordion>
+  
+  <Accordion title="Coin Consolidation">
+    Avoid consolidating many small UTXOs immediately after mixing. Space out spending.
+  </Accordion>
+  
+  <Accordion title="Address Reuse">
+    Never reuse addresses. CoinJoin accounts generate fresh addresses automatically.
+  </Accordion>
+</AccordionGroup>
+
+## Error Handling
+
+### Common Errors
+
+<Tabs>
+  <Tab title="Round Failed">
+    - Not enough participants
+    - Someone disconnected
+    - Automatically retry next round
+  </Tab>
+  <Tab title="Amount Too Small">
+    - Below minimum denomination
+    - Wait for more funds or adjust settings
+  </Tab>
+  <Tab title="Tor Connection Failed">
+    - Check Tor is running
+    - Verify Tor settings
+    - Try different Tor bridge
+  </Tab>
+  <Tab title="Coordinator Offline">
+    - Coordinator maintenance
+    - Network issues
+    - Wait and retry automatically
+  </Tab>
+</Tabs>
+
+### Retry Logic
+
+```typescript
+// Automatic retry with exponential backoff
+const retryCoinjoin = async (
+  attempt = 0,
+  maxAttempts = 5
+) => {
+  try {
+    await client.enable();
+  } catch (error) {
+    if (attempt < maxAttempts) {
+      const delay = Math.min(1000 * Math.pow(2, attempt), 30000);
+      await sleep(delay);
+      return retryCoinjoin(attempt + 1, maxAttempts);
+    }
+    throw error;
+  }
+};
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="For Users" icon="user">
+    - Use dedicated CoinJoin accounts
+    - Mix before spending for privacy
+    - Don't rush - more rounds = better privacy
+    - Always verify on Trezor device
+    - Keep Tor enabled throughout session
+  </Card>
+  <Card title="For Developers" icon="code">
+    - Always use Tor for coordinator communication
+    - Rotate identities between phases
+    - Handle round failures gracefully
+    - Test on Regtest first
+    - Monitor coordinator status
+  </Card>
+</CardGroup>
+
+## Implementation Files
+
+```typescript
+// CoinJoin package
+packages/coinjoin/
+  src/
+    client/      // CoinjoinClient implementation
+    coordinator/ // Coordinator API
+    types/       // TypeScript types
+  tests/         // Unit tests
+
+// Suite integration
+packages/suite/src/
+  actions/wallet/coinjoin/
+  reducers/wallet/coinjoinReducer.ts
+  middlewares/wallet/coinjoinMiddleware.ts
+```
+
+## Resources
+
+- [CoinJoin Backend Repository](https://github.com/trezor/coinjoin-backend)
+- [WabiSabi Protocol](https://github.com/zkSNACKs/WabiSabi)
+- [Bitcoin Privacy Guide](https://en.bitcoin.it/wiki/Privacy)
+
+## Related Features
+
+- [Tor Integration](/features/tor-integration)
+- [Wallet Management](/suite/wallet-management)
+- [Security Best Practices](/suite/security)

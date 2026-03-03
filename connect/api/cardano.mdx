@@ -1,0 +1,486 @@
+---
+title: 'Cardano Methods'
+description: 'Methods for Cardano blockchain operations'
+---
+
+Cardano methods handle addresses, transactions, native scripts, and message signing for the Cardano blockchain.
+
+## cardanoGetAddress
+
+Retrieves a Cardano address from the device. Supports various address types including base, enterprise, pointer, and reward addresses.
+
+<ParamField path="addressParameters" type="object" required>
+  Address parameters.
+  <Expandable title="properties">
+    <ParamField path="addressType" type="number" required>
+      Address type: 0=Base, 1=Pointer, 2=Enterprise, 3=Byron, 4=Reward.
+    </ParamField>
+    <ParamField path="path" type="string | number[]">
+      Payment key derivation path.
+    </ParamField>
+    <ParamField path="stakingPath" type="string | number[]">
+      Staking key derivation path.
+    </ParamField>
+    <ParamField path="stakingKeyHash" type="string">
+      Staking key hash (alternative to stakingPath).
+    </ParamField>
+    <ParamField path="certificatePointer" type="object">
+      Certificate pointer for pointer addresses.
+    </ParamField>
+    <ParamField path="paymentScriptHash" type="string">
+      Payment script hash.
+    </ParamField>
+    <ParamField path="stakingScriptHash" type="string">
+      Staking script hash.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="protocolMagic" type="number" required>
+  Protocol magic (764824073 for mainnet).
+</ParamField>
+
+<ParamField path="networkId" type="number" required>
+  Network ID (1 for mainnet, 0 for testnet).
+</ParamField>
+
+<ParamField path="address" type="string">
+  Expected address for verification.
+</ParamField>
+
+<ParamField path="showOnTrezor" type="boolean">
+  Display address on device screen.
+</ParamField>
+
+<ParamField path="derivationType" type="number">
+  Derivation type: 0=Ledger, 1=Icarus, 2=Icarus-Trezor.
+</ParamField>
+
+<ParamField path="chunkify" type="boolean">
+  Split large requests into chunks.
+</ParamField>
+
+<ResponseField name="address" type="string">
+  Cardano address (bech32 encoded).
+</ResponseField>
+
+<ResponseField name="addressParameters" type="object">
+  Address parameters used.
+</ResponseField>
+
+<ResponseField name="protocolMagic" type="number">
+  Protocol magic.
+</ResponseField>
+
+<ResponseField name="networkId" type="number">
+  Network ID.
+</ResponseField>
+
+<ResponseField name="serializedPath" type="string">
+  Payment key path.
+</ResponseField>
+
+<ResponseField name="serializedStakingPath" type="string">
+  Staking key path.
+</ResponseField>
+
+```typescript
+// Base address with payment and staking keys
+const result = await TrezorConnect.cardanoGetAddress({
+    addressParameters: {
+        addressType: 0, // Base address
+        path: "m/1852'/1815'/0'/0/0",
+        stakingPath: "m/1852'/1815'/0'/2/0",
+    },
+    protocolMagic: 764824073,
+    networkId: 1,
+    showOnTrezor: true,
+});
+
+// Enterprise address (no staking)
+const enterprise = await TrezorConnect.cardanoGetAddress({
+    addressParameters: {
+        addressType: 2,
+        path: "m/1852'/1815'/0'/0/0",
+    },
+    protocolMagic: 764824073,
+    networkId: 1,
+});
+```
+
+## cardanoGetPublicKey
+
+Retrieves a Cardano public key from the device.
+
+<ParamField path="path" type="string | number[]" required>
+  BIP32 derivation path.
+</ParamField>
+
+<ParamField path="showOnTrezor" type="boolean">
+  Display public key on device screen.
+</ParamField>
+
+<ParamField path="derivationType" type="number">
+  Derivation type.
+</ParamField>
+
+<ResponseField name="publicKey" type="string">
+  Public key (hex).
+</ResponseField>
+
+<ResponseField name="node" type="object">
+  HD node information.
+</ResponseField>
+
+<ResponseField name="path" type="number[]">
+  Derivation path.
+</ResponseField>
+
+<ResponseField name="serializedPath" type="string">
+  Path as string.
+</ResponseField>
+
+```typescript
+const result = await TrezorConnect.cardanoGetPublicKey({
+    path: "m/1852'/1815'/0'",
+});
+```
+
+## cardanoSignTransaction
+
+Signs a Cardano transaction. Supports all transaction features including certificates, withdrawals, metadata, and Plutus scripts.
+
+<ParamField path="inputs" type="array" required>
+  Transaction inputs.
+  <Expandable title="properties">
+    <ParamField path="path" type="string | number[]">
+      Derivation path for signing.
+    </ParamField>
+    <ParamField path="prev_hash" type="string" required>
+      Previous transaction hash.
+    </ParamField>
+    <ParamField path="prev_index" type="number" required>
+      Output index in previous transaction.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="outputs" type="array" required>
+  Transaction outputs.
+  <Expandable title="properties">
+    <ParamField path="address" type="string">
+      Destination address (for external outputs).
+    </ParamField>
+    <ParamField path="addressParameters" type="object">
+      Address parameters (for change outputs).
+    </ParamField>
+    <ParamField path="amount" type="string" required>
+      ADA amount in lovelace.
+    </ParamField>
+    <ParamField path="tokenBundle" type="array">
+      Native tokens.
+    </ParamField>
+    <ParamField path="datumHash" type="string">
+      Datum hash for Plutus scripts.
+    </ParamField>
+    <ParamField path="format" type="number">
+      Output serialization format.
+    </ParamField>
+    <ParamField path="inlineDatum" type="string">
+      Inline datum (CBOR hex).
+    </ParamField>
+    <ParamField path="referenceScript" type="string">
+      Reference script (CBOR hex).
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="fee" type="string" required>
+  Transaction fee in lovelace.
+</ParamField>
+
+<ParamField path="ttl" type="string">
+  Time to live (slot number).
+</ParamField>
+
+<ParamField path="certificates" type="array">
+  Stake certificates (registration, delegation, etc.).
+</ParamField>
+
+<ParamField path="withdrawals" type="array">
+  Reward withdrawals.
+</ParamField>
+
+<ParamField path="validityIntervalStart" type="string">
+  Validity interval start (slot).
+</ParamField>
+
+<ParamField path="auxiliaryData" type="object">
+  Auxiliary data (metadata, catalyst voting).
+</ParamField>
+
+<ParamField path="mint" type="array">
+  Token minting/burning.
+</ParamField>
+
+<ParamField path="scriptDataHash" type="string">
+  Script data hash for Plutus.
+</ParamField>
+
+<ParamField path="collateralInputs" type="array">
+  Collateral inputs for Plutus scripts.
+</ParamField>
+
+<ParamField path="requiredSigners" type="array">
+  Required signers.
+</ParamField>
+
+<ParamField path="collateralReturn" type="object">
+  Collateral return output.
+</ParamField>
+
+<ParamField path="totalCollateral" type="string">
+  Total collateral amount.
+</ParamField>
+
+<ParamField path="referenceInputs" type="array">
+  Reference inputs.
+</ParamField>
+
+<ParamField path="additionalWitnessRequests" type="array">
+  Additional witness paths.
+</ParamField>
+
+<ParamField path="protocolMagic" type="number" required>
+  Protocol magic.
+</ParamField>
+
+<ParamField path="networkId" type="number" required>
+  Network ID.
+</ParamField>
+
+<ParamField path="signingMode" type="number" required>
+  Signing mode: 0=Ordinary, 1=Pool registration, 2=Multisig, 3=Plutus.
+</ParamField>
+
+<ParamField path="derivationType" type="number">
+  Derivation type.
+</ParamField>
+
+<ParamField path="includeNetworkId" type="boolean">
+  Include network ID in transaction body hash.
+</ParamField>
+
+<ParamField path="chunkify" type="boolean">
+  Split large transactions.
+</ParamField>
+
+<ResponseField name="hash" type="string">
+  Transaction hash.
+</ResponseField>
+
+<ResponseField name="witnesses" type="array">
+  Transaction witnesses (signatures).
+</ResponseField>
+
+<ResponseField name="auxiliaryDataSupplement" type="object">
+  Auxiliary data supplement.
+</ResponseField>
+
+```typescript
+const result = await TrezorConnect.cardanoSignTransaction({
+    inputs: [
+        {
+            path: "m/1852'/1815'/0'/0/0",
+            prev_hash: 'ab3...',
+            prev_index: 0,
+        },
+    ],
+    outputs: [
+        {
+            address: 'addr1...',
+            amount: '1000000',
+        },
+        {
+            addressParameters: {
+                addressType: 0,
+                path: "m/1852'/1815'/0'/0/1",
+                stakingPath: "m/1852'/1815'/0'/2/0",
+            },
+            amount: '4823451',
+        },
+    ],
+    fee: '176549',
+    ttl: '89467909',
+    protocolMagic: 764824073,
+    networkId: 1,
+    signingMode: 0,
+});
+
+if (result.success) {
+    console.log('Transaction hash:', result.payload.hash);
+    console.log('Witnesses:', result.payload.witnesses);
+}
+```
+
+## cardanoSignMessage
+
+Signs a message using CIP-8 format.
+
+<ParamField path="path" type="string | number[]" required>
+  Derivation path for signing key.
+</ParamField>
+
+<ParamField path="payload" type="string" required>
+  Message payload (hex).
+</ParamField>
+
+<ParamField path="preferHexDisplay" type="boolean">
+  Display message as hex on device.
+</ParamField>
+
+<ParamField path="networkId" type="number">
+  Network ID.
+</ParamField>
+
+<ParamField path="protocolMagic" type="number">
+  Protocol magic.
+</ParamField>
+
+<ParamField path="addressParameters" type="object">
+  Address parameters for signing.
+</ParamField>
+
+<ParamField path="derivationType" type="number">
+  Derivation type.
+</ParamField>
+
+<ResponseField name="signature" type="string">
+  Message signature.
+</ResponseField>
+
+<ResponseField name="pubKey" type="string">
+  Public key used.
+</ResponseField>
+
+<ResponseField name="headers" type="object">
+  COSE headers.
+</ResponseField>
+
+<ResponseField name="coseSignature" type="string">
+  COSE signature (CBOR hex).
+</ResponseField>
+
+<ResponseField name="coseKey" type="string">
+  COSE key (CBOR hex).
+</ResponseField>
+
+```typescript
+const result = await TrezorConnect.cardanoSignMessage({
+    path: "m/1852'/1815'/0'/0/0",
+    payload: Buffer.from('Hello Cardano').toString('hex'),
+    networkId: 1,
+    protocolMagic: 764824073,
+});
+```
+
+## cardanoGetNativeScriptHash
+
+Computes hash of a Cardano native script.
+
+<ParamField path="script" type="object" required>
+  Native script definition (recursive structure).
+  <Expandable title="properties">
+    <ParamField path="type" type="number" required>
+      Script type: 0=PubKey, 1=All, 2=Any, 3=N-of-K, 4=InvalidBefore, 5=InvalidHereafter.
+    </ParamField>
+    <ParamField path="scripts" type="array">
+      Nested scripts (for All, Any, N-of-K).
+    </ParamField>
+    <ParamField path="keyHash" type="string">
+      Key hash (for PubKey type).
+    </ParamField>
+    <ParamField path="keyPath" type="string | number[]">
+      Key path (alternative to keyHash).
+    </ParamField>
+    <ParamField path="requiredSignaturesCount" type="number">
+      Required signatures (for N-of-K).
+    </ParamField>
+    <ParamField path="invalidBefore" type="string">
+      Invalid before slot.
+    </ParamField>
+    <ParamField path="invalidHereafter" type="string">
+      Invalid hereafter slot.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="displayFormat" type="number" required>
+  Display format: 0=Hide, 1=Bech32, 2=Policy ID.
+</ParamField>
+
+<ParamField path="derivationType" type="number">
+  Derivation type.
+</ParamField>
+
+<ResponseField name="scriptHash" type="string">
+  Native script hash.
+</ResponseField>
+
+```typescript
+const result = await TrezorConnect.cardanoGetNativeScriptHash({
+    script: {
+        type: 1, // All
+        scripts: [
+            {
+                type: 0, // PubKey
+                keyPath: "m/1852'/1815'/0'/0/0",
+            },
+            {
+                type: 5, // InvalidHereafter
+                invalidHereafter: '89467909',
+            },
+        ],
+    },
+    displayFormat: 1,
+});
+```
+
+## cardanoComposeTransaction
+
+Composes a Cardano transaction by selecting inputs and calculating fees.
+
+<ParamField path="outputs" type="array" required>
+  Desired transaction outputs.
+</ParamField>
+
+<ParamField path="account" type="object" required>
+  Account information with UTXOs.
+</ParamField>
+
+<ParamField path="certificates" type="array">
+  Certificates to include.
+</ParamField>
+
+<ParamField path="withdrawals" type="array">
+  Withdrawals to include.
+</ParamField>
+
+<ParamField path="ttl" type="string">
+  Time to live.
+</ParamField>
+
+<ResponseField name="success" type="boolean">
+  Whether composition succeeded.
+</ResponseField>
+
+<ResponseField name="payload" type="object">
+  Composed transaction or error.
+</ResponseField>
+
+```typescript
+const result = await TrezorConnect.cardanoComposeTransaction({
+    outputs: [{ address: 'addr1...', amount: '1000000' }],
+    account: accountInfo,
+});
+```

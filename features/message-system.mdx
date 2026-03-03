@@ -1,0 +1,678 @@
+---
+title: Message System
+description: Dynamic message delivery system for important notifications and feature control
+---
+
+# Message System
+
+The Message System enables Trezor Suite to deliver emergency messages, disable features remotely, and conduct A/B tests through a secure configuration-based approach.
+
+## Overview
+
+Message System provides:
+
+<CardGroup cols={2}>
+  <Card title="Emergency Messages" icon="triangle-exclamation">
+    Critical notifications to users
+  </Card>
+  <Card title="Feature Flags" icon="flag">
+    Remote feature enable/disable
+  </Card>
+  <Card title="A/B Testing" icon="flask">
+    Experimental feature rollouts
+  </Card>
+  <Card title="Context Messages" icon="message">
+    In-app contextual notifications
+  </Card>
+</CardGroup>
+
+## Message Types
+
+### Banner Messages
+
+Cookie-bar style banners:
+
+```jsx
+// Displayed above page content
+<Banner
+  variant="warning"
+  dismissible={true}
+  priority={80}
+>
+  <Translation id="message_content" />
+  <Button onClick={handleCTA}>Update now</Button>
+</Banner>
+```
+
+**Characteristics:**
+- Visible across all pages
+- Dismissible or persistent
+- Priority-based ordering
+- Call-to-action buttons
+
+### Modal Messages
+
+<Info>
+Modal messages are planned but not yet implemented.
+</Info>
+
+Full-screen interrupting modals:
+- Block user workflow
+- Require acknowledgment
+- Critical announcements only
+
+### Context Messages
+
+Page-specific notifications:
+
+```jsx
+// Shown only on specific pages
+<ContextMessage
+  domain={['coins.receive', 'coins.btc']}
+  variant="info"
+>
+  <Translation id="context_message" />
+</ContextMessage>
+```
+
+**Use cases:**
+- Feature-specific tips
+- Warnings for specific actions
+- Localized help content
+
+### Feature Control
+
+Remote feature disable:
+
+```json
+{
+  "feature": [
+    {
+      "domain": "coinjoin",
+      "flag": false
+    }
+  ]
+}
+```
+
+Disables features with explanation message.
+
+## Configuration System
+
+### Config Structure
+
+JSON-based configuration:
+
+```json
+{
+  "version": 1,
+  "timestamp": "2021-03-03T03:48:16+00:00",
+  "sequence": 42,
+  "actions": [
+    {
+      "conditions": [...],
+      "message": {...}
+    }
+  ],
+  "experiments": [...]
+}
+```
+
+### Versioning
+
+<CodeGroup>
+```typescript Version
+// Current version
+const MESSAGE_SYSTEM_VERSION = 1;
+
+// Config file naming
+config.v1.json
+config.v1.jws  // Signed version
+```
+</CodeGroup>
+
+**Sequence numbers:**
+- Monotonically increasing
+- New config only accepted if sequence > current
+- Cannot rollback to lower sequence
+- Prevents downgrade attacks
+
+### Config Location
+
+Multiple config sources:
+
+```typescript
+// Remote (production)
+https://data.trezor.io/config/${environment}/config.v1.jws
+
+// Bundled fallback
+suite-common/message-system/files/config.v1.ts
+
+// Local development
+file://suite-common/message-system/config/config.v1.json
+```
+
+## Condition System
+
+Target specific user segments:
+
+### Duration
+
+Time-based activation:
+
+```json
+{
+  "duration": {
+    "from": "2021-03-01T12:10:00.000Z",
+    "to": "2022-01-31T12:10:00.000Z"
+  }
+}
+```
+
+### Operating System
+
+OS version targeting:
+
+```json
+{
+  "os": {
+    "macos": ["10.14", "10.18", "11"],
+    "linux": "*",
+    "windows": "!",
+    "android": "*",
+    "ios": "13",
+    "chromeos": "*"
+  }
+}
+```
+
+**Version syntax:**
+- `*` - All versions
+- `!` - Exclude OS
+- `"10.14"` - Specific version
+- `">10.14"` - Greater than
+- `"^10.14"` - Compatible versions (semver)
+
+### Environment
+
+Suite platform targeting:
+
+```json
+{
+  "environment": {
+    "desktop": "<21.5",
+    "mobile": "!",
+    "web": "<22",
+    "revision": "7281ac61483e38d974625c2505bfe5efd519aacb"
+  }
+}
+```
+
+### Browser
+
+Web browser targeting:
+
+```json
+{
+  "browser": {
+    "firefox": ["82", "83"],
+    "chrome": "*",
+    "chromium": "!"
+  }
+}
+```
+
+### Transport Layer
+
+Device communication method:
+
+```json
+{
+  "transport": {
+    "bridge": ["2.0.30", "2.0.27"],
+    "webusbplugin": "*"
+  }
+}
+```
+
+### Settings
+
+User configuration:
+
+```json
+{
+  "settings": [
+    {
+      "tor": true,
+      "btc": true
+    },
+    {
+      "tor": false,
+      "ltc": true
+    }
+  ]
+}
+```
+
+**Supported settings:**
+- `tor` - Tor enabled/disabled
+- Coin symbols from `enabledNetworks`
+- OR logic between array items
+
+### Device
+
+Hardware device targeting:
+
+```json
+{
+  "devices": [
+    {
+      "model": "T2T1",
+      "firmware": "2.4.1",
+      "bootloader": "2.0.4",
+      "variant": "bitcoin-only",
+      "firmwareRevision": "*",
+      "vendor": "trezor.io"
+    }
+  ]
+}
+```
+
+<Info>
+**Model naming:**
+- Old: `"1"` (T1), `"T"` (T2)
+- New: `"T1B1"`, `"T2T1"`, `"T2B1"`, `"T3T1"`, `"T3B1"`
+- Use both for backward compatibility
+</Info>
+
+### Country Codes
+
+Geographic targeting:
+
+```json
+{
+  "countryCodes": ["CZ", "US", "GB"]
+}
+```
+
+<Warning>
+Country-based targeting only evaluated after user visits staking or trading sections on desktop/web.
+</Warning>
+
+## Message Definition
+
+### Basic Structure
+
+```json
+{
+  "message": {
+    "id": "0f3ec64d-c3e4-4787-8106-162f3ac14c34",
+    "priority": 100,
+    "dismissible": true,
+    "variant": "warning",
+    "category": "banner",
+    "content": {
+      "en": "New Trezor firmware is available!",
+      "de": "Neue Trezor Firmware ist verfügbar!"
+    }
+  }
+}
+```
+
+### Message Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | UUID | Unique identifier for message |
+| `priority` | 0-100 | Display priority (higher = more important) |
+| `dismissible` | boolean | Can user close message? |
+| `variant` | string | `info`, `warning`, `critical` |
+| `category` | string | `banner`, `modal`, `context`, `feature` |
+| `content` | object | Localized message text |
+| `headline` | object | Optional localized headline |
+
+### Call to Action
+
+Action buttons:
+
+```json
+{
+  "cta": {
+    "action": "internal-link",
+    "link": "settings-device",
+    "anchor": "@device-settings/firmware-version",
+    "label": {
+      "en": "Update now",
+      "de": "Jetzt aktualisieren"
+    }
+  }
+}
+```
+
+**Action types:**
+- `internal-link` - Navigate to Suite route
+- `external-link` - Open external URL
+
+### Context Specification
+
+Context message placement:
+
+```json
+{
+  "context": {
+    "domain": ["coins.receive", "coins.btc"]
+  }
+}
+```
+
+## A/B Testing
+
+### Experiment Definition
+
+```json
+{
+  "experiments": [
+    {
+      "conditions": [...],
+      "experiment": {
+        "id": "e2e8d05f-1469-4e47-9ab0-53544e5cad07",
+        "groups": [
+          {
+            "variant": "A",
+            "percentage": 30
+          },
+          {
+            "variant": "B",
+            "percentage": 70
+          }
+        ]
+      }
+    }
+  ]
+}
+```
+
+### Experiment Assignment
+
+Deterministic assignment:
+
+```typescript
+// Based on analytics instanceId
+const getExperimentVariant = (
+  instanceId: string,
+  experiment: Experiment
+) => {
+  // Hash instanceId for random but consistent assignment
+  const hash = hashString(instanceId + experiment.id);
+  const percentage = hash % 100;
+  
+  let cumulative = 0;
+  for (const group of experiment.groups) {
+    cumulative += group.percentage;
+    if (percentage < cumulative) {
+      return group.variant;
+    }
+  }
+};
+```
+
+### Experiment Implementation
+
+#### Component Experiments
+
+A/B test UI components:
+
+```jsx
+import { ExperimentWrapper } from '@suite-components';
+
+<ExperimentWrapper
+  id="e2e8d05f-1469-4e47-9ab0-53544e5cad07"
+  components={{
+    A: <OriginalComponent />,
+    B: <NewComponent />,
+  }}
+/>
+```
+
+#### Code Experiments
+
+A/B test functionality:
+
+```typescript
+import { useExperiment } from '@suite-hooks';
+
+const MyFeature = () => {
+  const variant = useExperiment('experiment-id');
+  
+  if (variant === 'A') {
+    return <OriginalFeature />;
+  } else {
+    return <NewFeature />;
+  }
+};
+```
+
+## Security
+
+### JSON Web Signatures
+
+Config authenticity via JWS:
+
+```typescript
+// Config signed with private key
+const signature = sign(
+  config,
+  PRIVATE_KEY,  // ES256 (ECDSA)
+);
+
+// Suite verifies with public key
+const verified = verify(
+  config,
+  signature,
+  PUBLIC_KEY
+);
+```
+
+**Key management:**
+- Development key: In repository
+- Production key: On `codesign` branch only
+- Public keys: Bundled with Suite
+
+### CI Signing
+
+Automatic signing:
+
+```yaml
+# GitHub Actions workflow
+- name: Sign config
+  run: yarn message-system-sign-config
+  
+- name: Upload to S3
+  run: aws s3 cp config.v1.jws s3://bucket/
+```
+
+## Fetching & Loading
+
+### Fetch Schedule
+
+<Steps>
+  <Step title="App Launch">
+    Fetch config immediately on startup
+  </Step>
+  <Step title="Periodic Updates">
+    Poll every 1 minute for updates
+  </Step>
+  <Step title="Offline Fallback">
+    Use bundled config if fetch fails
+  </Step>
+  <Step title="Retry on Failure">
+    Retry failed fetches every 30 seconds
+  </Step>
+</Steps>
+
+### Config Validation
+
+```typescript
+const validateConfig = (config: unknown): Config => {
+  // Validate against JSON schema
+  const valid = ajv.validate(CONFIG_SCHEMA, config);
+  
+  if (!valid) {
+    throw new Error('Invalid config structure');
+  }
+  
+  // Verify signature
+  if (!verifySignature(config)) {
+    throw new Error('Invalid config signature');
+  }
+  
+  // Check sequence number
+  if (config.sequence <= currentSequence) {
+    throw new Error('Config sequence not newer');
+  }
+  
+  return config as Config;
+};
+```
+
+### Storage
+
+Config persistence:
+
+```typescript
+// Redux state
+interface MessageSystemState {
+  config: Config | null;
+  currentSequence: number;
+  validMessages: Message[];
+  dismissedMessages: string[];
+  experiments: ExperimentAssignment[];
+}
+
+// IndexedDB for persistence
+await db.put('message-system', 'config', config);
+```
+
+## Condition Evaluation
+
+Middleware evaluates conditions:
+
+```typescript
+// messageSystemMiddleware.ts
+const middleware: Middleware = store => next => action => {
+  const result = next(action);
+  
+  // Actions that trigger re-evaluation
+  if (shouldEvaluate(action)) {
+    const state = store.getState();
+    const messages = evaluateConditions(
+      state.messageSystem.config,
+      state
+    );
+    
+    store.dispatch(saveValidMessages(messages));
+  }
+  
+  return result;
+};
+```
+
+**Evaluation triggers:**
+- Device connected/changed
+- Settings changed
+- Account created
+- Time-based conditions
+
+## Message Manager UI
+
+Built-in debugging tool:
+
+### Features
+
+<CardGroup cols={2}>
+  <Card title="Message List" icon="list">
+    View all active messages
+  </Card>
+  <Card title="Condition Inspector" icon="magnifying-glass">
+    See which conditions match
+  </Card>
+  <Card title="Add Test Message" icon="plus">
+    Create temporary test messages
+  </Card>
+  <Card title="Export/Import" icon="file-export">
+    Copy message JSON
+  </Card>
+</CardGroup>
+
+### Development Workflow
+
+<Steps>
+  <Step title="Switch to Local Config">
+    Settings → Debug → Message System info → Config source: Local
+  </Step>
+  <Step title="Open Message Manager">
+    Click "Message Manager" button
+  </Step>
+  <Step title="Add New Message">
+    Fill JSON form with message definition
+  </Step>
+  <Step title="Test in UI">
+    Message appears in Suite (state only)
+  </Step>
+  <Step title="Copy to Config">
+    Use "Copy to clipboard" and paste into config.v1.json
+  </Step>
+  <Step title="Sign Config">
+    Run `yarn message-system-sign-config`
+  </Step>
+</Steps>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="For Config Authors">
+    - Test conditions thoroughly
+    - Use descriptive message IDs (UUIDs)
+    - Set appropriate priorities
+    - Localize all official languages
+    - Set duration for experiments
+    - Increment sequence number
+  </Accordion>
+  
+  <Accordion title="For Developers">
+    - Check message conditions in middleware
+    - Handle missing translations
+    - Respect dismissible flag
+    - Log evaluation errors
+    - Test with Message Manager
+  </Accordion>
+</AccordionGroup>
+
+## Implementation Files
+
+```typescript
+// Message system package
+suite-common/message-system/
+  config/              // Config files
+    config.v1.json
+  files/               // Signed configs
+    config.v1.jws
+    config.v1.ts
+  schema/              // JSON schema
+    config.schema.v1.json
+  src/
+    messageSystem.ts   // Core logic
+    validation.ts      // Config validation
+
+// Suite integration
+packages/suite/src/
+  middlewares/suite/messageSystemMiddleware.ts
+  components/suite/Banners/
+  components/suite/MessageManager/
+```
+
+## Related Resources
+
+- [Feature Flags](/features/feature-flags)
+- [Analytics](/features/analytics)
+- [Localization](/features/localization)

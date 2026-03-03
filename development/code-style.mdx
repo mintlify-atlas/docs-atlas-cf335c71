@@ -1,0 +1,494 @@
+---
+title: 'Code Style Guide'
+description: 'Coding conventions and style guidelines for Trezor Suite development'
+keywords: ['code style', 'formatting', 'conventions', 'prettier', 'eslint']
+icon: 'code'
+---
+
+Trezor Suite follows strict coding conventions to maintain consistency across the codebase. All code must adhere to these guidelines before merging.
+
+## Formatting Tools
+
+Trezor Suite uses automated formatting tools to enforce code style:
+
+<CardGroup cols={2}>
+  <Card title="Prettier" icon="wand-magic-sparkles">
+    Handles code formatting automatically
+  </Card>
+  <Card title="ESLint" icon="shield-check">
+    Enforces code quality and catches errors
+  </Card>
+</CardGroup>
+
+### Prettier Configuration
+
+The project uses the following Prettier settings:
+
+```json .prettierrc
+{
+  "printWidth": 100,
+  "arrowParens": "avoid",
+  "bracketSpacing": true,
+  "singleQuote": true,
+  "semi": true,
+  "tabWidth": 4,
+  "useTabs": false,
+  "bracketSameLine": false
+}
+```
+
+<Info>YAML files use 2-space indentation instead of 4 spaces.</Info>
+
+### Running Formatters
+
+<Warning>Always format your code before committing changes.</Warning>
+
+<CodeGroup>
+```bash Format changed files
+yarn g:prettier --write <changed-files>
+yarn g:eslint --fix <changed-files>
+```
+
+```bash Format all files
+yarn format
+yarn lint:js:fix-files
+```
+</CodeGroup>
+
+## Basic Syntax Rules
+
+### If-Else Statements
+
+Always use braces for if-else blocks, except for simple inline-if without else:
+
+<CodeGroup>
+```tsx Good - Inline if without else
+if (condition) doSomething();
+```
+
+```tsx Good - Multi-line with braces
+if (condition) {
+    doSomething();
+} else {
+    doSomethingElse();
+}
+```
+
+```tsx Bad - Inline with else
+if (condition) doSomething();
+else doSomethingElse();
+```
+</CodeGroup>
+
+### Code Spacing
+
+Use empty lines to structure code into logical groups:
+
+<Tabs>
+  <Tab title="Bad">
+    ```tsx
+    export const getPrerequisites = ({ router, device, transport }: PrerequisitesInput) => {
+        const excluded = getExcludedPrerequisites(router);
+        const prerequisite = getPrerequisiteName({ router, device, transport });
+        if (typeof prerequisite === 'undefined') return;
+        if (excluded.includes(prerequisite)) return;
+        return prerequisite;
+    };
+    ```
+  </Tab>
+  <Tab title="Good">
+    ```tsx
+    export const getPrerequisites = ({ router, device, transport }: PrerequisitesInput) => {
+        const excluded = getExcludedPrerequisites(router);
+        const prerequisite = getPrerequisiteName({ router, device, transport });
+
+        if (typeof prerequisite === 'undefined') {
+            return;
+        }
+
+        if (excluded.includes(prerequisite)) {
+            return;
+        }
+
+        return prerequisite;
+    };
+    ```
+  </Tab>
+</Tabs>
+
+<Tip>Group related declarations together, separated from conditional logic by empty lines.</Tip>
+
+### Function Parameters
+
+For functions with more than two parameters, wrap them in an object:
+
+<Tabs>
+  <Tab title="Bad">
+    ```tsx
+    const logAnimalNames = (cat: string, dog: string, guineaPig?: string, showHeading?: boolean) => {
+        if (showHeading) {
+            console.log('My Animals');
+        }
+        console.log(cat);
+        console.log(dog);
+        if (guineaPig) {
+            console.log(guineaPig);
+        }
+    };
+
+    // Confusing call - what does true mean?
+    logAnimalNames('Nancy', 'Rob', null, true);
+    ```
+  </Tab>
+  <Tab title="Good">
+    ```tsx
+    interface LogAnimalParams {
+        cat: string;
+        dog: string;
+        guineaPig?: string;
+        showHeading?: boolean;
+    }
+
+    const logAnimalNames = ({ cat, dog, guineaPig, showHeading }: LogAnimalParams) => {
+        if (showHeading) {
+            console.log('My Animals');
+        }
+        console.log(cat);
+        console.log(dog);
+        if (guineaPig) {
+            console.log(guineaPig);
+        }
+    };
+
+    // Clear and self-documenting
+    logAnimalNames({ cat: 'Nancy', dog: 'Rob', showHeading: true });
+    ```
+  </Tab>
+</Tabs>
+
+## Conditional Rendering in React
+
+<Warning>Always ensure JSX conditions evaluate to boolean values only.</Warning>
+
+React can render values like `0`, `""`, or `[]`, which may cause unexpected behavior:
+
+<Tabs>
+  <Tab title="Bad">
+    ```tsx
+    // Could render 0 if value is 0
+    {value && <Component value={value} />}
+    ```
+  </Tab>
+  <Tab title="Good">
+    ```tsx
+    // Boolean condition
+    {hasValue && <Component value={value} />}
+
+    // Double negation
+    {!!value && <Component value={value} />}
+
+    // Early return
+    if (!value) return null;
+    return <Component value={value} />;
+    ```
+  </Tab>
+</Tabs>
+
+## Import and Export
+
+### Named Exports Only
+
+<Check>Use named exports exclusively for consistency and better tree-shaking.</Check>
+
+```tsx Good
+export const myFunction = () => {};
+export const MyComponent = () => {};
+```
+
+```tsx Bad
+const MyComponent = () => {};
+export default MyComponent;
+```
+
+**Benefits:**
+- Easier refactoring with mass-replace
+- Better tree-shaking support
+- Consistent naming across imports
+- Easier code searching
+
+<Note>Storybook files are exempt from this rule as they require default exports.</Note>
+
+### Barrel Files
+
+- Use `index.ts` files **only** in packages to define public interfaces
+- **Do not** use them inside modules to export from directories
+- They can introduce circular dependencies and hurt tree-shaking
+
+## Naming Conventions
+
+### General Rules
+
+<Steps>
+  <Step title="Values = Nouns">
+    Variables and constants should be nouns:
+    ```tsx
+    const userAccount = ...;
+    const networkSymbol = 'btc';
+    ```
+  </Step>
+  
+  <Step title="Functions = Verbs">
+    Functions should start with action verbs:
+    ```tsx
+    const getUserData = () => ...;
+    const calculateTotal = () => ...;
+    ```
+  </Step>
+  
+  <Step title="Booleans = Questions">
+    Boolean values should ask a question:
+    ```tsx
+    const isDisabled = true;
+    const hasFinished = false;
+    const canProceed = checkPermissions();
+    ```
+  </Step>
+  
+  <Step title="Components = Nouns">
+    React components should always be nouns:
+    ```tsx
+    const AccountSelector = () => ...;
+    const TransactionList = () => ...;
+    ```
+  </Step>
+</Steps>
+
+### Abbreviations
+
+Use all capital letters for abbreviations:
+
+```tsx Good
+const someFAQConstant = ...;
+function enterTHPPairingCode() {}
+```
+
+```tsx Bad
+const someFaqConstant = ...;
+function enterThpPairingCode() {}
+```
+
+### Component Props Interface
+
+Always name component interfaces with the `Props` suffix:
+
+```tsx
+interface ButtonProps {
+    label: string;
+    onClick: () => void;
+}
+
+const Button = ({ label, onClick }: ButtonProps) => {
+    return <button onClick={onClick}>{label}</button>;
+};
+```
+
+## Suite-Specific Naming
+
+### Crypto Networks
+
+<Tabs>
+  <Tab title="Network">
+    ```tsx
+    // Good
+    const network = networks['btc'];
+    ```
+  </Tab>
+  <Tab title="Network Symbol">
+    ```tsx
+    // Good
+    const networkSymbol = networks['btc'].symbol;
+
+    // Bad
+    const coin = networks['btc'].symbol;
+    const currency = networks['btc'].symbol;
+    ```
+  </Tab>
+</Tabs>
+
+### Fiat Currencies
+
+Always prefix fiat-related names with `fiat`:
+
+```tsx Good
+const fiatCurrency = 'usd';
+const selectFiatCurrency = () => 'usd';
+const formatFiatCurrency = value => value;
+```
+
+```tsx Bad
+const currency = 'usd';
+const selectCurrency = () => 'usd';
+const formatCurrency = value => value;
+```
+
+### Assets
+
+**Asset** refers to a group of accounts for the same network:
+
+```tsx Good - List of asset groups
+const AssetsList = () => <... />;
+```
+
+```tsx Good - Single account detail
+const AccountDetailScreen = () => <Screen />;
+```
+
+```tsx Bad - Confusing terminology
+const AssetDetailScreen = () => <Screen />; // Asset is multiple accounts, not one
+```
+
+## Comments
+
+All comments must start with an uppercase letter and end with a period:
+
+```tsx
+// This is a comment that will help you understand what is happening in the
+// code below.
+const someFunction = () => null;
+```
+
+## ESLint Rules
+
+Key ESLint rules enforced in the project:
+
+<AccordionGroup>
+  <Accordion title="Import restrictions">
+    ```javascript
+    'import/no-extraneous-dependencies': 'error'
+    'no-restricted-imports': [
+      'error',
+      {
+        patterns: [
+          {
+            regex: '/libDev/src',
+            message: 'Importing from "*/libDev/src" path is not allowed.',
+          },
+        ],
+      },
+    ]
+    ```
+  </Accordion>
+  
+  <Accordion title="Storybook exceptions">
+    Storybook files (*.stories.tsx) have relaxed rules:
+    - Default exports are allowed
+    - Hooks can be used outside components
+  </Accordion>
+</AccordionGroup>
+
+## Component Structure
+
+Follow this order when organizing component files:
+
+<Steps>
+  <Step title="1. Imports">
+    Import statements at the top
+  </Step>
+  <Step title="2. Styles">
+    Styled components or style definitions
+  </Step>
+  <Step title="3. Constants">
+    Component-level constants
+  </Step>
+  <Step title="4. Helpers">
+    Component-level helper functions
+  </Step>
+  <Step title="5. Types">
+    Type definitions and interfaces
+  </Step>
+  <Step title="6. Props Type">
+    Component props interface
+  </Step>
+  <Step title="7. Component">
+    The component implementation
+  </Step>
+</Steps>
+
+### Inside Components
+
+Maintain consistent ordering within component bodies:
+
+1. Redux selectors (global state)
+2. `useState` (local state)
+3. Non-effect hooks (`useRef`, `useForm`, `useDispatch`)
+4. Effects (`useEffect`)
+5. Functions and callbacks
+6. Derived values and sub-components
+7. Render/return statement
+
+## Passing Props to Components
+
+<Tip>Pass only the necessary properties, not entire objects.</Tip>
+
+<Tabs>
+  <Tab title="Good">
+    ```tsx
+    const DeviceVersion = ({ version }) => <div>{version}</div>;
+
+    <DeviceVersion version={device.version} />
+    ```
+  </Tab>
+  <Tab title="Bad">
+    ```tsx
+    const DeviceVersion = ({ device }) => <div>{device.version}</div>;
+
+    <DeviceVersion device={device} />
+    ```
+  </Tab>
+</Tabs>
+
+**Benefits:**
+- Clearer component interface
+- Prevents unnecessary re-renders
+- Easier to identify dependencies
+
+## Prop Drilling and Identifiers
+
+<Check>Use Redux selectors as the primary source for complete data.</Check>
+
+For data with identifiers (like accounts, devices):
+
+- Pass only the **identifier** (ID/key) as props
+- Each component fetches complete data using selectors
+- This prevents unnecessary re-renders and prop drilling
+
+```tsx Good - Passing identifiers
+const ParentComponent = ({ accountKey }) => {
+    const account = useSelector(state => selectAccountById(state, accountKey));
+    
+    return <ChildComponent accountKey={accountKey} />;
+};
+
+const ChildComponent = ({ accountKey }) => {
+    const account = useSelector(state => selectAccountById(state, accountKey));
+    
+    return <div>{account.balance}</div>;
+};
+```
+
+## Resources
+
+<CardGroup cols={2}>
+  <Card title="Prettier Config" icon="file-code" href="https://prettier.io/docs/en/options.html">
+    Official Prettier documentation
+  </Card>
+  <Card title="ESLint Rules" icon="list-check" href="https://eslint.org/docs/rules/">
+    ESLint rule reference
+  </Card>
+  <Card title="TypeScript Guide" icon="code" href="/development/typescript-guide">
+    TypeScript-specific conventions
+  </Card>
+  <Card title="Component Guidelines" icon="react" href="#component-structure">
+    React component best practices
+  </Card>
+</CardGroup>

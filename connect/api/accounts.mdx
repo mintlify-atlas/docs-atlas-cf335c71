@@ -1,0 +1,373 @@
+---
+title: 'Account Methods'
+description: 'Methods for retrieving account information, addresses, and public keys'
+---
+
+Account-related methods work across multiple blockchains and provide access to account information, addresses, and public keys.
+
+## getAccountInfo
+
+Retrieves detailed account information including balance, transaction history, and addresses.
+
+<ParamField path="coin" type="string" required>
+  Coin name or shortcut. Determines network definition specified in coins.json file.
+</ParamField>
+
+<ParamField path="path" type="string">
+  BIP32 derivation path (e.g., `m/44'/0'/0'`). Either `path` or `descriptor` is required.
+</ParamField>
+
+<ParamField path="descriptor" type="string">
+  Account descriptor (xpub, output descriptor). Either `path` or `descriptor` is required.
+</ParamField>
+
+<ParamField path="identity" type="string">
+  Optional device identity for account isolation.
+</ParamField>
+
+<ParamField path="defaultAccountType" type="string">
+  Account type for discovery: `p2pkh`, `p2sh`, `p2tr`, or `p2wpkh`.
+</ParamField>
+
+<ParamField path="derivationType" type="number">
+  Cardano-specific derivation type.
+</ParamField>
+
+<ParamField path="suppressBackupWarning" type="boolean">
+  Suppress backup warning dialog.
+</ParamField>
+
+<ParamField path="details" type="string">
+  Level of detail: `basic`, `tokens`, or `tokenBalances`.
+</ParamField>
+
+<ParamField path="tokens" type="string">
+  Filter for specific tokens: `used`, `derived`, or token addresses.
+</ParamField>
+
+<ParamField path="pageSize" type="number">
+  Number of transactions per page.
+</ParamField>
+
+<ParamField path="page" type="number">
+  Page number for pagination.
+</ParamField>
+
+<ParamField path="from" type="number">
+  Block height to start from.
+</ParamField>
+
+<ParamField path="to" type="number">
+  Block height to end at.
+</ParamField>
+
+<ParamField path="contractFilter" type="string">
+  Filter transactions by contract address.
+</ParamField>
+
+<ResponseField name="descriptor" type="string">
+  Account descriptor (xpub or output descriptor).
+</ResponseField>
+
+<ResponseField name="balance" type="string">
+  Total account balance.
+</ResponseField>
+
+<ResponseField name="availableBalance" type="string">
+  Available balance (excluding unconfirmed).
+</ResponseField>
+
+<ResponseField name="empty" type="boolean">
+  Whether the account has been used.
+</ResponseField>
+
+<ResponseField name="history" type="object">
+  Transaction history.
+  <Expandable title="properties">
+    <ResponseField name="total" type="number">
+      Total number of transactions.
+    </ResponseField>
+    <ResponseField name="unconfirmed" type="number">
+      Number of unconfirmed transactions.
+    </ResponseField>
+    <ResponseField name="transactions" type="array">
+      Array of transaction objects.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="addresses" type="object">
+  Account addresses.
+  <Expandable title="properties">
+    <ResponseField name="change" type="array">
+      Change addresses.
+    </ResponseField>
+    <ResponseField name="used" type="array">
+      Used receive addresses.
+    </ResponseField>
+    <ResponseField name="unused" type="array">
+      Unused receive addresses.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="tokens" type="array">
+  Token balances for the account.
+</ResponseField>
+
+<ResponseField name="utxo" type="array">
+  Bitcoin UTXOs (Bitcoin-like chains only).
+</ResponseField>
+
+<ResponseField name="path" type="string">
+  BIP32 derivation path.
+</ResponseField>
+
+<ResponseField name="legacyXpub" type="string">
+  Legacy xpub format for metadata/labeling.
+</ResponseField>
+
+<ResponseField name="descriptorChecksum" type="string">
+  Descriptor checksum.
+</ResponseField>
+
+```typescript
+const result = await TrezorConnect.getAccountInfo({
+    coin: 'btc',
+    path: "m/84'/0'/0'",
+    details: 'tokens',
+});
+
+if (result.success) {
+    console.log('Balance:', result.payload.balance);
+    console.log('Transactions:', result.payload.history.total);
+}
+```
+
+## getAddress
+
+Retrieves a single address or multiple addresses from the device. Can optionally display address on device screen for verification.
+
+<ParamField path="path" type="string | number[]" required>
+  BIP32 derivation path (e.g., `m/44'/0'/0'/0/0`).
+</ParamField>
+
+<ParamField path="coin" type="string">
+  Coin name or shortcut (e.g., `btc`, `eth`).
+</ParamField>
+
+<ParamField path="showOnTrezor" type="boolean">
+  Show address on device screen for verification.
+</ParamField>
+
+<ParamField path="crossChain" type="boolean">
+  Enable cross-chain address derivation.
+</ParamField>
+
+<ParamField path="multisig" type="object">
+  Multisig redeem script configuration.
+</ParamField>
+
+<ParamField path="scriptType" type="string">
+  Script type: `SPENDADDRESS`, `SPENDWITNESS`, `SPENDP2SHWITNESS`, `SPENDTAPROOT`.
+</ParamField>
+
+<ParamField path="unlockPath" type="object">
+  Path unlock configuration for advanced use cases.
+</ParamField>
+
+<ParamField path="address" type="string">
+  Expected address for verification (optional).
+</ParamField>
+
+<ParamField path="chunkify" type="boolean">
+  Split large requests into chunks.
+</ParamField>
+
+<ResponseField name="address" type="string">
+  The requested address.
+</ResponseField>
+
+<ResponseField name="path" type="number[]">
+  Derivation path as integer array.
+</ResponseField>
+
+<ResponseField name="serializedPath" type="string">
+  Derivation path as string.
+</ResponseField>
+
+```typescript
+// Get single address
+const result = await TrezorConnect.getAddress({
+    path: "m/84'/0'/0'/0/0",
+    coin: 'btc',
+    showOnTrezor: true,
+});
+
+// Get multiple addresses (bundle)
+const bundle = await TrezorConnect.getAddress({
+    bundle: [
+        { path: "m/84'/0'/0'/0/0", coin: 'btc' },
+        { path: "m/84'/0'/0'/0/1", coin: 'btc' },
+    ],
+});
+```
+
+## getPublicKey
+
+Retrieves public key (xpub) from the device. Can optionally display on device screen for verification.
+
+<ParamField path="path" type="string | number[]" required>
+  BIP32 derivation path (e.g., `m/44'/0'/0'`).
+</ParamField>
+
+<ParamField path="coin" type="string" default="btc">
+  Coin name or shortcut. If not set, API will try to detect from path.
+</ParamField>
+
+<ParamField path="showOnTrezor" type="boolean">
+  Show public key on device screen for verification.
+</ParamField>
+
+<ParamField path="crossChain" type="boolean">
+  Enable cross-chain derivation.
+</ParamField>
+
+<ParamField path="scriptType" type="string">
+  Script type: `SPENDADDRESS`, `SPENDWITNESS`, `SPENDP2SHWITNESS`, `SPENDTAPROOT`.
+</ParamField>
+
+<ParamField path="ignoreXpubMagic" type="boolean">
+  Ignore xpub magic bytes validation.
+</ParamField>
+
+<ParamField path="ecdsaCurveName" type="string">
+  ECDSA curve name for derivation.
+</ParamField>
+
+<ParamField path="unlockPath" type="object">
+  Path unlock configuration.
+</ParamField>
+
+<ResponseField name="xpub" type="string">
+  Extended public key in standard format.
+</ResponseField>
+
+<ResponseField name="xpubSegwit" type="string">
+  Extended public key in SegWit format (if applicable).
+</ResponseField>
+
+<ResponseField name="chainCode" type="string">
+  BIP32 chain code.
+</ResponseField>
+
+<ResponseField name="publicKey" type="string">
+  Raw public key in hex format.
+</ResponseField>
+
+<ResponseField name="path" type="number[]">
+  Derivation path as integer array.
+</ResponseField>
+
+<ResponseField name="serializedPath" type="string">
+  Derivation path as string.
+</ResponseField>
+
+<ResponseField name="childNum" type="number">
+  Child number.
+</ResponseField>
+
+<ResponseField name="fingerprint" type="number">
+  Key fingerprint.
+</ResponseField>
+
+<ResponseField name="depth" type="number">
+  Derivation depth.
+</ResponseField>
+
+<ResponseField name="descriptor" type="string">
+  Output descriptor.
+</ResponseField>
+
+<ResponseField name="descriptorChecksum" type="string">
+  Descriptor checksum.
+</ResponseField>
+
+```typescript
+// Get single public key
+const result = await TrezorConnect.getPublicKey({
+    path: "m/84'/0'/0'",
+    coin: 'btc',
+});
+
+if (result.success) {
+    console.log('Xpub:', result.payload.xpub);
+}
+
+// Get multiple public keys (bundle)
+const bundle = await TrezorConnect.getPublicKey({
+    bundle: [
+        { path: "m/44'/0'/0'", coin: 'btc' },
+        { path: "m/84'/0'/0'", coin: 'btc' },
+    ],
+});
+```
+
+## getAccountDescriptor
+
+Returns account descriptor (xpub or output descriptor) for a given coin and account path.
+
+<ParamField path="coin" type="string" required>
+  Coin name or shortcut.
+</ParamField>
+
+<ParamField path="path" type="string" required>
+  Account derivation path.
+</ParamField>
+
+<ParamField path="identity" type="string">
+  Device identity for account isolation.
+</ParamField>
+
+<ResponseField name="descriptor" type="string">
+  Account descriptor.
+</ResponseField>
+
+<ResponseField name="legacyXpub" type="string">
+  Legacy xpub format (if applicable).
+</ResponseField>
+
+```typescript
+const result = await TrezorConnect.getAccountDescriptor({
+    coin: 'btc',
+    path: "m/84'/0'/0'",
+});
+```
+
+## discoverAccounts
+
+Discovers accounts on the device by checking multiple derivation paths.
+
+<ParamField path="coin" type="string" required>
+  Coin name or shortcut.
+</ParamField>
+
+<ParamField path="identity" type="string">
+  Device identity for account isolation.
+</ParamField>
+
+<ResponseField name="accounts" type="array">
+  Array of discovered accounts with balances and descriptors.
+</ResponseField>
+
+```typescript
+const result = await TrezorConnect.discoverAccounts({
+    coin: 'btc',
+});
+
+if (result.success) {
+    result.payload.forEach(account => {
+        console.log(`Account ${account.label}: ${account.balance}`);
+    });
+}
+```

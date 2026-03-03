@@ -1,0 +1,527 @@
+---
+title: 'TypeScript Guide'
+description: 'TypeScript conventions and best practices for Trezor Suite'
+keywords: ['typescript', 'types', 'interfaces', 'type safety']
+icon: 'code'
+---
+
+Trezor Suite leverages TypeScript for type safety and better developer experience. Follow these conventions to write maintainable, type-safe code.
+
+## Type Safety Best Practices
+
+### Prefer `@ts-expect-error` to `@ts-ignore`
+
+<Warning>
+`@ts-ignore` suppresses errors silently, making it dangerous when errors are fixed or new ones appear.
+</Warning>
+
+TypeScript 3.9+ provides `@ts-expect-error`, which errors if the suppressed line no longer has an error:
+
+<Tabs>
+  <Tab title="Good">
+    ```tsx
+    // @ts-expect-error: Legacy API, will be fixed in v2
+    const result = oldApi.unsafeMethod();
+    ```
+    If the error is fixed, TypeScript will warn that `@ts-expect-error` is unnecessary.
+  </Tab>
+  <Tab title="Bad">
+    ```tsx
+    // @ts-ignore
+    const result = oldApi.unsafeMethod();
+    ```
+    This will silently hide any errors, even new ones.
+  </Tab>
+</Tabs>
+
+<Note>
+In rare cases where `@ts-ignore` is truly needed, disable ESLint for that line first, otherwise ESLint will automatically change it to `@ts-expect-error`.
+</Note>
+
+### Prefer `unknown` to `any`
+
+<Check>Use `unknown` when a function doesn't know the incoming type, not when it doesn't care about the type.</Check>
+
+`unknown` provides better type safety by requiring type guards:
+
+<Tabs>
+  <Tab title="Good - Using unknown">
+    ```tsx
+    const validateKey = (key: unknown): key is DictionaryKey => {
+        if (['string', 'number'].includes(typeof key)) {
+            return true;
+        }
+
+        return false;
+    };
+
+    const processKey = (key: unknown) => {
+        if (validateKey(key)) {
+            // TypeScript knows key is DictionaryKey here
+            console.log(key.toUpperCase());
+        }
+    };
+    ```
+  </Tab>
+  <Tab title="Bad - Using any">
+    ```tsx
+    const validateKey = (key: any): key is DictionaryKey => {
+        if (['string', 'number'].includes(typeof key)) {
+            return true;
+        }
+
+        return false;
+    };
+
+    // Calling key() wouldn't throw a type error with 'any'
+    ```
+  </Tab>
+</Tabs>
+
+**Why `unknown` is better:**
+- Forces explicit type checking
+- Catches errors at compile time
+- Provides better IntelliSense support
+- Makes type flow explicit
+
+## Type Definitions
+
+### Prefer Direct Type Assignment
+
+<Tip>Import types directly rather than accessing them indirectly.</Tip>
+
+<Tabs>
+  <Tab title="Good - Direct import">
+    ```tsx
+    import { NetworkSymbol } from '@suite-common/wallet-config';
+
+    const doSomething = (networkSymbol: NetworkSymbol) => {};
+    ```
+  </Tab>
+  <Tab title="Bad - Indirect access">
+    ```tsx
+    const doSomething = (networkSymbol: Account['symbol']) => {};
+    ```
+  </Tab>
+</Tabs>
+
+**Benefits:**
+- Easier to refactor if types change
+- Better editor navigation to type definitions
+- More readable and explicit
+- Prevents coupling to parent types
+
+### Prefer Types to Interfaces
+
+<Check>Use `type` instead of `interface` for consistency.</Check>
+
+```tsx Good
+type User = {
+    name: string;
+    email: string;
+};
+
+type UserWithId = User & {
+    id: string;
+};
+```
+
+```tsx Avoid
+interface User {
+    name: string;
+    email: string;
+}
+
+interface UserWithId extends User {
+    id: string;
+}
+```
+
+**Rationale:**
+- Consistency across the codebase
+- Types offer all necessary functionality
+- Simpler mental model
+- [More details](https://www.youtube.com/watch?v=zM9UPcIyyhQ)
+
+## Enums and Constants
+
+### Use Const Assertions Instead of Enums
+
+<Warning>TypeScript enums are not native to JavaScript and can behave unpredictably.</Warning>
+
+Use const assertions with objects instead:
+
+<Tabs>
+  <Tab title="Recommended - Const assertion">
+    ```tsx
+    // Definition
+    const AuthMethod = {
+        Push: 'Push',
+        Sms: 'SMS',
+    } as const;
+
+    type AuthMethod = (typeof AuthMethod)[keyof typeof AuthMethod];
+
+    // Usage
+    function doThing(authMethod: AuthMethod): void {
+        console.log(authMethod);
+    }
+
+    doThing(AuthMethod.Sms);  // ✓
+    doThing('SMS');            // ✓
+    ```
+  </Tab>
+  <Tab title="Avoid - TypeScript enum">
+    ```tsx
+    enum AuthMethod {
+        Push = 'Push',
+        Sms = 'SMS',
+    }
+
+    function doThing(authMethod: AuthMethod): void {
+        console.log(authMethod);
+    }
+
+    doThing(AuthMethod.Sms);  // ✓
+    doThing('SMS');            // ✗ Type error
+    ```
+  </Tab>
+</Tabs>
+
+**Benefits:**
+- Native JavaScript objects
+- Predictable behavior
+- Can use both object values and string literals
+- Better tree-shaking
+
+<Info>Learn more in this [video explanation](https://www.youtube.com/watch?v=0fTdCSH_QEU).</Info>
+
+## Defensive Programming
+
+### Force Explicit Return Types
+
+<Check>Always specify return types to ensure all code paths are covered.</Check>
+
+<Tabs>
+  <Tab title="Good - Catches missing cases">
+    ```tsx
+    // TypeScript error: Function lacks ending return statement
+    export const isEnabled = (status: 'a' | 'b' | 'c'): boolean => {
+        if (status === 'a') {
+            return true;
+        }
+
+        if (status === 'b') {
+            return false;
+        }
+
+        // Missing case 'c' - TypeScript catches this!
+    };
+    ```
+  </Tab>
+  <Tab title="Bad - No return type">
+    ```tsx
+    export const isEnabled = (status: 'a' | 'b' | 'c') => {
+        if (status === 'a') {
+            return true;
+        }
+
+        if (status === 'b') {
+            return false;
+        }
+
+        // Missing case 'c' - TypeScript doesn't catch this
+        // Returns undefined implicitly
+    };
+    ```
+  </Tab>
+</Tabs>
+
+### Use Exhaustive Switch Statements
+
+<Tip>Use the `exhaustive` helper to ensure all cases are handled.</Tip>
+
+```tsx
+import { exhaustive } from '@suite-common/utils';
+
+// TypeScript error if case 'c' is not handled
+export const isEnabled = (status: 'a' | 'b' | 'c') => {
+    switch (status) {
+        case 'a':
+            return true;
+        case 'b':
+            return false;
+        default:
+            return exhaustive(status); // Ensures all cases are covered
+    }
+};
+```
+
+If a new case is added to the union type, TypeScript will error at the `exhaustive()` call.
+
+### Type-Mapping Technique
+
+An alternative to exhaustive switches:
+
+```tsx
+type Schema = {
+    a: number;
+    b: number;
+};
+
+// TypeScript error: Property 'b' is missing
+const result: { [K in keyof Schema]: () => void } = {
+    a: () => console.log('This is A'),
+    // Missing 'b' - TypeScript catches this!
+};
+```
+
+## Error Handling
+
+### Do Not Use Exceptions for Expected Errors
+
+<Warning>Throwing exceptions is not type-safe. Use the `Result` type instead.</Warning>
+
+<Tabs>
+  <Tab title="Good - Result type">
+    ```tsx
+    type Result<T, E> = 
+        | { success: true; data: T }
+        | { success: false; error: E };
+
+    type ErrorType = 'NetworkError' | 'ValidationError' | 'AuthError';
+
+    const action = async (): Promise<Result<string, ErrorType>> => {
+        // Implementation
+    };
+
+    const result = await action();
+
+    if (!result.success) {
+        const { error } = result;
+
+        switch (error) {
+            case 'NetworkError':
+                // Handle network error
+                break;
+            case 'ValidationError':
+                // Handle validation error
+                break;
+            case 'AuthError':
+                // Handle auth error
+                break;
+            default:
+                return exhaustive(error);
+        }
+    }
+
+    // TypeScript knows result.data is available here
+    console.log(result.data);
+    ```
+  </Tab>
+  <Tab title="Bad - Try-catch">
+    ```tsx
+    const action = async (): Promise<string> => {
+        // Implementation that might throw
+    };
+
+    try {
+        const result = await action();
+    } catch (error) {
+        // Possible errors cannot be typed
+        // No compile-time guarantees
+        // Error could be anything
+    }
+    ```
+  </Tab>
+</Tabs>
+
+**Benefits of Result type:**
+- Type-safe error handling
+- All possible errors are explicit
+- Compiler ensures all error cases are handled
+- No runtime surprises
+
+<Note>Reserve exceptions for truly unpredictable failures (out of memory, system errors, etc.).</Note>
+
+## Type Guards
+
+Create type-safe guards for runtime type checking:
+
+```tsx
+type NetworkSymbol = 'btc' | 'eth' | 'ltc';
+
+const isNetworkSymbol = (value: unknown): value is NetworkSymbol => {
+    return ['btc', 'eth', 'ltc'].includes(value as string);
+};
+
+// Usage
+const processNetwork = (input: unknown) => {
+    if (isNetworkSymbol(input)) {
+        // TypeScript knows input is NetworkSymbol here
+        console.log(`Valid network: ${input}`);
+    } else {
+        console.log('Invalid network');
+    }
+};
+```
+
+## Generic Types
+
+Use descriptive generic names when the type is domain-specific:
+
+<Tabs>
+  <Tab title="Good - Descriptive generics">
+    ```tsx
+    type Account<TSymbol extends NetworkSymbol> = {
+        symbol: TSymbol;
+        balance: string;
+    };
+
+    type Transaction<TNetwork extends Network> = {
+        network: TNetwork;
+        amount: string;
+    };
+    ```
+  </Tab>
+  <Tab title="Acceptable - Simple generics">
+    ```tsx
+    // For simple utility types, T is fine
+    type Optional<T> = T | null;
+    type AsyncResult<T> = Promise<Result<T>>;
+    ```
+  </Tab>
+</Tabs>
+
+## Utility Types
+
+Leverage TypeScript's utility types:
+
+```tsx
+// Pick specific properties
+type UserProfile = Pick<User, 'name' | 'email'>;
+
+// Omit specific properties
+type UserWithoutPassword = Omit<User, 'password'>;
+
+// Make all properties optional
+type PartialUser = Partial<User>;
+
+// Make all properties required
+type RequiredUser = Required<User>;
+
+// Make all properties readonly
+type ReadonlyUser = Readonly<User>;
+```
+
+## Type Assertions
+
+<Warning>Avoid type assertions when possible. Use type guards instead.</Warning>
+
+<Tabs>
+  <Tab title="Good - Type guard">
+    ```tsx
+    const processData = (data: unknown) => {
+        if (isValidData(data)) {
+            // TypeScript infers the correct type
+            return data.value;
+        }
+    };
+    ```
+  </Tab>
+  <Tab title="Acceptable - Last resort">
+    ```tsx
+    // Only when you're absolutely certain
+    const value = response as ExpectedType;
+    ```
+  </Tab>
+  <Tab title="Avoid - Unsafe casting">
+    ```tsx
+    const value = response as any as ExpectedType;
+    ```
+  </Tab>
+</Tabs>
+
+## Type Testing
+
+<Info>Type tests should have `.type-test.ts` suffix to prevent Jest from executing them.</Info>
+
+```tsx Example: packages/utils/tests/typedObjectFromEntries.type-test.ts
+import { typedObjectFromEntries } from '../src/typedObjectFromEntries';
+
+// Test that type inference works correctly
+const obj = typedObjectFromEntries([
+    ['a', 1],
+    ['b', 2],
+] as const);
+
+// TypeScript should infer: { a: 1; b: 2; }
+type Test = typeof obj;
+```
+
+## Common Patterns
+
+### Discriminated Unions
+
+Use discriminated unions for type-safe state management:
+
+```tsx
+type LoadingState = 
+    | { status: 'idle' }
+    | { status: 'loading' }
+    | { status: 'success'; data: string }
+    | { status: 'error'; error: string };
+
+const handleState = (state: LoadingState) => {
+    switch (state.status) {
+        case 'idle':
+            return 'Not started';
+        case 'loading':
+            return 'Loading...';
+        case 'success':
+            return state.data; // TypeScript knows data exists
+        case 'error':
+            return state.error; // TypeScript knows error exists
+        default:
+            return exhaustive(state);
+    }
+};
+```
+
+### Branded Types
+
+Create nominal types for better type safety:
+
+```tsx
+type AccountKey = string & { readonly __brand: 'AccountKey' };
+type DeviceId = string & { readonly __brand: 'DeviceId' };
+
+const createAccountKey = (key: string): AccountKey => key as AccountKey;
+const createDeviceId = (id: string): DeviceId => id as DeviceId;
+
+// Prevents mixing up different string types
+const getAccount = (key: AccountKey) => { /* ... */ };
+
+const accountKey = createAccountKey('acc-123');
+const deviceId = createDeviceId('dev-456');
+
+getAccount(accountKey); // ✓
+getAccount(deviceId);   // ✗ Type error
+```
+
+## Resources
+
+<CardGroup cols={2}>
+  <Card title="TypeScript Handbook" icon="book" href="https://www.typescriptlang.org/docs/handbook/intro.html">
+    Official TypeScript documentation
+  </Card>
+  <Card title="Code Style Guide" icon="code" href="/development/code-style">
+    General coding conventions
+  </Card>
+  <Card title="Testing Guide" icon="flask" href="/development/testing">
+    Testing TypeScript code
+  </Card>
+  <Card title="Defensive Programming" icon="shield" href="#defensive-programming">
+    Type-safe error handling
+  </Card>
+</CardGroup>

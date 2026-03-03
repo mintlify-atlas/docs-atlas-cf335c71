@@ -1,0 +1,298 @@
+---
+title: 'Account discovery'
+description: 'How Trezor Suite discovers cryptocurrency accounts and manages account creation'
+keywords: ['account discovery', 'BIP44', 'derivation path', 'account types', 'fresh address']
+---
+
+# Account discovery
+
+Account discovery is the process by which Trezor Suite automatically finds all your cryptocurrency accounts on the blockchain. This happens when you first connect your device or switch to a different wallet.
+
+## How discovery works
+
+Suite uses a standardized method to discover accounts across different blockchain networks:
+
+<Steps>
+  <Step title="Network selection">
+    Suite begins discovery for all enabled networks in your settings. Each network is processed independently.
+  </Step>
+  
+  <Step title="Account scanning">
+    For each network, Suite checks accounts in sequential order (Account #1, #2, #3, etc.) using standard derivation paths.
+  </Step>
+  
+  <Step title="Activity detection">
+    An account is considered "discovered" if it has:
+    - Received at least one transaction
+    - A non-zero balance
+    - Transaction history on the blockchain
+  </Step>
+  
+  <Step title="Empty account termination">
+    Discovery stops after finding the first account with no activity ("fresh" account). This account is shown but marked as empty.
+  </Step>
+</Steps>
+
+<Info>
+Discovery follows the BIP-44 standard, ensuring compatibility with other wallets that use the same derivation scheme.
+</Info>
+
+## Discovery process states
+
+### During discovery
+
+While discovery is running, Suite shows:
+- Progress indicator with current network and account number
+- Real-time updates as accounts are found
+- Number of discovered accounts per network
+
+```typescript
+// Discovery status types
+type DiscoveryStatus = 
+  | 'idle'
+  | 'running'
+  | 'stopping'
+  | 'stopped'
+  | 'completed';
+
+interface DiscoveryProgress {
+  networkSymbol: string;
+  accountIndex: number;
+  totalAccounts: number;
+  status: DiscoveryStatus;
+}
+```
+
+### After completion
+
+Once discovery finishes:
+- All active accounts are displayed in the sidebar
+- Each network shows the number of discovered accounts
+- A fresh (empty) account is available for immediate use
+
+## Account types
+
+### Standard accounts
+
+Standard accounts use the default derivation path for each cryptocurrency:
+
+- **Bitcoin**: `m/84'/0'/n'` (Native SegWit)
+- **Ethereum**: `m/44'/60'/0'/0/n`
+- **Litecoin**: `m/84'/2'/n'`
+
+### Legacy accounts
+
+For Bitcoin and compatible networks, Suite supports legacy account types:
+
+<Tabs>
+  <Tab title="Native SegWit">
+    - Path: `m/84'/0'/n'`
+    - Address format: `bc1...`
+    - **Recommended**: Lowest fees
+  </Tab>
+  
+  <Tab title="SegWit">
+    - Path: `m/49'/0'/n'`
+    - Address format: `3...`
+    - Compatible with older services
+  </Tab>
+  
+  <Tab title="Legacy">
+    - Path: `m/44'/0'/n'`
+    - Address format: `1...`
+    - Highest fees, maximum compatibility
+  </Tab>
+</Tabs>
+
+<Note>
+Legacy account types are only shown if they contain a transaction history. New users should use Native SegWit.
+</Note>
+
+## Creating accounts
+
+### Manual account creation
+
+You can manually create additional accounts at any time:
+
+<Steps>
+  <Step title="Open account menu">
+    In the sidebar, click the **+** icon next to the network name.
+  </Step>
+  
+  <Step title="Select account type">
+    Choose the account type (for networks with multiple types like Bitcoin).
+  </Step>
+  
+  <Step title="Confirm creation">
+    Suite creates the next sequential account and begins synchronizing it with the blockchain.
+  </Step>
+</Steps>
+
+<Warning>
+Always use accounts in order. Creating Account #5 without using Account #4 may cause issues when restoring in other wallets.
+</Warning>
+
+### Account creation rules
+
+```typescript
+// Account creation validation
+const canCreateAccount = (
+  network: NetworkSymbol,
+  accounts: Account[]
+): boolean => {
+  // Must have at least one discovered account
+  if (accounts.length === 0) return true;
+  
+  // Last account must have some activity
+  const lastAccount = accounts[accounts.length - 1];
+  return (
+    lastAccount.history.total > 0 ||
+    lastAccount.balance !== '0'
+  );
+};
+```
+
+## Discovery optimization
+
+### Metadata integration
+
+When metadata is enabled, Suite optimizes discovery:
+
+1. Device metadata key is generated before discovery starts (for standard wallets)
+2. For hidden wallets, metadata is initialized after the first non-empty account is found
+3. Account metadata keys are created during discovery for labeling support
+
+### Network-specific behavior
+
+<AccordionGroup>
+  <Accordion title="Bitcoin and UTXO chains">
+    Discovery checks transaction history using Blockbook backend. Accounts with unspent outputs (UTXOs) are discovered even if the balance is zero.
+  </Accordion>
+  
+  <Accordion title="Ethereum">
+    Discovery checks for transaction count and balance. ERC-20 tokens are discovered separately after account creation.
+  </Accordion>
+  
+  <Accordion title="Cardano">
+    Discovery checks both transaction history and staking delegation status. Staked accounts are always discovered.
+  </Accordion>
+  
+  <Accordion title="Solana">
+    Discovery checks for transaction history. Token accounts (SPL tokens) are discovered as part of account synchronization.
+  </Accordion>
+  
+  <Accordion title="Ripple">
+    Accounts must meet the minimum reserve requirement (20 XRP) to be considered active.
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting discovery
+
+### Missing accounts
+
+If accounts are not discovered:
+
+<Steps>
+  <Step title="Check network status">
+    Verify the network is enabled in **Settings → Crypto**.
+  </Step>
+  
+  <Step title="Verify blockchain connectivity">
+    Ensure Suite is connected to the blockchain backend. Check the connection status in the top-right corner.
+  </Step>
+  
+  <Step title="Re-run discovery">
+    Disconnect and reconnect your device to trigger a fresh discovery.
+  </Step>
+  
+  <Step title="Check account type">
+    For Bitcoin, ensure you're checking all account types (Native SegWit, SegWit, Legacy).
+  </Step>
+</Steps>
+
+### Slow discovery
+
+Discovery speed depends on:
+- Number of enabled networks
+- Blockchain backend response time
+- Number of accounts per network
+- Transaction history complexity
+
+<Tip>
+Disable unused networks in settings to speed up discovery on subsequent logins.
+</Tip>
+
+## Advanced: Discovery implementation
+
+### Discovery thunks
+
+Suite implements discovery using Redux thunks:
+
+```typescript
+// Simplified discovery flow
+export const discoverAccountsThunk = createThunk(
+  'discovery/discoverAccounts',
+  async ({ deviceState }, { dispatch, getState }) => {
+    // Get enabled networks
+    const enabledNetworks = selectEnabledNetworks(getState());
+    
+    for (const network of enabledNetworks) {
+      let accountIndex = 0;
+      let hasActivity = true;
+      
+      while (hasActivity) {
+        // Fetch account info from blockchain
+        const accountInfo = await TrezorConnect.getAccountInfo({
+          coin: network,
+          path: getDerivationPath(network, accountIndex),
+          details: 'basic'
+        });
+        
+        if (!accountInfo.success) break;
+        
+        hasActivity = isAccountActive(accountInfo.payload);
+        
+        if (hasActivity) {
+          // Create account in Redux
+          dispatch(accountsActions.createAccount({
+            deviceState,
+            network,
+            index: accountIndex,
+            ...accountInfo.payload
+          }));
+        }
+        
+        accountIndex++;
+      }
+    }
+  }
+);
+```
+
+### Account synchronization
+
+After discovery, accounts are kept synchronized:
+
+- **Polling interval**: Every 30 seconds
+- **Smart updates**: Only accounts with pending transactions are updated frequently
+- **Full sync**: Triggered when blockchain reconnects or user navigates to account
+
+## Related topics
+
+<Columns cols={2}>
+  <Card title="Wallet management" icon="wallet" href="/suite/wallet-management">
+    Understand how wallets contain multiple accounts
+  </Card>
+  
+  <Card title="Transactions" icon="arrow-right-arrow-left" href="/suite/transactions">
+    View and manage transaction history for discovered accounts
+  </Card>
+  
+  <Card title="Send and receive" icon="paper-plane" href="/suite/send-receive">
+    Send and receive cryptocurrency using discovered accounts
+  </Card>
+  
+  <Card title="Device settings" icon="gear" href="/suite/device-settings">
+    Configure network and derivation settings
+  </Card>
+</Columns>

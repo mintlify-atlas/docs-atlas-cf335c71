@@ -1,0 +1,394 @@
+---
+title: 'Security'
+description: 'Security disclosure policy and best practices for Trezor Suite and Connect'
+---
+
+## Security Vulnerability Disclosure
+
+<Warning>
+  **DO NOT** create public GitHub issues for suspected security vulnerabilities.
+</Warning>
+
+### Reporting Security Issues
+
+If you discover a security vulnerability in Trezor Suite or Connect:
+
+<Steps>
+  <Step title="Contact Security Team">
+    Email your findings to [security@satoshilabs.com](mailto:security@satoshilabs.com)
+    
+    **Include**:
+    - Description of the vulnerability
+    - Steps to reproduce
+    - Potential impact
+    - Suggested fix (if any)
+  </Step>
+
+  <Step title="Wait for Response">
+    The security team will:
+    - Acknowledge receipt within 48 hours
+    - Assess the severity
+    - Determine fix timeline
+    - Keep you informed of progress
+  </Step>
+
+  <Step title="Responsible Disclosure">
+    Please allow time for:
+    - Investigation and validation
+    - Development of fix
+    - Testing and deployment
+    - Public disclosure coordination
+    
+    **Do not** publicly disclose until coordinated with the security team.
+  </Step>
+
+  <Step title="Recognition">
+    Security researchers are recognized in:
+    - Security advisories
+    - Release notes
+    - Hall of fame (if applicable)
+  </Step>
+</Steps>
+
+<Info>
+  For more details, see the [disclosure section on Trezor.io](https://trezor.io/support/a/how-to-report-a-security-issue).
+</Info>
+
+## Security Best Practices
+
+### For Developers
+
+<AccordionGroup>
+  <Accordion title="Never Request Private Keys" icon="key">
+    **Critical Rule**: Private keys must NEVER leave the Trezor device.
+    
+    ```javascript
+    // ✅ CORRECT: Use signing methods
+    const result = await TrezorConnect.signTransaction({
+      inputs: [...],
+      outputs: [...]
+    });
+    
+    // ❌ WRONG: Never try to export private keys
+    // There is no method to export private keys - by design!
+    ```
+    
+    **Why it matters**:
+    - Trezor's security model relies on keys never leaving device
+    - Exporting keys defeats the purpose of hardware security
+    - If you need to sign something, use the appropriate signing method
+  </Accordion>
+
+  <Accordion title="Verify Addresses on Device" icon="shield-check">
+    Always show addresses on the device display:
+    
+    ```javascript
+    const result = await TrezorConnect.getAddress({
+      path: "m/49'/0'/0'/0/0",
+      coin: 'btc',
+      showOnTrezor: true  // ✅ Always true for receiving addresses
+    });
+    ```
+    
+    **Why it matters**:
+    - Protects against malware showing fake addresses
+    - User can verify on trusted device screen
+    - Only source of truth is the device display
+  </Accordion>
+
+  <Accordion title="Use HTTPS in Production" icon="lock">
+    Always serve your application over HTTPS:
+    
+    ```javascript
+    // ✅ Production: HTTPS required
+    const manifest = {
+      email: 'developer@example.com',
+      appUrl: 'https://example.com'
+    };
+    
+    // ⚠️ Development only: HTTP acceptable for localhost
+    const devManifest = {
+      email: 'developer@example.com',
+      appUrl: 'http://localhost:3000'
+    };
+    ```
+    
+    **Why it matters**:
+    - Prevents man-in-the-middle attacks
+    - Protects user data in transit
+    - Required for WebUSB API in browsers
+  </Accordion>
+
+  <Accordion title="Validate Transaction Data" icon="clipboard-check">
+    Always validate transaction parameters:
+    
+    ```javascript
+    function validateTransaction(tx) {
+      // Validate recipient address
+      if (!isValidAddress(tx.recipient, tx.coin)) {
+        throw new Error('Invalid recipient address');
+      }
+      
+      // Validate amount
+      if (tx.amount <= 0) {
+        throw new Error('Amount must be positive');
+      }
+      
+      if (isNaN(tx.amount)) {
+        throw new Error('Amount must be a number');
+      }
+      
+      // Check for suspicious amounts
+      if (tx.amount > getMaxReasonableAmount(tx.coin)) {
+        // Warn user about large transaction
+        return confirm(
+          `Large amount detected: ${tx.amount} ${tx.coin}. Continue?`
+        );
+      }
+      
+      return true;
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Implement Proper Error Handling" icon="triangle-exclamation">
+    Handle errors securely without leaking information:
+    
+    ```javascript
+    async function secureTransaction(params) {
+      try {
+        const result = await TrezorConnect.signTransaction(params);
+        
+        if (!result.success) {
+          // Log detailed error for debugging
+          console.error('Transaction failed:', result.payload);
+          
+          // Show user-friendly message (don't leak internals)
+          showUserMessage(
+            'Transaction failed. Please check your device and try again.'
+          );
+          
+          return null;
+        }
+        
+        return result.payload;
+      } catch (error) {
+        // Log error but don't expose details to user
+        console.error('Unexpected error:', error);
+        showUserMessage('An unexpected error occurred.');
+        return null;
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Sanitize User Input" icon="filter">
+    Always sanitize and validate user input:
+    
+    ```javascript
+    function sanitizeAddress(address) {
+      // Remove whitespace
+      address = address.trim();
+      
+      // Remove common copy-paste artifacts
+      address = address.replace(/\s+/g, '');
+      
+      // Validate format
+      if (!isValidAddressFormat(address)) {
+        throw new Error('Invalid address format');
+      }
+      
+      return address;
+    }
+    
+    function sanitizeAmount(amount) {
+      // Convert to number
+      const num = parseFloat(amount);
+      
+      // Validate
+      if (isNaN(num) || num <= 0) {
+        throw new Error('Invalid amount');
+      }
+      
+      // Prevent floating point precision issues
+      return Math.round(num * 100000000) / 100000000;
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### For Users
+
+<AccordionGroup>
+  <Accordion title="Verify Device Display" icon="eye">
+    **Always** verify critical information on your Trezor device screen:
+    
+    - Receiving addresses
+    - Transaction amounts
+    - Transaction recipients
+    - Contract interactions
+    
+    **Never** trust what you see only on your computer screen.
+  </Accordion>
+
+  <Accordion title="Use Official Sources" icon="shield">
+    Only download Suite from official sources:
+    
+    - **Website**: [trezor.io/start](https://trezor.io/start)
+    - **Web App**: [suite.trezor.io](https://suite.trezor.io)
+    - **GitHub**: [github.com/trezor/trezor-suite](https://github.com/trezor/trezor-suite)
+    
+    Verify:
+    - HTTPS connection
+    - Valid SSL certificate
+    - Correct domain name
+  </Accordion>
+
+  <Accordion title="Verify Downloads" icon="download">
+    For desktop applications, verify signatures:
+    
+    **Windows**:
+    - Check digital signature of .exe file
+    - Verify signer: SatoshiLabs
+    
+    **macOS**:
+    - Check code signature
+    - Verify developer: SatoshiLabs
+    
+    **Linux**:
+    - Verify GPG signature
+    - Check SHA256 hash
+  </Accordion>
+
+  <Accordion title="Keep Software Updated" icon="arrow-up">
+    Always use the latest versions:
+    
+    - **Device Firmware**: Update when prompted
+    - **Trezor Suite**: Enable auto-updates
+    - **Browser**: Use latest version
+    
+    Updates include:
+    - Security patches
+    - New features
+    - Bug fixes
+  </Accordion>
+
+  <Accordion title="Secure Your Recovery Seed" icon="seedling">
+    Your recovery seed is the master key:
+    
+    **DO**:
+    - Write it on the provided card
+    - Store in a safe location
+    - Consider metal backup for fire/water resistance
+    - Use Shamir Backup for advanced security
+    
+    **DON'T**:
+    - Store digitally (photos, files, cloud)
+    - Share with anyone
+    - Enter into computer or phone
+    - Store with your Trezor device
+  </Accordion>
+</AccordionGroup>
+
+## Security Features
+
+### Device Security
+
+<CardGroup cols={2}>
+  <Card title="Hardware Isolation" icon="microchip">
+    Private keys never leave the device. All signing happens in the secure element.
+  </Card>
+  
+  <Card title="PIN Protection" icon="lock">
+    Device is locked with PIN. Wipes after multiple failed attempts.
+  </Card>
+  
+  <Card title="Passphrase Support" icon="key">
+    Additional layer of security through BIP39 passphrase.
+  </Card>
+  
+  <Card title="Screen Verification" icon="display">
+    All critical data displayed on trusted device screen.
+  </Card>
+</CardGroup>
+
+### Software Security
+
+<CardGroup cols={2}>
+  <Card title="Open Source" icon="code">
+    All code is open source and auditable on GitHub.
+  </Card>
+  
+  <Card title="Encrypted Communication" icon="shield">
+    All device communication is encrypted end-to-end.
+  </Card>
+  
+  <Card title="No Data Collection" icon="eye-slash">
+    Private keys and transaction details never leave your device.
+  </Card>
+  
+  <Card title="Regular Audits" icon="magnifying-glass">
+    Regular security audits by independent firms.
+  </Card>
+</CardGroup>
+
+## License and Usage
+
+The Trezor Suite monorepo is licensed under the **TREZOR REFERENCE SOURCE LICENSE (T-RSL)**.
+
+### Key Points
+
+<AccordionGroup>
+  <Accordion title="Reference Use" icon="book">
+    You may use the software within your company as a reference for:
+    
+    - Debugging your products
+    - Maintaining your products
+    - Enhancing interoperability with Trezor
+    
+    **Restrictions**:
+    - Read-only use
+    - Cannot distribute outside your company
+    - Reference purposes only
+  </Accordion>
+
+  <Accordion title="Copyright Grant" icon="copyright">
+    Non-transferable, non-exclusive, worldwide, royalty-free copyright license to reproduce the software for reference use.
+  </Accordion>
+
+  <Accordion title="Patent Grant" icon="scale-balanced">
+    Non-transferable, non-exclusive, worldwide, royalty-free patent license for reference use.
+  </Accordion>
+
+  <Accordion title="Limitations" icon="ban">
+    - No trademark license
+    - Software is "as-is" with no warranties
+    - Patent litigation terminates license
+  </Accordion>
+</AccordionGroup>
+
+See the complete [LICENSE](https://github.com/trezor/trezor-suite/blob/develop/LICENSE.md) for full legal text.
+
+## Security Resources
+
+<CardGroup cols={2}>
+  <Card title="Report Vulnerability" icon="envelope" href="mailto:security@satoshilabs.com">
+    Contact security team
+  </Card>
+  
+  <Card title="Security Center" icon="shield-halved" href="https://trezor.io/support/a/how-to-report-a-security-issue">
+    Trezor security information
+  </Card>
+  
+  <Card title="Best Practices" icon="star" href="/resources/best-practices">
+    Development best practices
+  </Card>
+  
+  <Card title="GitHub Security" icon="github" href="https://github.com/trezor/trezor-suite/security">
+    GitHub security policy
+  </Card>
+</CardGroup>
+
+<Note>
+  **Security is a shared responsibility**. Developers should follow best practices, and users should verify all critical operations on their device screen.
+</Note>

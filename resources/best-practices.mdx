@@ -1,0 +1,539 @@
+---
+title: 'Best Practices'
+description: 'Recommended practices for developing with Trezor Suite and Connect'
+---
+
+## Connect Integration Best Practices
+
+### Initialization and Configuration
+
+<AccordionGroup>
+  <Accordion title="Always Provide a Manifest" icon="file-lines">
+    The manifest identifies your application to users:
+    
+    ```javascript
+    await TrezorConnect.init({
+      manifest: {
+        email: 'developer@example.com',  // Your contact email
+        appUrl: 'https://example.com'     // Your app URL
+      }
+    });
+    ```
+    
+    **Why it matters**:
+    - Users see your app name and URL on their device
+    - Helps with trust and security
+    - Required for Connect to function properly
+  </Accordion>
+
+  <Accordion title="Initialize Once Per Session" icon="power-off">
+    Call `TrezorConnect.init()` only once when your app starts:
+    
+    ```javascript
+    // Good: Initialize on app startup
+    async function initializeApp() {
+      await TrezorConnect.init({ manifest: {...} });
+      // Rest of app initialization
+    }
+    
+    // Bad: Initializing before every method call
+    async function getAddress() {
+      await TrezorConnect.init({ manifest: {...} }); // Don't do this
+      return await TrezorConnect.getAddress({...});
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Handle Initialization Errors" icon="triangle-exclamation">
+    Always handle potential initialization failures:
+    
+    ```javascript
+    try {
+      await TrezorConnect.init({
+        manifest: {
+          email: 'developer@example.com',
+          appUrl: 'https://example.com'
+        }
+      });
+    } catch (error) {
+      console.error('Failed to initialize TrezorConnect:', error);
+      // Show user-friendly error message
+      // Provide fallback or retry mechanism
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Error Handling
+
+<AccordionGroup>
+  <Accordion title="Always Check Result Success" icon="check-circle">
+    Never assume a method succeeded:
+    
+    ```javascript
+    const result = await TrezorConnect.getAddress({
+      path: "m/49'/0'/0'/0/0",
+      coin: 'btc'
+    });
+    
+    if (result.success) {
+      // Success path
+      const address = result.payload.address;
+      console.log('Address:', address);
+    } else {
+      // Error path
+      console.error('Error:', result.payload.error);
+      handleError(result.payload.code, result.payload.error);
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Implement User-Friendly Error Messages" icon="message">
+    Translate technical errors into user-friendly messages:
+    
+    ```javascript
+    function handleTrezorError(code, error) {
+      const userMessages = {
+        'Device_CallInProgress': 'Please complete the current action on your Trezor.',
+        'Device_NotFound': 'Please connect your Trezor device.',
+        'Failure_PinInvalid': 'Incorrect PIN. Please try again.',
+        'Failure_ActionCancelled': 'Action cancelled.',
+      };
+      
+      const message = userMessages[code] || 
+        `An error occurred: ${error}. Please try again.`;
+      
+      showUserMessage(message);
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Handle Device States" icon="microchip">
+    Account for different device states:
+    
+    ```javascript
+    async function safelyCallTrezor(method, params) {
+      const result = await TrezorConnect[method](params);
+      
+      if (!result.success) {
+        switch (result.payload.code) {
+          case 'Device_NotFound':
+            await promptUserToConnectDevice();
+            return safelyCallTrezor(method, params);
+          
+          case 'Device_InitializeFailed':
+            await promptUserToUnlockDevice();
+            return safelyCallTrezor(method, params);
+          
+          case 'Failure_ActionCancelled':
+            // User cancelled, don't retry
+            return result;
+          
+          default:
+            // Other errors
+            return result;
+        }
+      }
+      
+      return result;
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Security Best Practices
+
+<AccordionGroup>
+  <Accordion title="Never Request Private Keys" icon="key">
+    **NEVER** try to export or access private keys:
+    
+    ```javascript
+    // WRONG: Never try to get private keys
+    // Private keys should NEVER leave the device
+    
+    // RIGHT: Use signing methods
+    const result = await TrezorConnect.signTransaction({
+      // Transaction params
+    });
+    ```
+    
+    Trezor's security model ensures private keys never leave the device.
+  </Accordion>
+
+  <Accordion title="Verify Addresses on Device" icon="shield-check">
+    Always show addresses on the device for verification:
+    
+    ```javascript
+    const result = await TrezorConnect.getAddress({
+      path: "m/49'/0'/0'/0/0",
+      coin: 'btc',
+      showOnTrezor: true  // Always true for receiving addresses
+    });
+    ```
+    
+    **Why it matters**:
+    - Protects against malware showing fake addresses
+    - Users can verify the address on trusted device screen
+    - Critical for security
+  </Accordion>
+
+  <Accordion title="Validate Transaction Data" icon="clipboard-check">
+    Always validate transaction data before signing:
+    
+    ```javascript
+    function validateTransaction(tx) {
+      // Check recipient address format
+      if (!isValidAddress(tx.recipient)) {
+        throw new Error('Invalid recipient address');
+      }
+      
+      // Check amount is positive
+      if (tx.amount <= 0) {
+        throw new Error('Amount must be positive');
+      }
+      
+      // Check for suspicious amounts
+      if (tx.amount > MAX_REASONABLE_AMOUNT) {
+        const confirmed = confirm(
+          `Large amount detected: ${tx.amount}. Continue?`
+        );
+        if (!confirmed) return false;
+      }
+      
+      return true;
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Use HTTPS in Production" icon="lock">
+    Always use HTTPS for production deployments:
+    
+    ```javascript
+    // Development
+    const appUrl = process.env.NODE_ENV === 'production'
+      ? 'https://example.com'  // HTTPS in production
+      : 'http://localhost:3000'; // HTTP OK for local dev
+    
+    await TrezorConnect.init({
+      manifest: {
+        email: 'developer@example.com',
+        appUrl: appUrl
+      }
+    });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Performance Optimization
+
+<AccordionGroup>
+  <Accordion title="Batch Address Requests" icon="layer-group">
+    Use bundle methods to request multiple addresses:
+    
+    ```javascript
+    // Good: Batch request
+    const result = await TrezorConnect.getAddress({
+      bundle: [
+        { path: "m/49'/0'/0'/0/0", coin: 'btc' },
+        { path: "m/49'/0'/0'/0/1", coin: 'btc' },
+        { path: "m/49'/0'/0'/0/2", coin: 'btc' },
+      ]
+    });
+    
+    // Bad: Multiple individual requests
+    const addr1 = await TrezorConnect.getAddress({...});
+    const addr2 = await TrezorConnect.getAddress({...});
+    const addr3 = await TrezorConnect.getAddress({...});
+    ```
+  </Accordion>
+
+  <Accordion title="Cache Non-Sensitive Data" icon="database">
+    Cache public data like addresses and public keys:
+    
+    ```javascript
+    class AddressCache {
+      constructor() {
+        this.cache = new Map();
+      }
+      
+      async getAddress(path, coin) {
+        const key = `${path}-${coin}`;
+        
+        if (this.cache.has(key)) {
+          return this.cache.get(key);
+        }
+        
+        const result = await TrezorConnect.getAddress({
+          path,
+          coin,
+          showOnTrezor: false  // Don't show for cached lookups
+        });
+        
+        if (result.success) {
+          this.cache.set(key, result.payload.address);
+          return result.payload.address;
+        }
+        
+        throw new Error(result.payload.error);
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Implement Timeout Handling" icon="clock">
+    Set reasonable timeouts for user actions:
+    
+    ```javascript
+    async function getAddressWithTimeout(params, timeout = 60000) {
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Operation timeout')), timeout);
+      });
+      
+      try {
+        const result = await Promise.race([
+          TrezorConnect.getAddress(params),
+          timeoutPromise
+        ]);
+        return result;
+      } catch (error) {
+        if (error.message === 'Operation timeout') {
+          showUserMessage('Operation timed out. Please try again.');
+        }
+        throw error;
+      }
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Suite Development Best Practices
+
+### Code Organization
+
+<AccordionGroup>
+  <Accordion title="Follow Conventional Commits" icon="code-commit">
+    Use conventional commit format for all commits:
+    
+    ```bash
+    # Format: <type>(<scope>): <description>
+    
+    feat(connect): add Tron support
+    fix(suite): resolve balance calculation bug
+    docs(readme): update installation instructions
+    test(connect): add unit tests for tronGetAddress
+    chore(deps): update dependencies
+    ```
+    
+    See [COMMITS.md](https://github.com/trezor/trezor-suite/blob/develop/COMMITS.md) for details.
+  </Accordion>
+
+  <Accordion title="Use TypeScript Strictly" icon="code">
+    Enable strict TypeScript checking:
+    
+    ```typescript
+    // Good: Properly typed
+    interface TransactionParams {
+      recipient: string;
+      amount: number;
+      coin: string;
+    }
+    
+    function createTransaction(params: TransactionParams): Transaction {
+      // Implementation
+    }
+    
+    // Bad: Using 'any'
+    function createTransaction(params: any): any {
+      // Don't do this
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Write Tests for New Features" icon="flask">
+    Always include tests with new features:
+    
+    ```typescript
+    // Feature implementation
+    export function calculateFee(amount: number, feeRate: number): number {
+      return amount * feeRate;
+    }
+    
+    // Test
+    describe('calculateFee', () => {
+      it('calculates fee correctly', () => {
+        expect(calculateFee(100, 0.01)).toBe(1);
+      });
+      
+      it('handles zero amount', () => {
+        expect(calculateFee(0, 0.01)).toBe(0);
+      });
+      
+      it('handles zero fee rate', () => {
+        expect(calculateFee(100, 0)).toBe(0);
+      });
+    });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Performance
+
+<AccordionGroup>
+  <Accordion title="Optimize Bundle Size" icon="box">
+    Keep bundle sizes minimal:
+    
+    ```javascript
+    // Good: Import only what you need
+    import { getAddress } from '@trezor/connect';
+    
+    // Bad: Import entire library
+    import * as TrezorConnect from '@trezor/connect';
+    ```
+  </Accordion>
+
+  <Accordion title="Use React Best Practices" icon="react">
+    Follow React optimization patterns:
+    
+    ```typescript
+    // Use memo for expensive computations
+    const expensiveValue = useMemo(() => {
+      return computeExpensiveValue(data);
+    }, [data]);
+    
+    // Use callback for event handlers
+    const handleClick = useCallback(() => {
+      // Handler logic
+    }, [dependencies]);
+    
+    // Prevent unnecessary re-renders
+    const MemoizedComponent = React.memo(MyComponent);
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Testing
+
+<AccordionGroup>
+  <Accordion title="Use Trezor User Env for E2E Tests" icon="vial">
+    Use the emulator for integration testing:
+    
+    ```javascript
+    import TrezorConnect from '@trezor/connect';
+    import { startEmulator, stopEmulator } from '@trezor/user-env';
+    
+    beforeAll(async () => {
+      await startEmulator();
+    });
+    
+    afterAll(async () => {
+      await stopEmulator();
+    });
+    
+    test('getAddress returns valid address', async () => {
+      const result = await TrezorConnect.getAddress({
+        path: "m/49'/0'/0'/0/0",
+        coin: 'btc'
+      });
+      
+      expect(result.success).toBe(true);
+      expect(result.payload.address).toMatch(/^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$/);
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="Mock External Dependencies" icon="plug">
+    Mock external services in unit tests:
+    
+    ```typescript
+    // Mock blockchain API
+    jest.mock('@trezor/blockchain-link', () => ({
+      getBalance: jest.fn().mockResolvedValue({ balance: '1000000' }),
+      getTransactions: jest.fn().mockResolvedValue([]),
+    }));
+    
+    test('fetches balance correctly', async () => {
+      const balance = await getAccountBalance('btc', 'address');
+      expect(balance).toBe('1000000');
+    });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Documentation Best Practices
+
+<AccordionGroup>
+  <Accordion title="Document Public APIs" icon="book">
+    Always document public methods and interfaces:
+    
+    ```typescript
+    /**
+     * Gets a cryptocurrency address from the Trezor device.
+     * 
+     * @param path - BIP44 derivation path
+     * @param coin - Cryptocurrency symbol (e.g., 'btc', 'eth')
+     * @param showOnTrezor - Whether to display address on device
+     * @returns Promise resolving to address result
+     * 
+     * @example
+     * ```typescript
+     * const result = await getAddress(
+     *   "m/49'/0'/0'/0/0",
+     *   'btc',
+     *   true
+     * );
+     * ```
+     */
+    export async function getAddress(
+      path: string,
+      coin: string,
+      showOnTrezor: boolean = false
+    ): Promise<AddressResult> {
+      // Implementation
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Keep README Updated" icon="file">
+    Update README.md when adding features:
+    
+    - Add to feature list
+    - Update setup instructions if needed
+    - Include usage examples
+    - Update dependencies section
+  </Accordion>
+
+  <Accordion title="Write Helpful Error Messages" icon="circle-info">
+    Provide context in error messages:
+    
+    ```typescript
+    // Good: Helpful error message
+    throw new Error(
+      `Invalid derivation path: ${path}. ` +
+      `Expected format: m/44'/0'/0'/0/0`
+    );
+    
+    // Bad: Vague error message
+    throw new Error('Invalid path');
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Additional Resources
+
+<CardGroup cols={2}>
+  <Card title="Migration Guide" icon="arrow-right" href="/resources/migration-guide">
+    Learn how to upgrade versions
+  </Card>
+  
+  <Card title="Troubleshooting" icon="wrench" href="/resources/troubleshooting">
+    Solve common issues
+  </Card>
+  
+  <Card title="FAQ" icon="question" href="/resources/faq">
+    Find answers to common questions
+  </Card>
+  
+  <Card title="Security" icon="shield" href="/resources/security">
+    Review security guidelines
+  </Card>
+</CardGroup>

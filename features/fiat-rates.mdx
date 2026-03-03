@@ -1,0 +1,391 @@
+---
+title: Fiat Currency Rates
+description: Real-time fiat exchange rate integration for cryptocurrency conversions
+---
+
+# Fiat Currency Rates
+
+Trezor Suite integrates multiple fiat rate providers to display cryptocurrency values in your preferred currency with real-time exchange rates.
+
+## Rate Types
+
+Suite provides three types of fiat rates:
+
+<CardGroup cols={3}>
+  <Card title="Current Rates" icon="clock">
+    Real-time exchange rates for live balance conversions
+  </Card>
+  <Card title="Weekly Rates" icon="calendar-week">
+    7-day historical rates for trend indicators
+  </Card>
+  <Card title="Historical Rates" icon="clock-rotate-left">
+    Transaction-time rates for accurate value tracking
+  </Card>
+</CardGroup>
+
+## Rate Providers
+
+### Blockbook (Primary)
+
+Used for most cryptocurrencies:
+
+- Bitcoin and Bitcoin-like chains (BTC, LTC, DOGE, etc.)
+- Ethereum and ERC-20 tokens
+- Other main networks
+
+### CoinGecko (Secondary)
+
+Used for:
+
+- XRP (Ripple)
+- SOL and SPL tokens (Solana)
+- ADA and native tokens (Cardano)
+- Fallback when Blockbook fails
+
+<Info>
+Suite automatically falls back to CoinGecko if Blockbook rate fetching fails, ensuring continuous rate availability.
+</Info>
+
+## Current Rates
+
+### Initial Fetch
+
+Current rates are fetched:
+
+```typescript
+// On app launch
+enabledNetworks.forEach(network => {
+  fetchCurrentRate(network);
+});
+
+// When enabling new coin
+dispatch(enableNetwork(coin));
+// → triggers immediate rate fetch
+```
+
+### Update Intervals
+
+Automatic rate updates:
+
+- **Check interval**: Every 3 minutes
+- **Refresh threshold**: Rates older than 10 minutes
+- **Storage**: Cached in `wallet.fiat` reducer
+
+<CodeGroup>
+```typescript Rate Check
+// Every 3 minutes, check all stored rates
+storredRates.forEach(rate => {
+  if (isOlderThan(rate.timestamp, 10 * 60 * 1000)) {
+    refetchRate(rate.symbol);
+  }
+});
+```
+</CodeGroup>
+
+### ERC-20 Token Rates
+
+Special handling for Ethereum tokens:
+
+```typescript
+// Fetched on account events
+ACCOUNT.CREATE // During account discovery
+ACCOUNT.UPDATE // When new tokens appear
+
+// Only tokens with definitions
+if (token.definition) {
+  fetchTokenRate(token.address);
+}
+```
+
+## Weekly Rates
+
+### Purpose
+
+Provide 7-day trend indicators:
+
+- Green/red arrows in asset tables
+- Percentage change calculations
+- Portfolio performance tracking
+
+### Fetching Schedule
+
+```typescript
+// On app launch
+fetchWeeklyRates(enabledNetworks);
+
+// When enabling new network
+dispatch(enableNetwork(coin));
+// → triggers weekly rate fetch
+
+// Update interval: Every 1 hour
+setInterval(() => {
+  checkAndUpdateWeeklyRates();
+}, 60 * 60 * 1000);
+```
+
+### Caching Strategy
+
+<Tabs>
+  <Tab title="Cache Duration">
+    - **Cache time**: 1 hour
+    - **Check frequency**: Every hour
+    - **No fetch if**: Recent rates exist (< 1 hour old)
+  </Tab>
+  <Tab title="Storage">
+    - Stored in Redux state
+    - Persisted to IndexedDB
+    - Survives app restarts
+  </Tab>
+</Tabs>
+
+## Historical Rates
+
+### Transaction Rates
+
+Exchange rates at transaction time:
+
+```typescript
+// Stored with transaction
+interface Transaction {
+  // ... other fields
+  rates: {
+    [fiatCurrency: string]: number;
+  };
+  timestamp: number;
+}
+```
+
+### Fetching Behavior
+
+<Steps>
+  <Step title="Transaction Added">
+    When a new transaction is detected or confirmed
+  </Step>
+  <Step title="Rate Fetch">
+    Historical rate fetched for transaction timestamp
+  </Step>
+  <Step title="Store with TX">
+    Rate stored permanently within transaction object
+  </Step>
+  <Step title="Retry on Failure">
+    If fetch fails, retry on next `BLOCKCHAIN.CONNECTED`
+  </Step>
+</Steps>
+
+### No Updates Needed
+
+Historical rates never need updating:
+
+- Exchange rate in the past cannot change
+- Stored once, used forever
+- Provides accurate historical value tracking
+
+## FiatValue Component
+
+Simplify fiat conversions in UI:
+
+### Basic Usage
+
+```jsx
+import { FiatValue } from '@suite-components';
+
+// Simple conversion
+<FiatValue 
+  amount={amount} 
+  symbol={assetSymbol} 
+/>
+
+// With token address
+<FiatValue 
+  amount={amount} 
+  symbol="eth" 
+  tokenAddress={token.address}
+/>
+```
+
+### Historical Rates
+
+```jsx
+import { useHistoricRate } from '@suite-hooks';
+
+const historicRate = useHistoricRate(transaction);
+
+<FiatValue
+  amount={transaction.amount}
+  symbol={transaction.symbol}
+  historicRate={historicRate}
+  useHistoricRate
+/>
+```
+
+### Render Props Pattern
+
+Handle missing rates gracefully:
+
+```jsx
+<FiatValue amount="1" symbol={symbol}>
+  {({ value, rate, timestamp }) =>
+    rate && timestamp ? (
+      <Tooltip
+        content={
+          <Translation
+            id="TR_LAST_UPDATE"
+            values={{
+              value: (
+                <FormattedRelativeTime
+                  value={rateAge(timestamp) * 60}
+                  numeric="auto"
+                  updateIntervalInSeconds={10}
+                />
+              ),
+            }}
+          />
+        }
+      >
+        {value}
+      </Tooltip>
+    ) : (
+      <NoRatesTooltip />
+    )
+  }
+</FiatValue>
+```
+
+### Available Props
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `amount` | string | Crypto amount to convert |
+| `symbol` | string | Cryptocurrency symbol |
+| `tokenAddress` | string | Token contract address (for tokens) |
+| `historicRate` | number | Use specific historical rate |
+| `useHistoricRate` | boolean | Enable historical rate mode |
+| `showApproximationIndicator` | boolean | Show ≈ symbol |
+| `disableHiddenPlaceholder` | boolean | Ignore discreet mode |
+
+## Rate Middleware
+
+The `fiatRatesMiddleware` handles automatic rate fetching:
+
+```typescript
+// Located at:
+packages/suite/src/middlewares/wallet/fiatRatesMiddleware.ts
+
+// Intercepts actions:
+- ACCOUNT.CREATE → fetch token rates
+- ACCOUNT.UPDATE → fetch new token rates  
+- BLOCKCHAIN.CONNECTED → retry failed historical rates
+- @wallet-settings/change-networks → fetch rates for enabled coins
+```
+
+## Error Handling
+
+### Graceful Degradation
+
+<AccordionGroup>
+  <Accordion title="Rate Fetch Fails">
+    - Try CoinGecko as fallback
+    - Display last known rate with warning
+    - Retry on next interval
+    - Allow user to continue using app
+  </Accordion>
+  
+  <Accordion title="Network Offline">
+    - Use cached rates from storage
+    - Show staleness indicator
+    - Queue fetches for when online
+  </Accordion>
+  
+  <Accordion title="Provider Rate Limit">
+    - Exponential backoff
+    - Spread requests over time
+    - Prioritize visible data
+  </Accordion>
+</AccordionGroup>
+
+### Missing Rates
+
+When rates unavailable:
+
+```jsx
+// Components should handle null rates
+if (!rate) {
+  return <NoRatesAvailable />;
+}
+
+// Or show crypto amount only
+return <CryptoAmount amount={amount} symbol={symbol} />;
+```
+
+## Supported Fiat Currencies
+
+Trezor Suite supports major fiat currencies:
+
+<Tabs>
+  <Tab title="Americas">
+    - USD (US Dollar)
+    - CAD (Canadian Dollar)
+    - BRL (Brazilian Real)
+    - ARS (Argentine Peso)
+  </Tab>
+  <Tab title="Europe">
+    - EUR (Euro)
+    - GBP (British Pound)
+    - CHF (Swiss Franc)
+    - CZK (Czech Koruna)
+    - PLN (Polish Zloty)
+  </Tab>
+  <Tab title="Asia-Pacific">
+    - JPY (Japanese Yen)
+    - CNY (Chinese Yuan)
+    - KRW (Korean Won)
+    - AUD (Australian Dollar)
+  </Tab>
+</Tabs>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="For Users" icon="user">
+    - Choose your preferred fiat currency in Settings
+    - Rates update automatically, no action needed
+    - Historical values show accurate transaction-time prices
+  </Card>
+  <Card title="For Developers" icon="code">
+    - Always use FiatValue component
+    - Handle null rates gracefully
+    - Don't over-fetch rates
+    - Cache and reuse rate data
+  </Card>
+</CardGroup>
+
+## Performance Considerations
+
+### Optimization Strategies
+
+1. **Batched requests**: Fetch multiple rates in single request when possible
+2. **Debounced updates**: Prevent excessive rate calculations
+3. **Memoized selectors**: Cache computed fiat values
+4. **Lazy loading**: Only fetch rates for visible assets
+
+### Rate Limiting Protection
+
+```typescript
+// Built-in rate limiting
+const RATE_LIMIT = {
+  current: {
+    checkInterval: 3 * 60 * 1000,     // 3 minutes
+    refreshThreshold: 10 * 60 * 1000, // 10 minutes
+  },
+  weekly: {
+    checkInterval: 60 * 60 * 1000,    // 1 hour  
+    cacheTime: 60 * 60 * 1000,        // 1 hour
+  },
+};
+```
+
+## Related Resources
+
+- [Portfolio Tracker](/features/portfolio-tracker)
+- [Transactions](/suite/transactions)
+- [Analytics Implementation](/features/analytics)

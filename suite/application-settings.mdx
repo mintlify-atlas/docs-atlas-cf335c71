@@ -1,0 +1,596 @@
+---
+title: 'Application settings'
+description: 'Configure Trezor Suite application preferences and settings'
+keywords: ['application settings', 'preferences', 'fiat currency', 'theme', 'analytics', 'tor', 'backend']
+---
+
+# Application settings
+
+Suite provides extensive application-level settings that control how the application behaves. These settings are specific to your Suite installation and don't affect your device.
+
+<Info>
+Application settings are stored locally in your browser (web) or application data folder (desktop). They don't sync across devices unless explicitly configured.
+</Info>
+
+## Accessing application settings
+
+Navigate to **Settings → Application** in Suite. Settings are organized into logical sections for easy configuration.
+
+## General settings
+
+### Language
+
+Change the interface language:
+
+<Steps>
+  <Step title="Open language selector">
+    **Settings → Application → Language**
+  </Step>
+  
+  <Step title="Choose language">
+    Select from available languages:
+    - English
+    - Spanish
+    - French
+    - German
+    - Czech
+    - Russian
+    - Japanese
+    - And more...
+  </Step>
+  
+  <Step title="Applied immediately">
+    Interface updates instantly to selected language.
+  </Step>
+</Steps>
+
+<Note>
+Language selection only affects Suite interface. Device screens use the language configured on the device itself.
+</Note>
+
+### Fiat currency
+
+Set your preferred fiat currency for value display:
+
+- **Settings → Application → Fiat currency**
+- Affects all fiat value displays throughout Suite
+- Supports 30+ currencies (USD, EUR, GBP, JPY, etc.)
+- Exchange rates updated every 3 minutes
+
+```typescript
+// Fiat display behavior
+interface FiatSettings {
+  currency: 'USD' | 'EUR' | 'GBP' | ...; // Selected currency
+  rateSource: 'blockbook' | 'coingecko';  // Rate provider
+  lastUpdate: number;                      // Timestamp
+}
+```
+
+<Tip>
+Choose the currency you primarily think in for easier mental conversion.
+</Tip>
+
+### Bitcoin units
+
+Choose how Bitcoin amounts are displayed:
+
+<Tabs>
+  <Tab title="BTC">
+    Standard Bitcoin unit:
+    - 1.00000000 BTC
+    - Familiar to most users
+    - Default setting
+  </Tab>
+  
+  <Tab title="satoshis (sats)">
+    Smallest Bitcoin unit:
+    - 100,000,000 sats = 1 BTC
+    - No decimal points
+    - Popular in Bitcoin community
+    - Better for small amounts
+  </Tab>
+</Tabs>
+
+### Theme
+
+Customize Suite's appearance:
+
+<Tabs>
+  <Tab title="Light">
+    Bright interface:
+    - Better for well-lit environments
+    - Traditional look
+    - Easier reading for some users
+  </Tab>
+  
+  <Tab title="Dark">
+    Dark interface:
+    - Reduces eye strain
+    - Better for low-light environments
+    - Saves battery on OLED screens
+    - Modern aesthetic
+  </Tab>
+  
+  <Tab title="System">
+    Follows system preference:
+    - Matches OS theme
+    - Auto-switches with system
+    - Best of both worlds
+  </Tab>
+</Tabs>
+
+## Privacy settings
+
+### Discreet mode
+
+Hide sensitive information in Suite:
+
+<Steps>
+  <Step title="Enable discreet mode">
+    Toggle via **Settings → Application** or click the eye icon in top-right corner.
+  </Step>
+  
+  <Step title="What gets hidden">
+    When enabled:
+    - Balances show as **••••**
+    - Transaction amounts hidden
+    - Fiat values hidden
+    - Account values obscured
+  </Step>
+  
+  <Step title="Quick toggle">
+    Use the eye icon for instant on/off switching.
+  </Step>
+</Steps>
+
+<Tip>
+Enable discreet mode before screen sharing or presenting to hide your financial information.
+</Tip>
+
+### Analytics
+
+Control anonymous usage data collection:
+
+<AccordionGroup>
+  <Accordion title="What is collected?">
+    When enabled, Suite sends:
+    - App usage patterns (which features are used)
+    - Error reports (crashes and bugs)
+    - Performance metrics
+    - Device model and firmware version
+    
+    **Not collected**:
+    - Private keys or seeds
+    - Addresses or transaction data
+    - Balances or amounts
+    - Personal information
+  </Accordion>
+  
+  <Accordion title="Why enable analytics?">
+    Analytics help Trezor:
+    - Identify and fix bugs faster
+    - Understand which features users need
+    - Improve user experience
+    - Prioritize development
+  </Accordion>
+  
+  <Accordion title="Disabling analytics">
+    To disable:
+    1. **Settings → Application → Analytics**
+    2. Toggle **Off**
+    3. No data will be sent
+    
+    <Note>
+    Analytics are completely optional and can be disabled at any time.
+    </Note>
+  </Accordion>
+</AccordionGroup>
+
+### Tor (Desktop only)
+
+Route Suite traffic through Tor network:
+
+<Steps>
+  <Step title="Enable Tor">
+    **Settings → Application → Tor** → Toggle **On**
+  </Step>
+  
+  <Step title="Suite connects to Tor">
+    Suite downloads and starts Tor service (first time only).
+  </Step>
+  
+  <Step title="Traffic routed through Tor">
+    All Suite communication now goes through Tor network:
+    - Blockchain requests
+    - Exchange rate fetching
+    - Update checks
+  </Step>
+</Steps>
+
+**Tor benefits**:
+- Hides your IP address from blockchain backends
+- Prevents ISP from seeing crypto activity
+- Adds privacy layer to Suite operations
+
+**Tor considerations**:
+- Slower connection speeds
+- Longer sync times
+- Desktop-only feature
+- May not work in restrictive networks
+
+<Warning>
+Tor provides network-level privacy but doesn't make cryptocurrency transactions anonymous. Use with CoinJoin for transaction privacy.
+</Warning>
+
+## Device settings
+
+### Auto-eject device
+
+Automatically disconnect device when appropriate:
+
+- **After discovery**: Eject once account discovery completes
+- **When switching devices**: Eject previous when selecting another
+- **On Suite close**: Eject when quitting Suite (desktop)
+
+<Tip>
+Enable auto-eject for enhanced security, especially on shared computers.
+</Tip>
+
+### Remember device
+
+Control whether Suite remembers connected devices:
+
+- **Enabled** (default): Devices remembered across sessions
+- **Disabled**: Must reconnect each time
+
+<Note>
+Disabling this increases security but decreases convenience.
+</Note>
+
+## Labeling (Metadata)
+
+Configure label synchronization across devices.
+
+### Enabling labeling
+
+<Steps>
+  <Step title="Navigate to labeling settings">
+    **Settings → Application → Labeling**
+  </Step>
+  
+  <Step title="Toggle labeling on">
+    Enable the labeling feature.
+  </Step>
+  
+  <Step title="Connect storage provider">
+    Choose:
+    - **Dropbox**: Cloud sync
+    - **Google Drive**: Cloud sync
+    - **Local filesystem**: Desktop only, no cloud
+  </Step>
+  
+  <Step title="Authorize">
+    Grant Suite access to create its own folder in your storage.
+  </Step>
+  
+  <Step title="Generate encryption keys">
+    Confirm on device to generate metadata encryption keys.
+  </Step>
+</Steps>
+
+For complete details, see [Metadata labeling](/suite/metadata-labeling).
+
+### Labeling status
+
+When enabled, view:
+- Connected provider
+- Sync status
+- Last sync time
+- Used storage
+
+### Disconnecting provider
+
+<Tabs>
+  <Tab title="Disconnect">
+    Removes cloud connection but keeps keys:
+    - Can reconnect later
+    - Keys remain on device
+    - Labels cleared from Suite
+    - Cloud files remain
+  </Tab>
+  
+  <Tab title="Disable entirely">
+    Completely disables labeling:
+    - Removes all labels
+    - Removes encryption keys
+    - Disconnects provider
+    - Cannot restore without new keys
+  </Tab>
+</Tabs>
+
+## Crypto settings
+
+Configure which cryptocurrencies are enabled.
+
+### Enabling networks
+
+<Steps>
+  <Step title="Access crypto settings">
+    **Settings → Crypto**
+  </Step>
+  
+  <Step title="Toggle networks">
+    Enable or disable networks:
+    - Bitcoin
+    - Ethereum
+    - Litecoin
+    - Cardano
+    - Solana
+    - And more...
+  </Step>
+  
+  <Step title="Discovery runs">
+    When enabling a network, account discovery starts automatically.
+  </Step>
+</Steps>
+
+<Tip>
+Disable networks you don't use to speed up account discovery and reduce backend load.
+</Tip>
+
+### Testnet networks
+
+Enable testnet networks for development:
+
+- **Bitcoin Testnet**
+- **Ethereum Goerli/Sepolia**
+- **Other test networks**
+
+<Note>
+Testnet coins have no real value. Only enable for testing and development.
+</Note>
+
+## Backend settings
+
+Configure blockchain backend connections.
+
+### Default backends
+
+Suite uses Trezor-operated backends:
+
+```typescript
+const defaultBackends = {
+  bitcoin: 'btc1.trezor.io',
+  ethereum: 'eth1.trezor.io',
+  litecoin: 'ltc1.trezor.io',
+  // ... more networks
+};
+```
+
+### Custom backends
+
+Use your own blockchain node:
+
+<Steps>
+  <Step title="Enable custom backend">
+    **Settings → Crypto → [Network] → Backend**
+  </Step>
+  
+  <Step title="Select custom">
+    Choose **Custom backend** option.
+  </Step>
+  
+  <Step title="Enter URL">
+    Provide your backend URL:
+    - Bitcoin: Blockbook or Electrum
+    - Ethereum: Custom RPC node
+    - Other networks: Compatible backend
+  </Step>
+  
+  <Step title="Test connection">
+    Suite validates the connection before saving.
+  </Step>
+</Steps>
+
+**Benefits of custom backends**:
+- Maximum privacy (your own node)
+- No reliance on Trezor infrastructure
+- Support your favorite network
+- Better performance (local node)
+
+<Tip>
+Running your own Bitcoin full node provides the best privacy and security for Bitcoin users.
+</Tip>
+
+## Update settings
+
+### Auto-update (Desktop)
+
+Control automatic Suite updates:
+
+<Tabs>
+  <Tab title="Auto-update enabled">
+    - Suite checks for updates automatically
+    - Downloads updates in background
+    - Prompts to install when ready
+    - Recommended for most users
+  </Tab>
+  
+  <Tab title="Manual updates">
+    - No automatic checking
+    - Must manually download from trezor.io
+    - More control over update timing
+    - For advanced users
+  </Tab>
+</Tabs>
+
+### Update channel
+
+- **Stable**: Production releases (recommended)
+- **Beta**: Pre-release testing versions
+- **Dev**: Development builds (unstable)
+
+<Warning>
+Beta and dev channels may contain bugs. Only use for testing, not with real funds.
+</Warning>
+
+## Desktop-specific settings
+
+### Auto-start
+
+Launch Suite on system startup:
+
+- **Settings → Application → Auto-start**
+- Suite starts when you log in to your computer
+- Minimizes to system tray
+- Quick access when needed
+
+### Window behavior
+
+- **Minimize to tray**: Hide in system tray instead of taskbar
+- **Close to tray**: Keep running when closing window
+- **Start minimized**: Don't show window on auto-start
+
+## Troubleshooting settings
+
+### Clear application data
+
+Reset Suite to factory state:
+
+<Warning>
+This clears all application settings and cached data. Your device and funds are not affected.
+</Warning>
+
+<Steps>
+  <Step title="Access clear data">
+    **Settings → Application → Clear application data**
+  </Step>
+  
+  <Step title="Confirm action">
+    Suite warns about data loss.
+  </Step>
+  
+  <Step title="Data cleared">
+    Clears:
+    - All application settings
+    - Cached account data
+    - Remembered devices
+    - Transaction cache
+    
+    **Not affected**:
+    - Your device
+    - Recovery seed
+    - Private keys
+    - Blockchain data
+  </Step>
+  
+  <Step title="Restart Suite">
+    Suite restarts with default settings.
+  </Step>
+</Steps>
+
+### Export application logs
+
+For debugging and support:
+
+1. **Settings → Application → Application logs**
+2. Click **Export logs**
+3. Save file to share with support
+
+<Info>
+Logs contain technical information but no private keys, seeds, or sensitive data.
+</Info>
+
+## Advanced settings
+
+### Debug mode
+
+Enable developer features:
+
+<Steps>
+  <Step title="Activate debug mode">
+    Click the "Settings" page header 5 times quickly.
+  </Step>
+  
+  <Step title="Debug features appear">
+    Additional options become available:
+    - Beta firmware versions
+    - Testnet networks
+    - Custom backend URLs
+    - Developer tools
+  </Step>
+</Steps>
+
+<Warning>
+Debug mode is for developers only. Features may be unstable or experimental.
+</Warning>
+
+### Feature flags
+
+Control experimental features:
+
+- Usually hidden in standard mode
+- Accessible via debug mode
+- Enable/disable new features before official release
+- Use at your own risk
+
+## Settings best practices
+
+<Check>Choose currency you're familiar with</Check>
+<Check>Enable discreet mode for privacy</Check>
+<Check>Use Tor if privacy is important (desktop)</Check>
+<Check>Disable unused networks for faster sync</Check>
+<Check>Keep analytics enabled to help improve Suite</Check>
+<Check>Enable auto-eject on shared computers</Check>
+<Check>Use custom backends for maximum privacy</Check>
+<Check>Keep auto-update enabled for security</Check>
+
+## Settings by use case
+
+<Tabs>
+  <Tab title="Maximum privacy">
+    Recommended settings:
+    - Tor: **Enabled**
+    - Discreet mode: **On by default**
+    - Analytics: **Disabled**
+    - Custom backends: **Your own nodes**
+    - Auto-eject: **Enabled**
+  </Tab>
+  
+  <Tab title="Convenience">
+    Recommended settings:
+    - Auto-start: **Enabled** (desktop)
+    - Remember device: **Enabled**
+    - Auto-update: **Enabled**
+    - Theme: **System**
+    - Discreet mode: **Quick toggle**
+  </Tab>
+  
+  <Tab title="Shared computer">
+    Recommended settings:
+    - Remember device: **Disabled**
+    - Auto-eject: **Enabled**
+    - Discreet mode: **Always on**
+    - Clear data: **After each session**
+  </Tab>
+</Tabs>
+
+## Related topics
+
+<Columns cols={2}>
+  <Card title="Device settings" icon="gear" href="/suite/device-settings">
+    Configure device-specific settings
+  </Card>
+  
+  <Card title="Metadata labeling" icon="tag" href="/suite/metadata-labeling">
+    Set up label synchronization
+  </Card>
+  
+  <Card title="Security" icon="lock" href="/suite/security">
+    Security features and best practices
+  </Card>
+  
+  <Card title="CoinJoin privacy" icon="user-secret" href="/suite/coinjoin-privacy">
+    Configure privacy-enhancing features
+  </Card>
+</Columns>

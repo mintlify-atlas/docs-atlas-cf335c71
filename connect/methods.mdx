@@ -1,0 +1,437 @@
+---
+title: "Methods"
+description: "Overview of TrezorConnect methods and how to call them"
+---
+
+## Overview
+
+TrezorConnect provides a comprehensive API for interacting with Trezor hardware wallets. All methods are called through the `TrezorConnect` object and return a Promise that resolves with a result object.
+
+## Method Structure
+
+Every method call follows a consistent pattern:
+
+```typescript
+const result = await TrezorConnect.methodName(params);
+
+if (result.success) {
+  // Handle successful response
+  console.log(result.payload);
+} else {
+  // Handle error
+  console.error(result.error);
+}
+```
+
+## Response Format
+
+All methods return a standardized response object:
+
+<CodeGroup>
+```typescript Success Response
+{
+  success: true,
+  payload: {
+    // Method-specific data
+  },
+  device?: Device // Device info (when applicable)
+}
+```
+
+```typescript Error Response
+{
+  success: false,
+  error: {
+    code: string,
+    message: string
+  },
+  device?: Device
+}
+```
+</CodeGroup>
+
+## Method Categories
+
+TrezorConnect methods are organized into several categories:
+
+### Device Management
+
+Methods for device configuration, firmware, and security:
+
+<CardGroup cols={2}>
+  <Card title="getFeatures" icon="microchip" href="https://connect.trezor.io/9/methods/device/getFeatures/">
+    Get device features and capabilities
+  </Card>
+  <Card title="getDeviceState" icon="fingerprint" href="https://connect.trezor.io/9/methods/device/getDeviceState/">
+    Get device state for passphrase validation
+  </Card>
+  <Card title="firmwareUpdate" icon="download" href="https://connect.trezor.io/9/methods/device/firmwareUpdate/">
+    Update device firmware
+  </Card>
+  <Card title="resetDevice" icon="rotate-right" href="https://connect.trezor.io/9/methods/device/resetDevice/">
+    Initialize a new device
+  </Card>
+  <Card title="wipeDevice" icon="trash" href="https://connect.trezor.io/9/methods/device/wipeDevice/">
+    Wipe all device data
+  </Card>
+  <Card title="applySettings" icon="gear" href="https://connect.trezor.io/9/methods/device/applySettings/">
+    Change device settings
+  </Card>
+</CardGroup>
+
+### Account Operations
+
+Generic methods that work across multiple cryptocurrencies:
+
+<CodeGroup>
+```typescript getAddress
+import TrezorConnect from '@trezor/connect';
+
+const result = await TrezorConnect.getAddress({
+  path: "m/49'/0'/0'/0/0",
+  coin: 'btc',
+  showOnTrezor: true
+});
+
+if (result.success) {
+  console.log('Address:', result.payload.address);
+  console.log('Path:', result.payload.serializedPath);
+}
+```
+
+```typescript getPublicKey
+const result = await TrezorConnect.getPublicKey({
+  path: "m/49'/0'/0'",
+  coin: 'btc'
+});
+
+if (result.success) {
+  console.log('xpub:', result.payload.xpub);
+  console.log('chainCode:', result.payload.chainCode);
+}
+```
+
+```typescript getAccountInfo
+const result = await TrezorConnect.getAccountInfo({
+  path: "m/84'/0'/0'",
+  coin: 'btc'
+});
+
+if (result.success) {
+  console.log('Balance:', result.payload.balance);
+  console.log('Transactions:', result.payload.history.total);
+}
+```
+</CodeGroup>
+
+### Bitcoin Operations
+
+<AccordionGroup>
+  <Accordion title="signTransaction" icon="signature">
+    Sign a Bitcoin transaction with detailed UTXO inputs and outputs.
+
+    ```typescript
+    const result = await TrezorConnect.signTransaction({
+      inputs: [
+        {
+          address_n: [49 | 0x80000000, 0 | 0x80000000, 0 | 0x80000000, 0, 0],
+          prev_hash: 'b4dc0ffeee...',
+          prev_index: 0,
+          amount: '100000'
+        }
+      ],
+      outputs: [
+        {
+          address: '1BitcoinAddress...',
+          amount: '90000'
+        }
+      ],
+      coin: 'btc'
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="composeTransaction" icon="layer-group">
+    Compose a transaction with automatic UTXO selection and fee calculation.
+
+    ```typescript
+    const result = await TrezorConnect.composeTransaction({
+      outputs: [{ address: '1Address...', amount: '50000' }],
+      coin: 'btc',
+      push: false
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="authorizeCoinjoin" icon="shuffle">
+    Authorize CoinJoin transactions for privacy-enhanced Bitcoin transfers.
+
+    ```typescript
+    const result = await TrezorConnect.authorizeCoinjoin({
+      coordinator: 'www.coordinator.com',
+      maxRounds: 10,
+      maxCoordinatorFeeRate: 50000000,
+      maxFeePerKvbyte: 3500,
+      path: "m/84'/0'/0'",
+      coin: 'btc'
+    });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Ethereum Operations
+
+<CodeGroup>
+```typescript ethereumGetAddress
+const result = await TrezorConnect.ethereumGetAddress({
+  path: "m/44'/60'/0'/0/0",
+  showOnTrezor: true
+});
+
+if (result.success) {
+  console.log('Address:', result.payload.address);
+}
+```
+
+```typescript ethereumSignTransaction
+const result = await TrezorConnect.ethereumSignTransaction({
+  path: "m/44'/60'/0'/0/0",
+  transaction: {
+    to: '0x7314e0f1c0e28474bdb6be3e2c3e0453255188f8',
+    value: '0xf4240',
+    gasLimit: '0x5208',
+    gasPrice: '0xbebc200',
+    nonce: '0x0',
+    chainId: 1
+  }
+});
+```
+
+```typescript ethereumSignMessage
+const result = await TrezorConnect.ethereumSignMessage({
+  path: "m/44'/60'/0'/0/0",
+  message: 'Hello Trezor!'
+});
+```
+
+```typescript ethereumSignTypedData
+const result = await TrezorConnect.ethereumSignTypedData({
+  path: "m/44'/60'/0'/0/0",
+  data: {
+    types: {
+      EIP712Domain: [
+        { name: 'name', type: 'string' }
+      ],
+      Message: [
+        { name: 'content', type: 'string' }
+      ]
+    },
+    primaryType: 'Message',
+    domain: { name: 'MyDApp' },
+    message: { content: 'Hello' }
+  },
+  metamaskV4Compatible: true
+});
+```
+</CodeGroup>
+
+### Multi-Chain Support
+
+TrezorConnect supports multiple blockchain networks:
+
+<CardGroup cols={3}>
+  <Card title="Cardano" icon="circle">
+    `cardanoGetAddress`
+    `cardanoSignTransaction`
+    `cardanoComposeTransaction`
+  </Card>
+  <Card title="Ripple" icon="wave">
+    `rippleGetAddress`
+    `rippleSignTransaction`
+  </Card>
+  <Card title="Stellar" icon="star">
+    `stellarGetAddress`
+    `stellarSignTransaction`
+  </Card>
+  <Card title="Tezos" icon="cube">
+    `tezosGetAddress`
+    `tezosSignTransaction`
+  </Card>
+  <Card title="Monero" icon="lock">
+    `moneroGetAddress`
+    `moneroSignTransaction`
+  </Card>
+  <Card title="Solana" icon="bolt">
+    `solanaGetAddress`
+    `solanaSignTransaction`
+  </Card>
+  <Card title="Tron" icon="circle-nodes">
+    `tronGetAddress`
+    `tronSignTransaction`
+  </Card>
+</CardGroup>
+
+## Bundle Calls
+
+Many methods support bundle calls to process multiple requests efficiently:
+
+```typescript
+const result = await TrezorConnect.getAddress({
+  bundle: [
+    { path: "m/49'/0'/0'/0/0", coin: 'btc' },
+    { path: "m/49'/0'/0'/0/1", coin: 'btc' },
+    { path: "m/49'/0'/0'/0/2", coin: 'btc' }
+  ]
+});
+
+if (result.success) {
+  result.payload.forEach((item, index) => {
+    console.log(`Address ${index}:`, item.address);
+  });
+}
+```
+
+<Note>
+Bundle calls automatically emit `BUNDLE_PROGRESS` events during processing. See the [Events](/connect/events) page for details.
+</Note>
+
+## Advanced Features
+
+### Silent Address Validation
+
+Some methods support silent address validation:
+
+```typescript
+const result = await TrezorConnect.getAddress({
+  path: "m/49'/0'/0'/0/0",
+  coin: 'btc',
+  address: '1ExpectedAddress...', // Validates against this
+  showOnTrezor: true
+});
+
+// Throws Method_AddressNotMatch error if addresses don't match
+```
+
+### Coin Path Validation
+
+Methods automatically validate derivation paths against coin standards:
+
+```typescript
+// This will validate that the path matches Bitcoin standards
+const result = await TrezorConnect.getAddress({
+  path: "m/49'/0'/0'/0/0", // BIP49 (P2SH-P2WPKH)
+  coin: 'btc'
+});
+```
+
+### Cross-Chain Calls
+
+Bypass coin path validation for non-standard paths:
+
+```typescript
+const result = await TrezorConnect.getAddress({
+  path: "m/44'/0'/0'/0/0",
+  coin: 'btc',
+  crossChain: true // Skip path validation
+});
+```
+
+## Blockchain Methods
+
+Methods that interact with blockchain backends (no device needed):
+
+<CodeGroup>
+```typescript blockchainEstimateFee
+const result = await TrezorConnect.blockchainEstimateFee({
+  coin: 'btc',
+  request: {
+    blocks: [2, 6, 10]
+  }
+});
+
+if (result.success) {
+  console.log('Fee estimates:', result.payload);
+}
+```
+
+```typescript pushTransaction
+const result = await TrezorConnect.pushTransaction({
+  tx: '01000000...', // hex transaction
+  coin: 'btc'
+});
+
+if (result.success) {
+  console.log('TX ID:', result.payload.txid);
+}
+```
+
+```typescript blockchainGetCurrentFiatRates
+const result = await TrezorConnect.blockchainGetCurrentFiatRates({
+  coin: 'btc'
+});
+
+if (result.success) {
+  console.log('Rates:', result.payload.rates);
+}
+```
+</CodeGroup>
+
+## Method Permissions
+
+Methods require specific permissions:
+
+| Permission | Description | Methods |
+|------------|-------------|----------|
+| `read` | Read data from device | `getAddress`, `getPublicKey`, `getAccountInfo` |
+| `write` | Write data to device | `resetDevice`, `applySettings` |
+| `management` | Device management | `firmwareUpdate`, `wipeDevice` |
+
+<Warning>
+Users must grant permission in the Trezor Suite popup before methods can execute.
+</Warning>
+
+## Common Parameters
+
+Many methods share common parameters:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `path` | `string \| number[]` | BIP32 derivation path |
+| `coin` | `string` | Cryptocurrency identifier |
+| `showOnTrezor` | `boolean` | Display on device screen |
+| `bundle` | `array` | Multiple requests in one call |
+
+## TypeScript Support
+
+All methods are fully typed:
+
+```typescript
+import TrezorConnect, { type Address } from '@trezor/connect';
+
+const result = await TrezorConnect.getAddress({
+  path: "m/49'/0'/0'/0/0",
+  coin: 'btc'
+});
+
+if (result.success) {
+  const address: string = result.payload.address;
+  const serializedPath: string = result.payload.serializedPath;
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Events" icon="tower-broadcast" href="/connect/events">
+    Learn about the event system
+  </Card>
+  <Card title="Error Handling" icon="triangle-exclamation" href="/connect/error-handling">
+    Handle errors effectively
+  </Card>
+  <Card title="Device Management" icon="laptop-mobile" href="/connect/device-management">
+    Manage device connections
+  </Card>
+  <Card title="API Reference" icon="code" href="https://connect.trezor.io/">
+    Explore all methods
+  </Card>
+</CardGroup>

@@ -1,0 +1,289 @@
+---
+title: 'Stellar Methods'
+description: 'Methods for Stellar blockchain operations'
+---
+
+Stellar methods handle addresses and transaction signing for the Stellar network.
+
+## stellarGetAddress
+
+Retrieves a Stellar address from the device.
+
+<ParamField path="path" type="string | number[]" required>
+  BIP32 derivation path (e.g., `m/44'/148'/0'`).
+</ParamField>
+
+<ParamField path="address" type="string">
+  Expected address for verification.
+</ParamField>
+
+<ParamField path="showOnTrezor" type="boolean">
+  Display address on device screen.
+</ParamField>
+
+<ParamField path="chunkify" type="boolean">
+  Split large requests into chunks.
+</ParamField>
+
+<ResponseField name="address" type="string">
+  Stellar address (G... format).
+</ResponseField>
+
+<ResponseField name="path" type="number[]">
+  Derivation path as integer array.
+</ResponseField>
+
+<ResponseField name="serializedPath" type="string">
+  Derivation path as string.
+</ResponseField>
+
+```typescript
+const result = await TrezorConnect.stellarGetAddress({
+    path: "m/44'/148'/0'",
+    showOnTrezor: true,
+});
+
+if (result.success) {
+    console.log('Stellar address:', result.payload.address);
+}
+```
+
+## stellarSignTransaction
+
+Signs a Stellar transaction. Supports all Stellar operations including payments, path payments, offers, account management, and more.
+
+<ParamField path="path" type="string | number[]" required>
+  BIP32 derivation path for signing key.
+</ParamField>
+
+<ParamField path="networkPassphrase" type="string" required>
+  Network passphrase (e.g., `Stellar Public Network ; September 2015` for mainnet).
+</ParamField>
+
+<ParamField path="transaction" type="object" required>
+  Stellar transaction object.
+  <Expandable title="properties">
+    <ParamField path="source" type="string" required>
+      Source account address.
+    </ParamField>
+    <ParamField path="fee" type="number" required>
+      Transaction fee in stroops.
+    </ParamField>
+    <ParamField path="sequence" type="string" required>
+      Account sequence number.
+    </ParamField>
+    <ParamField path="timebounds" type="object">
+      Transaction time bounds.
+      <Expandable title="properties">
+        <ParamField path="minTime" type="number" required>
+          Minimum timestamp.
+        </ParamField>
+        <ParamField path="maxTime" type="number" required>
+          Maximum timestamp.
+        </ParamField>
+      </Expandable>
+    </ParamField>
+    <ParamField path="memo" type="object">
+      Transaction memo.
+      <Expandable title="properties">
+        <ParamField path="type" type="number" required>
+          Memo type: 0=None, 1=Text, 2=ID, 3=Hash, 4=Return.
+        </ParamField>
+        <ParamField path="text" type="string">
+          Text memo (max 28 bytes).
+        </ParamField>
+        <ParamField path="id" type="string">
+          ID memo.
+        </ParamField>
+        <ParamField path="hash" type="string | Buffer">
+          Hash memo (32 bytes).
+        </ParamField>
+      </Expandable>
+    </ParamField>
+    <ParamField path="operations" type="array" required>
+      Array of operations (see below).
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ResponseField name="publicKey" type="string">
+  Public key used for signing.
+</ResponseField>
+
+<ResponseField name="signature" type="string">
+  Transaction signature (hex).
+</ResponseField>
+
+### Supported Operations
+
+#### Payment
+```typescript
+{
+    type: 'payment',
+    source?: 'G...', // optional source account
+    destination: 'G...', // required
+    asset: {
+        type: 0, // 0=native, 1=alphanum4, 2=alphanum12
+        code?: 'USD',
+        issuer?: 'G...',
+    },
+    amount: '10.0000000', // required
+}
+```
+
+#### Create Account
+```typescript
+{
+    type: 'createAccount',
+    source?: 'G...',
+    destination: 'G...', // required
+    startingBalance: '10.0000000', // required
+}
+```
+
+#### Path Payment Strict Receive
+```typescript
+{
+    type: 'pathPaymentStrictReceive',
+    source?: 'G...',
+    sendAsset: { type: 0 },
+    sendMax: '100.0000000',
+    destination: 'G...',
+    destAsset: { type: 1, code: 'USD', issuer: 'G...' },
+    destAmount: '10.0000000',
+    path?: [{ type: 1, code: 'EUR', issuer: 'G...' }],
+}
+```
+
+#### Manage Sell Offer
+```typescript
+{
+    type: 'manageSellOffer',
+    source?: 'G...',
+    buying: { type: 1, code: 'USD', issuer: 'G...' },
+    selling: { type: 0 },
+    amount: '100.0000000',
+    price: { n: 1, d: 2 }, // price = 1/2 = 0.5
+    offerId?: 12345, // 0 for new offer
+}
+```
+
+#### Create Passive Sell Offer
+```typescript
+{
+    type: 'createPassiveSellOffer',
+    source?: 'G...',
+    buying: { type: 1, code: 'USD', issuer: 'G...' },
+    selling: { type: 0 },
+    amount: '100.0000000',
+    price: { n: 1, d: 2 },
+}
+```
+
+#### Set Options
+```typescript
+{
+    type: 'setOptions',
+    source?: 'G...',
+    inflationDest?: 'G...',
+    clearFlags?: 1,
+    setFlags?: 2,
+    masterWeight?: 1,
+    lowThreshold?: 0,
+    medThreshold?: 2,
+    highThreshold?: 3,
+    homeDomain?: 'example.com',
+    signer?: {
+        type: 0, // 0=account, 1=pre_auth, 2=hash
+        key: 'G...' or Buffer,
+        weight: 1,
+    },
+}
+```
+
+#### Change Trust
+```typescript
+{
+    type: 'changeTrust',
+    source?: 'G...',
+    line: { type: 1, code: 'USD', issuer: 'G...' },
+    limit: '1000.0000000', // 0 to remove trustline
+}
+```
+
+#### Allow Trust
+```typescript
+{
+    type: 'allowTrust',
+    source?: 'G...',
+    trustor: 'G...',
+    assetCode: 'USD',
+    assetType: 1,
+    authorize: true,
+}
+```
+
+#### Account Merge
+```typescript
+{
+    type: 'accountMerge',
+    source?: 'G...',
+    destination: 'G...',
+}
+```
+
+#### Manage Data
+```typescript
+{
+    type: 'manageData',
+    source?: 'G...',
+    name: 'mykey',
+    value: 'myvalue' or Buffer, // undefined to delete
+}
+```
+
+#### Bump Sequence
+```typescript
+{
+    type: 'bumpSequence',
+    source?: 'G...',
+    bumpTo: '123456789',
+}
+```
+
+### Complete Example
+
+```typescript
+const result = await TrezorConnect.stellarSignTransaction({
+    path: "m/44'/148'/0'",
+    networkPassphrase: 'Stellar Public Network ; September 2015',
+    transaction: {
+        source: 'GAXSFOOGF4ELO5HT5PTN23T5XE6D5QWL3YBHSVQ2HWOFEJNYYMRJENBV',
+        fee: 100,
+        sequence: '123456789',
+        timebounds: {
+            minTime: 0,
+            maxTime: 1609459200,
+        },
+        memo: {
+            type: 1, // Text
+            text: 'Payment',
+        },
+        operations: [
+            {
+                type: 'payment',
+                destination: 'GBOVQKJYHXRR3DX6NOX2RRYFRCUMSADGDESTDNBDS6CDVLGVESRTAC47',
+                asset: {
+                    type: 0, // Native XLM
+                },
+                amount: '10.0000000',
+            },
+        ],
+    },
+});
+
+if (result.success) {
+    console.log('Public key:', result.payload.publicKey);
+    console.log('Signature:', result.payload.signature);
+}
+```

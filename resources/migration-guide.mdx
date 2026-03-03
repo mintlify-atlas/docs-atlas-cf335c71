@@ -1,0 +1,158 @@
+---
+title: 'Migration Guide'
+description: 'Migration guides for major version changes in Trezor Suite and Connect'
+---
+
+## Connect 10.0.0 Migration
+
+Version 10.0.0 introduces significant changes to the integration methods and supported cryptocurrencies.
+
+### Breaking Changes
+
+<Warning>
+  Connect 10.0.0 removes legacy iframe and popup integration methods. You must migrate to the new Suite-based integration.
+</Warning>
+
+<AccordionGroup>
+  <Accordion title="Removed Integration Methods" icon="circle-xmark">
+    The following integration methods have been removed:
+    - **connect-iframe**: Legacy iframe integration
+    - **connect-popup**: Legacy popup integration
+    
+    These are replaced with the new Suite-based integration that provides better security and user experience.
+  </Accordion>
+
+  <Accordion title="Deprecated Cryptocurrencies" icon="coins">
+    Version 10.0.0 removes support for:
+    - **EOS**: All EOS-related methods and functionality
+    - **NEM**: All NEM-related methods and functionality
+    
+    If your application depends on these cryptocurrencies, you must continue using Connect 9.x or migrate to supported alternatives.
+  </Accordion>
+
+  <Accordion title="New Features" icon="sparkles">
+    Version 10.0.0 introduces:
+    - **Tron Support**: New `tronGetAddress` and `tronSignTransaction` methods
+    - **Suite-based Integration**: Improved security and user experience
+    - **Enhanced THP Support**: Better Trezor Host Protocol implementation
+  </Accordion>
+</AccordionGroup>
+
+### Migration Steps
+
+<Steps>
+  <Step title="Update Package Version">
+    Update your package.json to use Connect 10.0.0:
+    
+    ```json
+    {
+      "dependencies": {
+        "@trezor/connect": "10.0.0-alpha.1",
+        "@trezor/connect-web": "10.0.0-alpha.1"
+      }
+    }
+    ```
+  </Step>
+
+  <Step title="Replace Integration Method">
+    Migrate from iframe/popup to the new integration:
+    
+    **Before (Connect 9.x):**
+    ```javascript
+    TrezorConnect.init({
+      manifest: {
+        email: 'developer@example.com',
+        appUrl: 'https://example.com'
+      },
+      popup: true
+    });
+    ```
+    
+    **After (Connect 10.x):**
+    ```javascript
+    import TrezorConnect from '@trezor/connect-web';
+    
+    TrezorConnect.init({
+      manifest: {
+        email: 'developer@example.com',
+        appUrl: 'https://example.com'
+      }
+    });
+    ```
+  </Step>
+
+  <Step title="Update Method Calls">
+    Remove any EOS or NEM method calls:
+    
+    ```javascript
+    // Remove these:
+    // TrezorConnect.eosGetPublicKey()
+    // TrezorConnect.eosSignTransaction()
+    // TrezorConnect.nemGetAddress()
+    // TrezorConnect.nemSignTransaction()
+    ```
+  </Step>
+
+  <Step title="Test Integration">
+    Thoroughly test your integration with the new version:
+    - Test all supported cryptocurrencies
+    - Verify error handling
+    - Check user experience flow
+  </Step>
+</Steps>
+
+### New Tron Support
+
+If you want to add Tron support to your application:
+
+```javascript
+// Get Tron address
+const result = await TrezorConnect.tronGetAddress({
+  path: "m/44'/195'/0'/0/0",
+  showOnTrezor: true
+});
+
+if (result.success) {
+  console.log('Tron address:', result.payload.address);
+}
+
+// Sign Tron transaction
+const signResult = await TrezorConnect.tronSignTransaction({
+  path: "m/44'/195'/0'/0/0",
+  transaction: {
+    // Transaction data
+  }
+});
+```
+
+## Suite Version Updates
+
+Trezor Suite uses calendar versioning (YY.MM.PATCH). When updating between major releases:
+
+<Steps>
+  <Step title="Backup Your Data">
+    Always backup your wallet metadata and labels before updating.
+  </Step>
+
+  <Step title="Update Application">
+    - **Desktop**: Download the latest version from [trezor.io/start](https://trezor.io/start)
+    - **Web**: Visit [suite.trezor.io](https://suite.trezor.io) for automatic updates
+  </Step>
+
+  <Step title="Verify Installation">
+    Check the version number in Settings to confirm successful update.
+  </Step>
+</Steps>
+
+<Note>
+  For development migrations, see the [Changelog](/resources/changelog) for detailed commit-by-commit changes.
+</Note>
+
+## Getting Help
+
+If you encounter issues during migration:
+
+- Check the [Troubleshooting Guide](/resources/troubleshooting)
+- Review the [FAQ](/resources/faq)
+- Visit [Trezor Support](https://trezor.io/support)
+- Report issues on [GitHub](https://github.com/trezor/trezor-suite/issues)

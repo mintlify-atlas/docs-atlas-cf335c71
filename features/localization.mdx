@@ -1,0 +1,528 @@
+---
+title: Internationalization & Localization
+description: Multi-language support system using react-intl and Crowdin
+---
+
+# Internationalization & Localization
+
+Trezor Suite provides comprehensive internationalization (i18n) support, allowing users worldwide to use the application in their native language.
+
+## Translation System
+
+Suite uses [react-intl](https://formatjs.io/docs/react-intl) for all in-app localization:
+
+<CardGroup cols={2}>
+  <Card title="Message Definitions" icon="file-code">
+    Centralized message catalog in TypeScript
+  </Card>
+  <Card title="Crowdin Integration" icon="globe">
+    Collaborative translation platform for translators
+  </Card>
+  <Card title="Type Safety" icon="shield-check">
+    TypeScript ensures correct message usage
+  </Card>
+  <Card title="Rich Formatting" icon="text">
+    Support for plurals, variables, and formatting
+  </Card>
+</CardGroup>
+
+## Message Definitions
+
+All translatable messages defined in a single source:
+
+```typescript
+// Location: suite/intl/src/messages.ts
+
+export const messages = {
+  TR_ADDRESS: {
+    id: 'TR_ADDRESS',
+    defaultMessage: 'Address',
+    description: 'Used as label for receive/send address input',
+  },
+  
+  TR_ENTERED_PIN_NOT_CORRECT: {
+    id: 'TR_ENTERED_PIN_NOT_CORRECT',
+    defaultMessage: 'Entered PIN for "{deviceLabel}" is not correct',
+  },
+  
+  TR_TRANSACTIONS_COUNT: {
+    id: 'TR_TRANSACTIONS_COUNT',
+    defaultMessage: '{count, plural, one {# transaction} other {# transactions}}',
+  },
+};
+```
+
+### Message Structure
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `id` | Yes | Unique identifier (must match object key) |
+| `defaultMessage` | Yes | English text shown until translated |
+| `description` | No | Context for translators |
+| `dynamic` | No | `true` for programmatically constructed keys |
+
+### Naming Conventions
+
+<AccordionGroup>
+  <Accordion title="ID Format">
+    - Use `TR_` prefix for all message IDs
+    - Optionally add scope: `TR_ONBOARDING_WELCOME`
+    - Use uppercase with underscores
+    - Must match object key exactly
+  </Accordion>
+  
+  <Accordion title="Default Message">
+    - Write in clear, simple English
+    - Avoid technical jargon where possible
+    - Keep consistent tone and voice
+    - Source for all translations
+  </Accordion>
+  
+  <Accordion title="Description">
+    - Provide context when meaning is ambiguous
+    - Explain where/how message is used
+    - Note any technical constraints (character limits)
+    - Optional but recommended
+  </Accordion>
+</AccordionGroup>
+
+## Usage in Components
+
+### Translation Component
+
+For JSX elements:
+
+```jsx
+import { Translation } from '@suite-components';
+
+// Simple message
+<Translation id="TR_CONTINUE" />
+
+// With variables
+<Translation 
+  id="TR_ENTERED_PIN_NOT_CORRECT" 
+  values={{ deviceLabel: device.label }} 
+/>
+
+// Rich text formatting
+<Translation
+  id="TR_TRANSACTIONS_SEARCH_TIP_2"
+  values={{
+    strong: chunks => <strong>{chunks}</strong>
+  }}
+/>
+```
+
+### Translation Hook
+
+For string values:
+
+```typescript
+import { useTranslation } from '@suite-hooks';
+
+const MyComponent = () => {
+  const { translationString } = useTranslation();
+  
+  // Simple string
+  const placeholder = translationString('TR_ENTER_ADDRESS');
+  
+  // With variables
+  const errorMsg = translationString(
+    'TR_ENTERED_PIN_NOT_CORRECT',
+    { deviceLabel: device.label }
+  );
+  
+  return <input placeholder={placeholder} />;
+};
+```
+
+## Advanced Formatting
+
+### Variables
+
+Dynamic content insertion:
+
+```jsx
+// Definition
+TR_ACCOUNT_BALANCE: {
+  id: 'TR_ACCOUNT_BALANCE',
+  defaultMessage: 'Balance: {amount} {symbol}',
+}
+
+// Usage
+<Translation
+  id="TR_ACCOUNT_BALANCE"
+  values={{
+    amount: '1.23456789',
+    symbol: 'BTC'
+  }}
+/>
+// Renders: "Balance: 1.23456789 BTC"
+```
+
+### Pluralization
+
+ICU MessageFormat for plural forms:
+
+```jsx
+// Definition
+TR_CONFIRMATIONS: {
+  id: 'TR_CONFIRMATIONS',
+  defaultMessage: `{count, plural,
+    =0 {No confirmations}
+    one {# confirmation}
+    other {# confirmations}
+  }`,
+}
+
+// Usage  
+<Translation
+  id="TR_CONFIRMATIONS"
+  values={{ count: 0 }}
+/>
+// Renders: "No confirmations"
+
+<Translation
+  id="TR_CONFIRMATIONS"
+  values={{ count: 1 }}
+/>
+// Renders: "1 confirmation"
+
+<Translation
+  id="TR_CONFIRMATIONS"
+  values={{ count: 5 }}
+/>
+// Renders: "5 confirmations"
+```
+
+### Rich Text
+
+Embed React components:
+
+```jsx
+// Definition
+TR_PRIVACY_TIP: {
+  id: 'TR_PRIVACY_TIP',
+  defaultMessage: 'Enable <tor>Tor</tor> for enhanced privacy',
+}
+
+// Usage
+<Translation
+  id="TR_PRIVACY_TIP"
+  values={{
+    tor: chunks => (
+      <Link to="/settings/general">
+        <strong>{chunks}</strong>
+      </Link>
+    )
+  }}
+/>
+```
+
+### Number & Date Formatting
+
+Localized formatting:
+
+```jsx
+import { FormattedNumber, FormattedDate } from 'react-intl';
+
+// Numbers with locale-specific separators
+<FormattedNumber value={1234567.89} />
+// US: "1,234,567.89"
+// CZ: "1 234 567,89"
+
+// Dates in local format
+<FormattedDate 
+  value={new Date()} 
+  year="numeric"
+  month="long"
+  day="numeric"
+/>
+// US: "December 25, 2024"
+// CZ: "25. prosince 2024"
+
+// Relative time
+<FormattedRelativeTime
+  value={-3}
+  unit="day"
+  numeric="auto"
+/>
+// "3 days ago"
+```
+
+## Crowdin Workflow
+
+### Translation Platform
+
+Suite uses [Crowdin](https://crowdin.com/project/trezor-suite) for collaborative translation:
+
+<Steps>
+  <Step title="Extract Messages">
+    Generate `master.json` from TypeScript definitions
+  </Step>
+  <Step title="Upload to Crowdin">
+    Push source strings to translation platform
+  </Step>
+  <Step title="Translators Work">
+    Community and professional translators translate strings
+  </Step>
+  <Step title="Download Translations">
+    Pull completed translations back to repository
+  </Step>
+  <Step title="Commit & Deploy">
+    Include translated files in Suite builds
+  </Step>
+</Steps>
+
+### Commands
+
+Yarn scripts for Crowdin operations:
+
+<CodeGroup>
+```bash Extract
+# Generate master.json from messages.ts
+yarn workspace @suite/intl translations:extract
+```
+
+```bash Upload
+# Push source strings to Crowdin
+yarn workspace @suite/intl translations:upload
+```
+
+```bash Download
+# Pull translations from Crowdin
+yarn workspace @suite/intl translations:download
+```
+
+```bash Full Sync
+# Complete synchronization workflow
+BRANCH_NAME=feat/crowdin-sync
+
+git checkout develop
+git pull
+git checkout -b $BRANCH_NAME
+
+yarn workspace @suite/intl translations:extract
+yarn workspace @suite/intl translations:upload
+yarn workspace @suite/intl translations:download
+
+git add packages/suite-data/files/translations
+git commit -m 'feat(translations): Sync with Crowdin'
+git push origin $BRANCH_NAME
+```
+</CodeGroup>
+
+### Automated Sync
+
+GitHub Actions automate translation updates:
+
+1. Navigate to [Crowdin translations update](https://github.com/trezor/trezor-suite/actions/workflows/bot-crowdin-sync.yml)
+2. Trigger manual job with base branch `develop`
+3. Action creates PR titled "Crowdin translations update"
+4. Review and merge PR
+
+<Warning>
+Do not manually edit translation JSON files in `suite-data/files/translations/`. They are auto-generated and will be overwritten.
+</Warning>
+
+## Authentication
+
+Crowdin CLI requires API token:
+
+```yaml
+# ~/.crowdin.yml
+api_token: xxxx
+```
+
+Or pass as argument:
+
+```bash
+yarn workspace @suite/intl translations:download --token xxxx
+```
+
+Request token from project owner.
+
+## Supported Languages
+
+Suite is available in multiple languages:
+
+<Tabs>
+  <Tab title="Official Languages">
+    - English (en)
+    - Czech (cs)
+    - Spanish (es)
+    - French (fr)
+    - German (de)
+    - Italian (it)
+    - Japanese (ja)
+    - Portuguese (pt)
+    - Russian (ru)
+  </Tab>
+  <Tab title="Community Languages">
+    - Chinese Simplified (zh-CN)
+    - Chinese Traditional (zh-TW)
+    - Korean (ko)
+    - Polish (pl)
+    - Dutch (nl)
+    - And more...
+  </Tab>
+</Tabs>
+
+Language selection available in Settings.
+
+## Translation Files
+
+Translated strings stored as JSON:
+
+```typescript
+// Location: packages/suite-data/files/translations/
+
+// Structure
+translations/
+  en.json         // English (source)
+  cs.json         // Czech
+  de.json         // German
+  es.json         // Spanish
+  ...
+```
+
+### JSON Format
+
+```json
+{
+  "TR_ADDRESS": "Address",
+  "TR_ENTERED_PIN_NOT_CORRECT": "Entered PIN for \"{deviceLabel}\" is not correct",
+  "TR_CONFIRMATIONS": "{count, plural, =0 {No confirmations} one {# confirmation} other {# confirmations}}"
+}
+```
+
+## Loading Translations
+
+Translations loaded at application startup:
+
+```typescript
+// Suite initialization
+import { IntlProvider } from 'react-intl';
+import translations from '@suite-data/translations';
+
+const App = () => {
+  const locale = useSelector(state => state.suite.settings.language);
+  const messages = translations[locale] || translations.en;
+  
+  return (
+    <IntlProvider locale={locale} messages={messages}>
+      <Suite />
+    </IntlProvider>
+  );
+};
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="For Developers">
+    - Add description for ambiguous messages
+    - Use variables instead of concatenation
+    - Test with long translations (German, Russian)
+    - Use semantic message IDs
+    - Never hardcode user-facing strings
+    - Always use Translation component or hook
+  </Accordion>
+  
+  <Accordion title="For Translators">
+    - Maintain consistent terminology
+    - Preserve variable placeholders
+    - Respect plural forms in your language
+    - Keep formatting tags intact
+    - Ask for context if unclear
+    - Test translations in actual UI
+  </Accordion>
+  
+  <Accordion title="For Reviewers">
+    - Verify all new messages have descriptions
+    - Check for duplicate messages
+    - Ensure IDs follow naming conventions
+    - Test with pseudo-localization
+    - Review Crowdin sync PRs carefully
+  </Accordion>
+</AccordionGroup>
+
+## Testing Translations
+
+### Pseudo-localization
+
+Test UI with expanded text:
+
+```typescript
+// Enable in development
+const messages = {
+  TR_ADDRESS: '[!!! Àḋḋṛḗṡṡ !!!]',
+  // Longer text exposes layout issues
+};
+```
+
+### Missing Translations
+
+Fallback to English:
+
+```typescript
+// Default message shown if translation missing
+<Translation id="TR_NEW_FEATURE" />
+// Shows defaultMessage until translated
+```
+
+## Performance
+
+### Lazy Loading
+
+Translations loaded on demand:
+
+```typescript
+// Only load selected language
+const loadTranslations = async (locale: string) => {
+  const messages = await import(
+    `@suite-data/translations/${locale}.json`
+  );
+  return messages.default;
+};
+```
+
+### Bundle Size
+
+Optimization strategies:
+
+- Only include necessary languages in build
+- Use code splitting for locale-specific features
+- Minify translation JSON files
+- Cache loaded translations
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Message Not Translating">
+    - Check message ID is correct
+    - Verify translation exists in JSON
+    - Confirm correct locale is loaded
+    - Clear app cache and reload
+  </Accordion>
+  
+  <Accordion title="Crowdin Upload Fails">
+    - Verify API token is valid
+    - Check master.json is generated
+    - Ensure JSON is valid
+    - Check Crowdin project permissions
+  </Accordion>
+  
+  <Accordion title="Variables Not Replacing">
+    - Check variable names match definition
+    - Verify values passed to Translation component
+    - Ensure variables in translated strings
+    - Test with English first
+  </Accordion>
+</AccordionGroup>
+
+## Related Resources
+
+- [react-intl Documentation](https://formatjs.io/docs/react-intl)
+- [ICU Message Syntax](https://unicode-org.github.io/icu/userguide/format_parse/messages/)
+- [Crowdin Documentation](https://support.crowdin.com/)

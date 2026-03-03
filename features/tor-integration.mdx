@@ -1,0 +1,475 @@
+---
+title: Tor Network Integration
+description: Privacy-enhancing Tor network support for anonymous Suite connections
+---
+
+# Tor Network Integration
+
+Trezor Suite integrates Tor (The Onion Router) to protect user privacy by anonymizing network traffic and masking IP addresses from third parties.
+
+## What is Tor?
+
+Tor is a privacy network that anonymizes internet traffic:
+
+<CardGroup cols={2}>
+  <Card title="IP Masking" icon="mask">
+    Hides your real IP address from servers
+  </Card>
+  <Card title="Traffic Encryption" icon="lock">
+    Encrypts data through multiple relay nodes
+  </Card>
+  <Card title="Censorship Resistance" icon="shield-check">
+    Bypasses network restrictions and firewalls
+  </Card>
+  <Card title="Location Privacy" icon="location-dot">
+    Prevents geographic tracking
+  </Card>
+</CardGroup>
+
+## How Tor Works in Suite
+
+Suite can route all network traffic through Tor:
+
+<Steps>
+  <Step title="Tor Service">
+    Desktop: Built-in Tor binary
+    Web: Use Tor Browser or local Tor proxy
+  </Step>
+  <Step title="Circuit Building">
+    Tor establishes encrypted path through relay nodes
+  </Step>
+  <Step title="Traffic Routing">
+    All Suite network requests routed through SOCKS5 proxy
+  </Step>
+  <Step title="Identity Isolation">
+    Different circuits for different services
+  </Step>
+</Steps>
+
+## Enabling Tor
+
+### Desktop Application
+
+Built-in Tor support:
+
+<Tabs>
+  <Tab title="First Time Setup">
+    1. Go to Settings → General
+    2. Toggle "Enable Tor"
+    3. Wait for Tor to bootstrap (30-60 seconds)
+    4. Status indicator shows connection
+  </Tab>
+  <Tab title="Quick Toggle">
+    - Click Tor icon in top bar
+    - Toggle on/off anytime
+    - Status shows connection state
+  </Tab>
+</Tabs>
+
+### Web Application
+
+Requires external Tor:
+
+<Steps>
+  <Step title="Install Tor">
+    Download and install Tor Browser or Tor daemon
+  </Step>
+  <Step title="Configure Proxy">
+    Suite auto-detects local Tor at 127.0.0.1:9050
+  </Step>
+  <Step title="Enable in Suite">
+    Settings → General → Enable Tor
+  </Step>
+  <Step title="Verify Connection">
+    Check status indicator shows "Connected"
+  </Step>
+</Steps>
+
+<Info>
+When using Tor Browser, access Suite at the .onion address for end-to-end onion routing.
+</Info>
+
+## Tor Status States
+
+Suite displays current Tor connection status:
+
+```typescript
+type TorStatus = 
+  | 'Disabled'      // Tor not enabled
+  | 'Enabling'      // Starting Tor service
+  | 'Bootstrapping' // Building circuits (0-100%)
+  | 'Connected'     // Fully connected and routing
+  | 'Error'         // Connection failed
+  | 'Misbehaving';  // Tor process issues
+```
+
+### Status Indicator
+
+Visual feedback in Suite UI:
+
+| Status | Icon | Color | Meaning |
+|--------|------|-------|----------|
+| Disabled | ○ | Gray | Tor off, direct connections |
+| Enabling | ◔ | Yellow | Starting Tor |
+| Bootstrapping | ◑ | Yellow | Building circuits (0-100%) |
+| Connected | ● | Green | Tor active, traffic anonymized |
+| Error | ● | Red | Connection failed |
+
+## Tor Controller
+
+Manages Tor process and circuits:
+
+```typescript
+interface TorController {
+  // Start Tor service
+  start(): Promise<void>;
+  
+  // Stop Tor service
+  stop(): Promise<void>;
+  
+  // Get current status
+  getStatus(): TorStatus;
+  
+  // Request new identity (circuit)
+  requestIdentity(): Promise<Identity>;
+  
+  // Set bridge configuration
+  setBridges(bridges: string[]): Promise<void>;
+  
+  // Get bootstrap progress
+  getBootstrapProgress(): number;
+}
+```
+
+### Identity Management
+
+Create isolated circuits for different operations:
+
+```typescript
+// Request new Tor circuit
+const identity = await torController.requestIdentity();
+
+// Use identity for specific request
+const response = await fetch(url, {
+  agent: createProxyAgent({
+    host: '127.0.0.1',
+    port: 9050,
+    auth: identity.credentials,
+  }),
+});
+
+// Different identity for different service
+const identity2 = await torController.requestIdentity();
+// This uses completely different circuit
+```
+
+## Onion Services
+
+Suite available as hidden service:
+
+### .onion Address
+
+Access Suite through Tor network:
+
+```
+suite.trezor.io → [Tor .onion address]
+```
+
+### Benefits
+
+<AccordionGroup>
+  <Accordion title="End-to-End Encryption">
+    Traffic encrypted from browser to Suite server, no exit nodes involved
+  </Accordion>
+  
+  <Accordion title="No Exit Node Trust">
+    Onion services don't use exit nodes, eliminating that trust requirement
+  </Accordion>
+  
+  <Accordion title="Censorship Resistance">
+    Cannot be blocked by IP address filtering
+  </Accordion>
+  
+  <Accordion title="Location Hiding">
+    Server location completely hidden
+  </Accordion>
+</AccordionGroup>
+
+## Tor with Blockchains
+
+Blockchain connections can use Tor:
+
+### Custom Backends
+
+Route blockchain requests through Tor:
+
+```typescript
+// Configure custom backend with .onion address
+const backend = {
+  coin: 'btc',
+  url: 'http://[onion-address].onion',
+  tor: true, // Route through Tor
+};
+```
+
+### Default Backends
+
+Trezor operates Tor-enabled blockbook instances:
+
+- BTC: Onion address for Bitcoin blockbook
+- Other coins: Similar onion endpoints
+- Automatic routing when Tor enabled
+
+### Privacy Benefits
+
+<CardGroup cols={2}>
+  <Card title="Query Privacy" icon="magnifying-glass">
+    Blockchain servers cannot see your real IP
+  </Card>
+  <Card title="Balance Privacy" icon="wallet">
+    Account queries not linked to your location
+  </Card>
+  <Card title="Transaction Privacy" icon="paper-plane">
+    Broadcasting transactions anonymously
+  </Card>
+  <Card title="Discovery Privacy" icon="fingerprint">
+    Account discovery doesn't reveal identity
+  </Card>
+</CardGroup>
+
+## Tor Bridges
+
+Bypass Tor blocking in restricted networks:
+
+### Bridge Types
+
+<Tabs>
+  <Tab title="obfs4">
+    Obfuscated bridges that look like random traffic
+    ```
+    obfs4 [IP]:[port] [fingerprint] cert=[cert] iat-mode=0
+    ```
+  </Tab>
+  <Tab title="meek">
+    Tunnel through CDN services (Azure, Amazon)
+    ```
+    meek_lite [IP]:[port] url=https://...
+    ```
+  </Tab>
+  <Tab title="snowflake">
+    Peer-to-peer proxy network
+    ```
+    snowflake [IP]:[port]
+    ```
+  </Tab>
+</Tabs>
+
+### Configuring Bridges
+
+In Desktop application:
+
+<Steps>
+  <Step title="Open Tor Settings">
+    Settings → General → Tor section
+  </Step>
+  <Step title="Enable Bridges">
+    Toggle "Use bridges"
+  </Step>
+  <Step title="Add Bridge Addresses">
+    Paste bridge lines obtained from torproject.org
+  </Step>
+  <Step title="Reconnect">
+    Tor will restart with bridge configuration
+  </Step>
+</Steps>
+
+## Performance Considerations
+
+### Speed Impact
+
+Tor routing affects performance:
+
+| Operation | Normal | With Tor | Impact |
+|-----------|--------|----------|--------|
+| Page load | Fast | Slower | 2-5x |
+| Blockchain sync | Fast | Slower | 2-4x |
+| Transaction broadcast | Fast | Moderate | 1.5-3x |
+| Rate fetching | Fast | Moderate | 2-3x |
+
+### Optimization
+
+<AccordionGroup>
+  <Accordion title="Circuit Reuse">
+    Reuse circuits for similar requests to avoid rebuilding
+  </Accordion>
+  
+  <Accordion title="Connection Pooling">
+    Maintain persistent connections through Tor
+  </Accordion>
+  
+  <Accordion title="Request Batching">
+    Combine multiple requests when possible
+  </Accordion>
+  
+  <Accordion title="Caching">
+    Cache responses aggressively to reduce Tor traffic
+  </Accordion>
+</AccordionGroup>
+
+## Security Considerations
+
+### What Tor Protects
+
+<CardGroup cols={2}>
+  <Card title="Network Level" icon="network-wired">
+    - Hides IP address
+    - Encrypts traffic
+    - Prevents tracking
+    - Bypasses censorship
+  </Card>
+  <Card title="Application Level" icon="window">
+    - Private blockchain queries
+    - Anonymous transactions
+    - Hidden balance checks
+    - Masked account discovery
+  </Card>
+</CardGroup>
+
+### What Tor Doesn't Protect
+
+<Warning>
+Tor doesn't protect against:
+- **On-chain analysis**: Transaction graph analysis still possible
+- **Application fingerprinting**: Unique usage patterns
+- **Malware**: Local device compromise
+- **User errors**: Revealing information through actions
+</Warning>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Tor Won't Connect">
+    - Check firewall settings
+    - Verify Tor ports not blocked (9050, 9051)
+    - Try bridges if in restricted network
+    - Check system clock is accurate
+    - Review Tor logs in Suite
+  </Accordion>
+  
+  <Accordion title="Slow Connection">
+    - Tor adds latency, this is normal
+    - Try different bridges
+    - Check network bandwidth
+    - Consider if privacy worth speed trade-off
+  </Accordion>
+  
+  <Accordion title="Bootstrap Stuck">
+    - Wait up to 2 minutes
+    - Restart Tor
+    - Check internet connection
+    - Try bridges
+    - Clear Tor data directory
+  </Accordion>
+  
+  <Accordion title="Circuits Failing">
+    - Request new identity
+    - Restart Tor
+    - Update Tor binary
+    - Check for ISP interference
+  </Accordion>
+</AccordionGroup>
+
+## Tor Data Storage
+
+Tor data locations:
+
+### Desktop
+
+```bash
+# Windows
+%APPDATA%/Trezor Suite/tor/
+
+# macOS  
+~/Library/Application Support/Trezor Suite/tor/
+
+# Linux
+~/.config/trezor-suite/tor/
+```
+
+Contains:
+- Tor binary
+- Configuration files
+- Circuit state
+- Cache data
+
+### Logs
+
+Tor logs available for debugging:
+
+```typescript
+// Access Tor logs
+import { getTorLogs } from '@suite-native/tor';
+
+const logs = await getTorLogs();
+console.log(logs);
+```
+
+## Implementation Details
+
+### Request Manager Integration
+
+```typescript
+// Tor-aware HTTP client
+import { createTorAgent } from '@trezor/request-manager';
+
+const agent = createTorAgent({
+  host: '127.0.0.1',
+  port: 9050,
+  identity: torIdentity,
+});
+
+const response = await fetch(url, { agent });
+```
+
+### Redux Integration
+
+```typescript
+interface TorState {
+  enabled: boolean;
+  status: TorStatus;
+  bootstrapProgress: number;
+  bridges: string[];
+  circuits: TorCircuit[];
+  error: string | null;
+}
+
+// Actions
+dispatch(enableTor());
+dispatch(disableTor());
+dispatch(setTorBridges(bridges));
+dispatch(requestNewIdentity());
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="For Privacy" icon="user-shield">
+    - Enable Tor for all Suite usage
+    - Use .onion addresses when available
+    - Combine with CoinJoin for transactions
+    - Don't mix Tor and non-Tor usage
+  </Card>
+  <Card title="For Performance" icon="gauge-high">
+    - Accept slower speeds for privacy
+    - Use bridges only when necessary
+    - Keep Tor running (don't toggle frequently)
+    - Cache data when possible
+  </Card>
+</CardGroup>
+
+## Related Resources
+
+- [Tor Project](https://www.torproject.org/)
+- [Tor Browser](https://www.torproject.org/download/)
+- [Bridge Configuration](https://bridges.torproject.org/)
+- [CoinJoin Integration](/features/coinjoin)

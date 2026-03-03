@@ -1,0 +1,553 @@
+---
+title: Running Development Apps
+description: Start development servers for Suite, Connect, and mobile apps
+---
+
+## Prerequisites
+
+Before running any application, ensure you've completed:
+
+1. [Environment setup](/development/environment-setup)
+2. Dependency installation (`yarn`)
+3. Essential libraries build (`yarn build:essential`)
+
+<Warning>
+  Running apps without building essential libraries first will result in errors.
+</Warning>
+
+## Trezor Suite Web
+
+The web version of Trezor Suite runs in your browser.
+
+### Development Server
+
+```bash
+yarn suite:dev
+```
+
+**Features:**
+- Runs on `http://localhost:8000`
+- Hot module replacement (HMR)
+- React DevTools integration
+- Source maps enabled
+- Fast refresh on file changes
+
+<Note>
+  Initial compilation takes 2-3 minutes. Subsequent updates are nearly instant with HMR.
+</Note>
+
+### Experimental: Vite Development
+
+<Warning>
+  **EXPERIMENTAL** - For development only. Use `yarn suite:dev` for production-like experience.
+</Warning>
+
+```bash
+yarn suite:dev:vite
+```
+
+**Benefits:**
+- Instant server start
+- Extremely fast HMR
+- Better development experience
+
+**Limitations:**
+- May not match production behavior
+- Not all features may work correctly
+
+### Production Preview
+
+Test the production build locally:
+
+```bash
+yarn suite:build:web:preview
+```
+
+**Features:**
+- Production-optimized code
+- Security headers applied
+- Identical to production environment
+- Served on localhost
+
+## Trezor Suite Desktop
+
+The Electron-based desktop application.
+
+### Development Server
+
+```bash
+yarn suite:dev:desktop
+```
+
+**Features:**
+- Electron window opens automatically
+- Hot reload for renderer process
+- React DevTools available
+- Source maps enabled
+- Native desktop features enabled
+
+<Note>
+  **React DevTools Tip:** Open DevTools first, then reload the renderer process (Cmd+R or Ctrl+R) to activate React DevTools.
+</Note>
+
+### Desktop Development Tips
+
+<CodeGroup>
+```bash Reload Renderer
+# macOS
+Cmd + R
+
+# Windows/Linux
+Ctrl + R
+```
+
+```bash Open DevTools
+# macOS
+Cmd + Option + I
+
+# Windows/Linux
+Ctrl + Shift + I
+```
+
+```bash View Logs
+# Check console in DevTools
+# Or view in terminal where you ran yarn suite:dev:desktop
+```
+</CodeGroup>
+
+## Trezor Suite Mobile
+
+<Warning>
+  Mobile development requires [additional platform setup](https://github.com/trezor/trezor-suite/tree/develop/suite-native/app#prerequisites) for iOS/Android.
+</Warning>
+
+### Start Metro Bundler
+
+```bash
+yarn native:start
+# or
+yarn s  # alias
+```
+
+This starts the **Metro bundler** which serves JavaScript to your mobile app.
+
+### Run on Android
+
+<Steps>
+  <Step title="Start Metro Bundler">
+    ```bash
+    yarn native:start
+    ```
+  </Step>
+
+  <Step title="Reverse Ports (First Time)">
+    ```bash
+    yarn native:reverse-ports
+    # or
+    yarn ports  # alias
+    ```
+
+    This configures port forwarding for the Android device/emulator.
+  </Step>
+
+  <Step title="Launch Android App">
+    In a new terminal:
+
+    ```bash
+    yarn native:android
+    # or
+    yarn a  # alias
+    ```
+  </Step>
+</Steps>
+
+### Run on iOS
+
+<Steps>
+  <Step title="Start Metro Bundler">
+    ```bash
+    yarn native:start
+    ```
+  </Step>
+
+  <Step title="Launch iOS App">
+    In a new terminal:
+
+    ```bash
+    yarn native:ios
+    # or
+    yarn ios  # alias
+    ```
+  </Step>
+</Steps>
+
+### Mobile Development Commands
+
+| Command | Alias | Description |
+|---------|-------|-------------|
+| `yarn native:start` | `yarn s` | Start Metro bundler |
+| `yarn native:android` | `yarn a` | Run on Android |
+| `yarn native:ios` | `yarn ios` | Run on iOS |
+| `yarn native:prebuild` | `yarn p` | Regenerate native projects |
+| `yarn native:reverse-ports` | `yarn ports` | Set up Android port forwarding |
+
+## Connect Examples
+
+Run example implementations of Trezor Connect.
+
+### Available Examples
+
+The repository includes several Connect integration examples in `packages/connect-examples/`:
+
+- **webextension** - Browser extension integration
+- **electron** - Electron app integration
+- **react** - React app integration
+
+### Running Examples
+
+Each example has its own dev server:
+
+```bash
+# Run specific example
+yarn workspace @trezor/connect-examples-<example-name> dev
+
+# Example: Run React example
+yarn workspace @trezor/connect-examples-react dev
+```
+
+## Connect Explorer
+
+Interactive API explorer for testing Connect methods.
+
+```bash
+yarn workspace @trezor/connect-explorer dev
+```
+
+Open in browser to:
+- Test Connect API methods
+- View request/response data
+- Debug device communication
+- Explore available methods
+
+## Development Environment Configuration
+
+### Optional: Enable Developer Tools
+
+Create `.env.local` in the repository root:
+
+```bash
+cp env.local.example .env.local
+```
+
+Edit `.env.local`:
+
+```bash
+# Enable TanStack React Query DevTools
+TANSTACK_REACT_QUERY_DEV_TOOLS=true
+```
+
+<Note>
+  Restart the dev server after modifying `.env.local`.
+</Note>
+
+### Browser DevTools Extensions
+
+Recommended browser extensions:
+
+- **React DevTools** - Inspect React component tree
+- **Redux DevTools** - Debug Redux state (if using Redux)
+- **React Query DevTools** - Already integrated in app
+
+## Using Trezor Devices
+
+### Physical Device
+
+Connect your Trezor device via USB. The app should detect it automatically.
+
+**Troubleshooting:**
+- Ensure device is unlocked
+- Check USB cable connection
+- Try a different USB port
+- On Linux, verify udev rules are installed
+
+### Emulator (Recommended)
+
+Use [Trezor User Env](https://github.com/trezor/trezor-user-env) to run device emulators.
+
+**Benefits:**
+- No physical device needed
+- Test with multiple models
+- Fast iteration
+- Automated testing support
+
+## Multiple Apps Simultaneously
+
+### Run Multiple Development Servers
+
+You can run multiple apps at the same time:
+
+<Steps>
+  <Step title="Terminal 1: Web App">
+    ```bash
+    yarn suite:dev
+    ```
+    Runs on `http://localhost:8000`
+  </Step>
+
+  <Step title="Terminal 2: Desktop App">
+    ```bash
+    yarn suite:dev:desktop
+    ```
+  </Step>
+
+  <Step title="Terminal 3: Connect Explorer">
+    ```bash
+    yarn workspace @trezor/connect-explorer dev
+    ```
+  </Step>
+</Steps>
+
+<Note>
+  Each app runs on a different port, so there are no conflicts.
+</Note>
+
+## Port Configuration
+
+### Default Ports
+
+| Application | Port | URL |
+|------------|------|-----|
+| Suite Web | 8000 | http://localhost:8000 |
+| Connect Explorer | (varies) | Check terminal output |
+| Metro Bundler | 8081 | http://localhost:8081 |
+
+### Changing Ports
+
+If a port is already in use, you can:
+
+1. **Kill the process using the port:**
+   ```bash
+   # Find process
+   lsof -i :8000
+   
+   # Kill process
+   kill -9 <PID>
+   ```
+
+2. **Configure different port** (varies by package)
+
+## Performance Optimization
+
+### Faster Development
+
+<CodeGroup>
+```bash Disable Type-Checking
+# Skip TypeScript type-checking during dev
+# (it runs in the background but doesn't block HMR)
+TSC_COMPILE_ON_ERROR=true yarn suite:dev
+```
+
+```bash Reduce Memory Usage
+# Limit Node.js memory (if experiencing crashes)
+NODE_OPTIONS="--max-old-space-size=4096" yarn suite:dev
+```
+
+```bash Clear Cache
+# If experiencing stale build issues
+rm -rf .nx/cache **/.eslintcache
+yarn suite:dev
+```
+</CodeGroup>
+
+### Exclude from Antivirus
+
+On Windows, exclude the repository from Windows Defender:
+
+```powershell
+Add-MpPreference -ExclusionPath "C:\path\to\trezor-suite"
+```
+
+This significantly improves build and HMR performance.
+
+## Troubleshooting
+
+### Module Not Found Errors
+
+```bash
+# Rebuild essential libraries
+yarn build:essential
+
+# If that doesn't work, rebuild all libraries
+yarn build:libs
+```
+
+### Port Already in Use
+
+```bash
+# Kill process on port 8000
+lsof -i :8000 | grep LISTEN | awk '{print $2}' | xargs kill -9
+
+# Or try a different port (if supported by the package)
+```
+
+### Hot Module Replacement Not Working
+
+<Steps>
+  <Step title="Check File Watchers (Linux)">
+    Increase file watcher limit:
+
+    ```bash
+    echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf
+    sudo sysctl -p
+    ```
+  </Step>
+
+  <Step title="Clear Cache">
+    ```bash
+    rm -rf .nx/cache **/.eslintcache **/node_modules/.cache
+    ```
+  </Step>
+
+  <Step title="Restart Dev Server">
+    Stop the server (Ctrl+C) and start it again.
+  </Step>
+</Steps>
+
+### Desktop App Won't Launch
+
+```bash
+# Rebuild desktop dependencies
+cd packages/suite-desktop
+yarn rebuild
+
+# Clear Electron cache
+rm -rf ~/Library/Application\ Support/Electron  # macOS
+rm -rf ~/.config/Electron  # Linux
+```
+
+### Mobile App Connection Issues
+
+```bash
+# Reset Metro bundler cache
+yarn native:start --reset-cache
+
+# Re-reverse ports (Android)
+yarn native:reverse-ports
+
+# Rebuild native projects
+yarn native:prebuild:clean
+yarn native:prebuild
+```
+
+### Build Fails After Git Pull
+
+```bash
+# Update submodules
+git submodule update --init --recursive
+
+# Pull LFS files
+git lfs pull
+
+# Reinstall dependencies
+yarn
+
+# Rebuild essential libraries
+yarn build:essential
+```
+
+## Code Quality During Development
+
+### Linting
+
+```bash
+# Lint all files
+yarn lint
+
+# Lint JavaScript/TypeScript only
+yarn lint:js
+
+# Auto-fix linting issues
+yarn lint:js:fix-files <file-path>
+```
+
+### Type Checking
+
+```bash
+# Check types (full - takes 10-15 minutes)
+yarn type-check
+
+# Check types for affected packages only
+yarn nx:type-check
+```
+
+### Formatting
+
+```bash
+# Format all files
+yarn format
+
+# Format specific files
+yarn g:prettier --write <file-path>
+
+# Check formatting
+yarn format:verify
+```
+
+<Note>
+  Run formatting before committing. Pre-commit hooks will enforce this.
+</Note>
+
+## Development Workflow
+
+### Typical Daily Workflow
+
+<Steps>
+  <Step title="Pull Latest Changes">
+    ```bash
+    git pull
+    git submodule update --init --recursive
+    ```
+  </Step>
+
+  <Step title="Update Dependencies (if needed)">
+    ```bash
+    yarn
+    ```
+  </Step>
+
+  <Step title="Build Essential Libraries (if needed)">
+    ```bash
+    yarn build:essential
+    ```
+
+    Only necessary if:
+    - First time running
+    - Switching branches with dependency changes
+    - After pulling major updates
+  </Step>
+
+  <Step title="Start Development Server">
+    ```bash
+    yarn suite:dev          # For web
+    # or
+    yarn suite:dev:desktop  # For desktop
+    ```
+  </Step>
+
+  <Step title="Make Changes and Test">
+    Edit code - changes appear automatically with HMR.
+  </Step>
+
+  <Step title="Format and Lint Before Committing">
+    ```bash
+    yarn g:prettier --write <changed-files>
+    yarn g:eslint --fix <changed-files>
+    ```
+  </Step>
+</Steps>
+
+## Next Steps
+
+- Learn about [Testing](/development/testing)
+- Review [Code Style Guidelines](https://github.com/trezor/trezor-suite/blob/develop/skills/index.md)
+- Read [Contributing Guidelines](https://github.com/trezor/trezor-suite/blob/develop/CONTRIBUTING.md)

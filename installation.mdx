@@ -1,0 +1,495 @@
+---
+title: Installation
+description: Install Trezor Suite on Desktop, Web, or Mobile platforms with complete instructions and system requirements.
+---
+
+# Installation
+
+Trezor Suite is available on multiple platforms. Choose the installation method that best fits your needs.
+
+<CardGroup cols={3}>
+  <Card title="Desktop" icon="desktop" href="#desktop">
+    Full-featured offline app for Windows, macOS, and Linux
+  </Card>
+  <Card title="Web" icon="globe" href="#web">
+    Browser-based access with no installation required
+  </Card>
+  <Card title="Mobile" icon="mobile" href="#mobile">
+    On-the-go portfolio management for iOS and Android
+  </Card>
+</CardGroup>
+
+---
+
+## Desktop
+
+The desktop application is built with Electron and offers the most complete Trezor Suite experience with offline capabilities, Tor support, and enhanced privacy features.
+
+### Download
+
+Download the latest version from the [official website](https://suite.trezor.io/).
+
+<Tabs>
+  <Tab title="macOS">
+    <Steps>
+      <Step title="Download the Installer">
+        Download `Trezor-Suite-[version].dmg` for your Mac:
+        - **Apple Silicon (M1/M2/M3)**: arm64 version
+        - **Intel Mac**: x64 version
+      </Step>
+
+      <Step title="Install">
+        1. Open the downloaded `.dmg` file
+        2. Drag **Trezor Suite** to the **Applications** folder
+        3. Eject the disk image
+      </Step>
+
+      <Step title="Launch">
+        1. Open Finder → Applications
+        2. Right-click **Trezor Suite** and select **Open** (first launch only)
+        3. Click **Open** in the security dialog
+        
+        <Info>
+          On first launch, macOS may show a security warning. This is normal for apps downloaded outside the App Store.
+        </Info>
+      </Step>
+
+      <Step title="Connect Your Device">
+        Connect your Trezor device via USB and follow the on-screen instructions.
+      </Step>
+    </Steps>
+
+    ### macOS System Requirements
+
+    - macOS 10.13 (High Sierra) or later
+    - 4 GB RAM minimum
+    - 500 MB free disk space
+    - USB port or USB-C adapter
+  </Tab>
+
+  <Tab title="Windows">
+    <Steps>
+      <Step title="Download the Installer">
+        Download `Trezor-Suite-Setup-[version].exe` from the official website.
+      </Step>
+
+      <Step title="Run the Installer">
+        1. Double-click the downloaded `.exe` file
+        2. If Windows SmartScreen appears, click **More info** → **Run anyway**
+        3. Follow the installation wizard
+        4. Choose installation location (default recommended)
+      </Step>
+
+      <Step title="Launch">
+        - Start from Desktop shortcut, or
+        - Find in Start Menu under "Trezor Suite"
+      </Step>
+
+      <Step title="Install Bridge (if prompted)">
+        If you don't have Trezor Bridge installed, Suite will guide you through the installation.
+        
+        <Note>
+          Trezor Bridge enables communication between Suite and your Trezor device on Windows.
+        </Note>
+      </Step>
+    </Steps>
+
+    ### Windows System Requirements
+
+    - Windows 10 (64-bit) or later
+    - 4 GB RAM minimum
+    - 500 MB free disk space
+    - USB port
+
+    <Warning>
+      Some antivirus software may flag the installer. This is a false positive. Download only from the official Trezor website.
+    </Warning>
+  </Tab>
+
+  <Tab title="Linux">
+    <Steps>
+      <Step title="Download AppImage">
+        Download `Trezor-Suite-[version].AppImage` from the official website.
+      </Step>
+
+      <Step title="Make Executable">
+        ```bash
+        cd ~/Downloads
+        chmod +x Trezor-Suite-*.AppImage
+        ```
+      </Step>
+
+      <Step title="Run the Application">
+        ```bash
+        ./Trezor-Suite-*.AppImage
+        ```
+        
+        <Tip>
+          For NixOS users:
+          ```bash
+          nix-env -iA nixos.appimage-run
+          appimage-run ./Trezor-Suite-*.AppImage
+          ```
+        </Tip>
+      </Step>
+
+      <Step title="Optional: Install to System">
+        Move the AppImage to your applications directory:
+        ```bash
+        mkdir -p ~/.local/bin
+        mv Trezor-Suite-*.AppImage ~/.local/bin/trezor-suite
+        ```
+      </Step>
+    </Steps>
+
+    ### Linux System Requirements
+
+    - Modern Linux distribution (Ubuntu 20.04+, Fedora 35+, or equivalent)
+    - 4 GB RAM minimum
+    - 500 MB free disk space
+    - USB port
+
+    ### Distribution-Specific Notes
+
+    <Accordion title="Debian/Ubuntu">
+      Install required dependencies:
+      ```bash
+      sudo apt-get install libusb-1.0-0 libudev-dev
+      ```
+    </Accordion>
+
+    <Accordion title="Arch Linux">
+      ```bash
+      sudo pacman -S libusb
+      ```
+    </Accordion>
+
+    <Accordion title="CentOS/RHEL">
+      ```bash
+      sudo yum install libusb libudev
+      ```
+      
+      <Note>
+        You may need to add the `--no-sandbox` flag when launching:
+        ```bash
+        ./Trezor-Suite-*.AppImage --no-sandbox
+        ```
+      </Note>
+    </Accordion>
+  </Tab>
+</Tabs>
+
+### Desktop Features
+
+<CardGroup cols={2}>
+  <Card title="Offline Mode" icon="wifi-slash">
+    Use Suite without internet connection for enhanced security
+  </Card>
+  <Card title="Tor Integration" icon="shield">
+    Built-in Tor support for maximum privacy
+  </Card>
+  <Card title="Bundled Firmware" icon="microchip">
+    Update device firmware without internet connection
+  </Card>
+  <Card title="Local Data" icon="database">
+    All data stored locally, never on cloud servers
+  </Card>
+</CardGroup>
+
+### App ID and Data Directories
+
+Suite uses different data directories based on the environment:
+
+| Environment | App ID | App Name | Data Directory |
+|-------------|--------|----------|----------------|
+| Production | `com.trezor.suite` | Trezor Suite | `@trezor/suite-desktop` |
+| Development | `com.trezor.suite.dev` | Trezor Suite Dev | `@trezor/suite-desktop-dev` |
+| Local Dev | `com.github.Electron` | Trezor Suite Local | `@trezor/suite-desktop-local` |
+
+<Accordion title="Data Directory Locations">
+  **macOS**: `~/Library/Application Support/[data-directory-name]`
+  
+  **Windows**: `C:\Users\[username]\AppData\Roaming\[data-directory-name]`
+  
+  **Linux**: `/home/[username]/.config/[data-directory-name]`
+</Accordion>
+
+<Info>
+  You can access your data directory from Suite's Debug settings.
+</Info>
+
+---
+
+## Web
+
+Access Trezor Suite directly from your web browser without any installation.
+
+### Access
+
+<Steps>
+  <Step title="Navigate to Suite Web">
+    Open your browser and go to: [suite.trezor.io/web](https://suite.trezor.io/web)
+  </Step>
+
+  <Step title="Check Browser Compatibility">
+    Supported browsers:
+    - Chrome 90+
+    - Firefox 88+
+    - Edge 90+
+    - Brave 1.24+
+    - Safari 14+ (with limitations)
+  </Step>
+
+  <Step title="Connect Your Device">
+    1. Click "Connect Trezor"
+    2. Browser will prompt for USB device access
+    3. Select your Trezor device from the list
+    4. Grant permission
+  </Step>
+
+  <Step title="Start Using Suite">
+    Follow on-screen instructions to access your wallet.
+  </Step>
+</Steps>
+
+### Web vs Desktop Comparison
+
+| Feature | Web | Desktop |
+|---------|-----|--------|
+| Installation | ❌ Not required | ✅ Required |
+| Offline Use | ❌ No | ✅ Yes |
+| Tor Support | ❌ No | ✅ Yes |
+| Firmware Updates | ✅ Yes (online) | ✅ Yes (bundled) |
+| Auto-updates | ✅ Always latest | ✅ Yes |
+| Platform | Any browser | OS-specific |
+
+<Note>
+  Web version requires internet connection and downloads firmware from CDN when needed.
+</Note>
+
+### Technical Differences
+
+The web version uses a different architecture:
+
+- **Connect API**: Uses `@trezor/connect-web` loaded as a regular JavaScript module
+- **Firmware Binaries**: Downloaded from CDN at `[url]/build/static/connect/data/firmware`
+- **Communication**: Uses WebUSB API (browser permission required)
+
+---
+
+## Mobile
+
+Trezor Suite Mobile is a React Native application available for iOS and Android.
+
+<Tabs>
+  <Tab title="iOS">
+    <Steps>
+      <Step title="Download from App Store">
+        Search for "Trezor Suite" in the Apple App Store or use this link:
+        [Download on App Store](https://apps.apple.com/app/trezor-suite)
+      </Step>
+
+      <Step title="Install and Launch">
+        Tap **Get** → **Install** → **Open**
+      </Step>
+
+      <Step title="Grant Permissions">
+        The app will request:
+        - Camera access (for QR code scanning)
+        - Biometric authentication (optional)
+      </Step>
+
+      <Step title="Set Up Your Wallet">
+        - **Portfolio Tracker**: Watch-only mode without device connection
+        - **Connect Device**: Use with Trezor (limited iOS support)
+        
+        <Info>
+          iOS doesn't support USB connections to Trezor. Use portfolio tracking features or connect via emulator in dev mode.
+        </Info>
+      </Step>
+    </Steps>
+
+    ### iOS Requirements
+
+    - iOS 14.0 or later
+    - iPhone, iPad, or iPod touch
+    - 200 MB free space
+  </Tab>
+
+  <Tab title="Android">
+    <Steps>
+      <Step title="Download from Google Play">
+        Search for "Trezor Suite" in the Google Play Store or use this link:
+        [Get it on Google Play](https://play.google.com/store/apps/details?id=io.trezor.suite)
+      </Step>
+
+      <Step title="Install and Launch">
+        Tap **Install** → **Open**
+      </Step>
+
+      <Step title="Grant Permissions">
+        The app will request:
+        - Camera access (for QR codes)
+        - Storage access (for backups/exports)
+        - USB access (for hardware device)
+        - Biometric authentication (optional)
+      </Step>
+
+      <Step title="Connect Your Device">
+        **Via USB**:
+        1. Connect Trezor with USB OTG adapter
+        2. Grant USB permission when prompted
+        3. Unlock your device
+        
+        **Via Bluetooth** (Trezor Safe 3 and later):
+        1. Enable Bluetooth on phone
+        2. Grant Bluetooth permission
+        3. Pair with your Trezor
+      </Step>
+    </Steps>
+
+    ### Android Requirements
+
+    - Android 8.0 (Oreo) or later
+    - 200 MB free space
+    - USB OTG adapter for device connection (optional)
+    - Bluetooth 5.0+ for wireless connection (optional)
+
+    <Tip>
+      **Recommended**: Use ADB over WiFi during development to keep USB port free for Trezor device.
+    </Tip>
+  </Tab>
+</Tabs>
+
+### Mobile Features
+
+<CardGroup cols={2}>
+  <Card title="Portfolio Tracking" icon="chart-line">
+    Watch-only mode for monitoring your assets
+  </Card>
+  <Card title="QR Code Scanner" icon="qrcode">
+    Easy address scanning for transactions
+  </Card>
+  <Card title="Biometric Auth" icon="fingerprint">
+    Secure access with fingerprint or Face ID
+  </Card>
+  <Card title="Notifications" icon="bell">
+    Stay updated on your transactions (coming soon)
+  </Card>
+</CardGroup>
+
+### Mobile Architecture
+
+The mobile app is built with:
+- **React Native 0.81.5**: Cross-platform framework
+- **Expo SDK 54**: Development and build tools
+- **React Navigation 7**: Native navigation
+- **Redux Toolkit**: State management
+- **Jotai**: Atomic state management
+
+<Note>
+  Mobile app version: **26.3.1** (as of latest release)
+</Note>
+
+---
+
+## Verification
+
+### Verify Desktop Installation
+
+After installing Suite Desktop, verify the installation:
+
+<Steps>
+  <Step title="Launch Application">
+    Open Trezor Suite from your applications folder.
+  </Step>
+
+  <Step title="Check Version">
+    1. Open Suite
+    2. Navigate to Settings → About
+    3. Verify the version number matches your download
+  </Step>
+
+  <Step title="Test Device Connection">
+    1. Connect your Trezor device
+    2. Verify Suite detects the device
+    3. Unlock device to confirm communication
+  </Step>
+</Steps>
+
+### Signature Verification (Advanced)
+
+For enhanced security, you can verify the downloaded files:
+
+<Accordion title="Verify macOS App Signature">
+  ```bash
+  codesign -dvv /Applications/Trezor\ Suite.app
+  ```
+  
+  Look for: `Authority=Developer ID Application: SatoshiLabs`
+</Accordion>
+
+<Accordion title="Verify Windows Signature">
+  1. Right-click the installer
+  2. Select **Properties** → **Digital Signatures**
+  3. Verify signer: **SatoshiLabs s.r.o.**
+</Accordion>
+
+---
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Desktop: Application won't launch" icon="desktop">
+    **macOS**: Remove quarantine attribute:
+    ```bash
+    xattr -d com.apple.quarantine /Applications/Trezor\ Suite.app
+    ```
+    
+    **Windows**: Check antivirus settings and add Suite to exceptions
+    
+    **Linux**: Ensure AppImage is executable and run with `--no-sandbox` if needed
+  </Accordion>
+
+  <Accordion title="Web: Device not detected" icon="globe">
+    1. Try a different USB cable
+    2. Check browser permissions (chrome://settings/content/usbDevices)
+    3. Restart browser
+    4. Try different browser (Chrome/Brave recommended)
+  </Accordion>
+
+  <Accordion title="Mobile: USB connection issues" icon="mobile">
+    **Android**:
+    1. Use high-quality USB OTG adapter
+    2. Grant USB permissions when prompted
+    3. Try reconnecting device
+    4. Ensure phone supports USB OTG
+    
+    **iOS**: Direct USB not supported. Use portfolio tracker mode or Desktop Suite as bridge.
+  </Accordion>
+
+  <Accordion title="All platforms: Slow performance" icon="gauge">
+    1. Close unnecessary applications
+    2. Check available RAM (4GB minimum)
+    3. Clear application cache
+    4. Ensure stable internet connection (for Web)
+  </Accordion>
+</AccordionGroup>
+
+<Warning>
+  Always download Trezor Suite from official sources:
+  - Website: [suite.trezor.io](https://suite.trezor.io/)
+  - GitHub: [github.com/trezor/trezor-suite/releases](https://github.com/trezor/trezor-suite/releases)
+  - App Stores: Official Trezor Suite listings only
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quick Start Guide" icon="rocket" href="/quickstart">
+    Learn how to use Trezor Suite
+  </Card>
+  <Card title="Architecture" icon="diagram-project" href="/architecture/monorepo-structure">
+    Understand how Suite is built
+  </Card>
+</CardGroup>

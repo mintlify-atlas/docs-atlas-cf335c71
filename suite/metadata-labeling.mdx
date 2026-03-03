@@ -1,0 +1,481 @@
+---
+title: 'Metadata labeling'
+description: 'Sync labels and metadata across devices using encrypted cloud storage in Trezor Suite'
+keywords: ['metadata', 'labels', 'sync', 'cloud', 'dropbox', 'google drive', 'encryption']
+---
+
+# Metadata labeling
+
+Metadata labeling allows you to add custom labels to your wallets, accounts, addresses, and transaction outputs. These labels can be synchronized across devices using encrypted cloud storage, making it easy to organize and track your cryptocurrency holdings.
+
+<Info>
+In the Trezor Suite interface, this feature is called "Labeling". Technically, it's implemented as an encrypted metadata system.
+</Info>
+
+## What is metadata?
+
+Metadata is persistent data associated with your cryptocurrency wallets and transactions. It includes:
+
+- **Wallet labels**: Custom names for your wallets (including hidden wallets)
+- **Account labels**: Names for individual accounts
+- **Address labels**: Labels for receiving addresses
+- **Output labels**: Labels for transaction outputs (UTXOs)
+
+<Note>
+All metadata is encrypted using AES-256-GCM before being stored in the cloud. Only your Trezor device can decrypt it.
+</Note>
+
+## Storage providers
+
+Suite supports three storage providers for metadata synchronization:
+
+<Tabs>
+  <Tab title="Dropbox">
+    **Platform**: All (Desktop, Web)
+    
+    **Authentication**: OAuth 2.0
+    
+    **Features**:
+    - Permanent login (refresh token)
+    - Automatic sync
+    - Large storage capacity
+    
+    **Best for**: Users who prefer Dropbox ecosystem
+  </Tab>
+  
+  <Tab title="Google Drive">
+    **Platform**: Desktop (permanent), Web (temporary)
+    
+    **Authentication**:
+    - Desktop: Authorization code flow (permanent login)
+    - Web: Implicit flow (1-hour sessions)
+    
+    **Features**:
+    - Desktop: Persistent authentication
+    - Web: Requires re-login every hour
+    - Fallback to implicit flow in desktop if auth backend fails
+    
+    **Best for**: Users with Google accounts, especially on desktop
+  </Tab>
+  
+  <Tab title="Local filesystem">
+    **Platform**: Desktop only
+    
+    **Authentication**: None
+    
+    **Features**:
+    - No cloud dependency
+    - Full privacy
+    - Manual backup required
+    
+    **Best for**: Maximum privacy, offline usage
+  </Tab>
+</Tabs>
+
+<Warning>
+Google Drive on web requires re-authentication every hour due to security restrictions. For permanent login, use Suite Desktop.
+</Warning>
+
+## Setting up metadata
+
+<Steps>
+  <Step title="Enable labeling">
+    Navigate to **Settings → Application** and find the **Labeling** section.
+  </Step>
+  
+  <Step title="Choose provider">
+    Click **Connect** and select your preferred storage provider:
+    - Dropbox
+    - Google Drive
+    - Local filesystem (desktop only)
+  </Step>
+  
+  <Step title="Authorize access">
+    Follow the OAuth flow to grant Suite access to your cloud storage. Suite only creates and accesses its own folder.
+  </Step>
+  
+  <Step title="Generate encryption key">
+    Your Trezor device generates a master encryption key. Confirm the operation on your device.
+    
+    <Info>
+    The encryption key is derived from your device using predefined constants. It's unique to your device and seed.
+    </Info>
+  </Step>
+  
+  <Step title="Start labeling">
+    Once connected, you can add labels throughout Suite. They're automatically encrypted and synced.
+  </Step>
+</Steps>
+
+## Using labels
+
+### Where to add labels
+
+<AccordionGroup>
+  <Accordion title="Wallet labels">
+    **Location**: Wallet selection modal
+    
+    **How to add**:
+    1. Click wallet name in top navigation
+    2. Hover over wallet and click edit icon
+    3. Enter wallet label
+    
+    **Best practices**: Use descriptive names like "Savings", "Trading", "Business"
+  </Accordion>
+  
+  <Accordion title="Account labels">
+    **Location**: Account header
+    
+    **How to add**:
+    1. Navigate to account
+    2. Click edit icon next to account name
+    3. Enter account label
+    
+    **Best practices**: Describe the account purpose like "Emergency Fund", "DCA Account"
+  </Accordion>
+  
+  <Accordion title="Address labels">
+    **Location**: Receive tab
+    
+    **How to add**:
+    1. Go to Receive tab
+    2. Click edit icon next to address
+    3. Enter address label
+    
+    **Best practices**: Note the source like "Coinbase Deposit", "Salary March 2024"
+  </Accordion>
+  
+  <Accordion title="Output labels">
+    **Location**: Send form, transaction history, coin control
+    
+    **How to add**:
+    1. In send form: Label recipient as you send
+    2. In transaction history: Edit outputs after transaction
+    3. In coin control: Label individual UTXOs
+    
+    **Best practices**: Describe the payment purpose like "Rent Payment", "Purchase from Store X"
+  </Accordion>
+</AccordionGroup>
+
+### Label display behavior
+
+In transaction history, Suite intelligently displays labels:
+
+<Steps>
+  <Step title="Check output label">
+    If the output has a label, display it instead of the address.
+  </Step>
+  
+  <Step title="Check address label">
+    If the receiving address has a label, display the address label.
+  </Step>
+  
+  <Step title="Check self-transfer">
+    If the address belongs to the same account, display **"Sent to myself"**.
+  </Step>
+  
+  <Step title="Check other accounts">
+    If the address belongs to another discovered account or wallet, display that account's label and wallet label.
+  </Step>
+  
+  <Step title="Fallback to address">
+    If none of the above, display the plain address.
+  </Step>
+</Steps>
+
+<Tip>
+Hover over a label in transaction history to see the actual address underneath.
+</Tip>
+
+## Data structure
+
+### Current version (1.0.0)
+
+Metadata is stored in encrypted JSON files:
+
+#### Device metadata
+
+```json
+{
+  "version": "1.0.0",
+  "walletLabel": "my hidden wallet label"
+}
+```
+
+#### Account metadata
+
+```json
+{
+  "version": "1.0.0",
+  "accountLabel": "my cool account label",
+  "outputLabels": {
+    "9f472739fa7034dfb9736fa4d98915f2e8ddf70a86ee5e0a9ac0634f8c1d0007": {
+      "0": "transaction 1"
+    }
+  },
+  "addressLabels": {
+    "bc1qannfxke2tfd4l7vhepehpvt05y83v3qsf6nfkk": "my cool address label"
+  }
+}
+```
+
+### Future version (2.0.0)
+
+Planned improvements include timestamps for conflict resolution:
+
+```json
+{
+  "version": "2.0.0",
+  "accountLabel": {
+    "value": "Updated label",
+    "timestamp": 1678901234
+  },
+  "outputLabels": {
+    "txid": {
+      "0": {
+        "value": "Payment to Bob",
+        "timestamp": 1678901234
+      }
+    }
+  }
+}
+```
+
+<Note>
+Version 2.0.0 is not yet implemented but planned for future releases.
+</Note>
+
+## Encryption details
+
+Metadata security is based on strong encryption:
+
+### Encryption algorithm
+
+- **Cipher**: AES-256-GCM
+- **Key derivation**: Device-specific master key
+- **Authentication**: Built-in with GCM mode
+
+### Key generation
+
+```typescript
+// Simplified key generation flow
+const generateMetadataKey = async (device: TrezorDevice) => {
+  // Device generates master key using internal seed
+  const masterKey = await TrezorConnect.cipherKeyValue({
+    device,
+    key: 'Enable labeling?',
+    value: Buffer.from(METADATA_LABELING_KEY).toString('hex'),
+    encrypt: true,
+    askOnEncrypt: true,
+    askOnDecrypt: false,
+  });
+  
+  return masterKey;
+};
+```
+
+### File encryption process
+
+<Steps>
+  <Step title="Generate metadata">
+    Suite creates a JSON object with labels.
+  </Step>
+  
+  <Step title="Encrypt">
+    Data is encrypted using AES-256-GCM with the device-derived key.
+  </Step>
+  
+  <Step title="Upload">
+    Encrypted data is uploaded to the cloud provider.
+  </Step>
+  
+  <Step title="Download & decrypt">
+    On other devices, Suite downloads and your Trezor decrypts the data.
+  </Step>
+</Steps>
+
+<Info>
+Cloud providers cannot read your metadata. Only your Trezor device with the correct seed can decrypt it.
+</Info>
+
+## Redux state structure
+
+Metadata state is managed in Redux:
+
+```typescript
+// Settings state
+interface MetadataState {
+  enabled: boolean;
+  initiating: boolean;
+  provider: {
+    isCloud: boolean;
+    type: 'dropbox' | 'google' | 'fileSystem';
+    tokens: {
+      accessToken?: string;
+      refreshToken?: string;
+    };
+    user: string; // Provider username/email
+  };
+}
+
+// Device metadata
+interface DeviceMetadata {
+  status: 'disabled' | 'enabled' | 'cancelled';
+  key: string;      // Encryption key
+  fileName: string; // Storage file name
+  aesKey: string;   // AES encryption key
+  walletLabel: string;
+}
+
+// Account metadata
+interface AccountMetadata {
+  key: string;      // Account public key (xpub)
+  fileName: string; // Storage file name
+  aesKey: string;   // AES encryption key
+  outputLabels: {
+    [txid: string]: {
+      [outputIndex: number]: string;
+    };
+  };
+  addressLabels: {
+    [address: string]: string;
+  };
+  accountLabel: string;
+}
+```
+
+## Metadata lifecycle
+
+### First-time user
+
+<Steps>
+  <Step title="Initial state">
+    User opens Suite. Metadata is disabled. "Add label" buttons appear on hover.
+  </Step>
+  
+  <Step title="First label attempt">
+    User clicks "Add label" button.
+  </Step>
+  
+  <Step title="Key generation">
+    Device generates metadata master key. Account metadata keys are derived from master key.
+  </Step>
+  
+  <Step title="Provider selection">
+    Modal opens with provider options. User connects to Dropbox, Google Drive, or local filesystem.
+  </Step>
+  
+  <Step title="Sync initialization">
+    Suite fetches existing data (if any) and starts periodic sync.
+  </Step>
+  
+  <Step title="Label activated">
+    The input field becomes editable and the label is saved.
+  </Step>
+</Steps>
+
+### During account discovery
+
+Metadata key generation is integrated with discovery:
+
+- **Standard wallet**: Device metadata key generated before discovery starts
+- **Hidden wallet**: Key generated after first non-empty account is found OR after passphrase confirmation
+
+<Note>
+This optimization prevents unnecessary device confirmations when discovering empty wallets.
+</Note>
+
+## Managing metadata
+
+### Disconnecting provider
+
+To disconnect a cloud provider:
+
+1. Go to **Settings → Application → Labeling**
+2. Click **Disconnect**
+3. This removes metadata values but keeps encryption keys
+4. You can reconnect later without regenerating keys
+
+### Disabling metadata entirely
+
+To completely disable metadata:
+
+1. Go to **Settings → Application → Labeling**
+2. Toggle the switch to **Off**
+3. This:
+   - Removes all metadata from devices and accounts
+   - Removes encryption keys
+   - Disconnects from provider
+
+<Warning>
+Disabling metadata permanently removes all labels from Suite. The encrypted files remain in cloud storage but become inaccessible without regenerating keys.
+</Warning>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Labels not syncing">
+    **Check**:
+    - Provider connection status
+    - Internet connectivity
+    - Storage provider permissions
+    
+    **Solutions**:
+    - Disconnect and reconnect provider
+    - Verify provider authorization hasn't expired
+    - Check Suite logs for sync errors
+  </Accordion>
+  
+  <Accordion title="Lost labels after device wipe">
+    **Cause**: Metadata keys are regenerated after device recovery
+    
+    **Solution**:
+    1. Recover device with same seed
+    2. Reconnect metadata provider
+    3. Labels should restore automatically
+    
+    <Info>
+    As long as you recover with the same seed, metadata keys will be identical.
+    </Info>
+  </Accordion>
+  
+  <Accordion title="Google Drive re-authentication">
+    **Web only**: This is expected behavior due to security restrictions
+    
+    **Solution**:
+    - Use Suite Desktop for permanent login
+    - Or re-authenticate every hour on web
+  </Accordion>
+  
+  <Accordion title="Device name not syncing">
+    Device name is **not** part of metadata. It's stored locally in device settings and doesn't sync across Suite installations.
+  </Accordion>
+</AccordionGroup>
+
+## Best practices
+
+<Check>Use descriptive labels that will make sense months later</Check>
+<Check>Label addresses immediately when generating them</Check>
+<Check>Enable metadata before creating multiple accounts</Check>
+<Check>Regularly check provider connection status</Check>
+<Check>Keep backup of recovery seed to ensure metadata access</Check>
+
+## Related topics
+
+<Columns cols={2}>
+  <Card title="Wallet management" icon="wallet" href="/suite/wallet-management">
+    Managing wallets and wallet labels
+  </Card>
+  
+  <Card title="Transactions" icon="arrow-right-arrow-left" href="/suite/transactions">
+    How labels appear in transaction history
+  </Card>
+  
+  <Card title="Send and receive" icon="paper-plane" href="/suite/send-receive">
+    Labeling addresses while sending and receiving
+  </Card>
+  
+  <Card title="Application settings" icon="gear" href="/suite/application-settings">
+    Configure metadata and other app settings
+  </Card>
+</Columns>

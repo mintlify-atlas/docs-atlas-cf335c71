@@ -1,0 +1,483 @@
+---
+title: 'Security'
+description: 'Security features and best practices for using Trezor Suite safely'
+keywords: ['security', 'best practices', 'PIN', 'passphrase', 'phishing', 'malware protection']
+---
+
+# Security
+
+Trezor Suite is designed with security as the top priority. This guide covers the security features built into Suite and best practices for keeping your cryptocurrency safe.
+
+## Core security principles
+
+Trezor's security model is based on several fundamental principles:
+
+### Hardware isolation
+
+Your private keys never leave the Trezor device:
+
+- Keys are generated on the device
+- All signing happens on the device
+- Suite only receives signed transactions
+- No software can extract your private keys
+
+<Info>
+Even if your computer is compromised by malware, your funds remain safe as long as you verify transaction details on your Trezor device screen.
+</Info>
+
+### Device verification
+
+All critical information must be verified on the device screen:
+
+<Check>Receiving addresses</Check>
+<Check>Transaction amounts and recipients</Check>
+<Check>Firmware fingerprints</Check>
+<Check>Passphrase entry (when using device entry)</Check>
+
+<Warning>
+Never trust information shown only in Suite. Always verify on your device screen.
+</Warning>
+
+### Open source transparency
+
+Both Trezor firmware and Suite are open source:
+
+- Code is publicly auditable
+- Security researchers can review
+- Community can verify there are no backdoors
+- Regular security audits are performed
+
+## PIN protection
+
+Your PIN is the first line of defense against unauthorized device access.
+
+### Setting a strong PIN
+
+<Steps>
+  <Step title="Length matters">
+    Use at least 6 digits. Longer PINs are more secure.
+    
+    - Minimum: 4 digits (not recommended)
+    - Recommended: 6-9 digits
+    - Maximum: 50 digits (firmware 1.10.0+)
+  </Step>
+  
+  <Step title="Avoid obvious patterns">
+    Don't use:
+    - Sequential numbers (123456)
+    - Repeated digits (111111)
+    - Birth dates
+    - Common PINs (1234, 0000)
+  </Step>
+  
+  <Step title="Randomize PIN layout">
+    The PIN keypad layout randomizes with each entry, preventing keyloggers from capturing your PIN.
+  </Step>
+</Steps>
+
+### PIN entry system
+
+Suite displays a numbered grid (1-9) that corresponds to the positions on your device:
+
+```plaintext
+Suite displays:        Device shows:
+[7] [8] [9]           [•] [•] [•]
+[4] [5] [6]           [•] [•] [•]
+[1] [2] [3]           [•] [•] [•]
+```
+
+Look at your device to see which numbers are where, then click the corresponding positions in Suite.
+
+<Tip>
+The randomized layout means even someone watching your screen can't determine your actual PIN.
+</Tip>
+
+### PIN attempts and wipe
+
+To prevent brute-force attacks:
+
+- Each failed PIN attempt increases delay
+- After 16 failed attempts, the device wipes itself
+- Delay doubles after each failure (exponential backoff)
+
+```typescript
+// PIN attempt delays
+const attemptDelays = {
+  1: '0 seconds',
+  2: '2 seconds',
+  3: '4 seconds',
+  4: '8 seconds',
+  10: '8.5 minutes',
+  15: '4.3 hours',
+  16: 'Device wipes'
+};
+```
+
+<Warning>
+After 16 failed PIN attempts, your device wipes all data. You'll need your recovery seed to restore access to your funds.
+</Warning>
+
+## Passphrase protection
+
+Passphrases add an extra security layer beyond your recovery seed.
+
+### How passphrases work
+
+A passphrase modifies your recovery seed to create an entirely different wallet:
+
+```plaintext
+Recovery seed + "" (empty)        → Standard wallet
+Recovery seed + "MyPassphrase"    → Hidden wallet 1
+Recovery seed + "AnotherOne"      → Hidden wallet 2
+```
+
+Each unique passphrase creates a separate wallet with different:
+- Addresses
+- Private keys
+- Transaction history
+- Balances
+
+### Plausible deniability
+
+Passphrases enable plausible deniability:
+
+1. Keep small amounts in your standard wallet
+2. Store larger amounts in passphrase-protected hidden wallets
+3. If coerced, reveal only your standard wallet
+
+<Info>
+There's no way to prove a passphrase-protected wallet exists. Any passphrase is valid and creates a wallet, even if it's empty.
+</Info>
+
+### Passphrase best practices
+
+<AccordionGroup>
+  <Accordion title="Use strong passphrases">
+    - Long phrases are better than short passwords
+    - Mix words, numbers, and symbols
+    - Make it memorable but not guessable
+    - Example: "My grandmother's garden has 47 roses!"
+  </Accordion>
+  
+  <Accordion title="Store passphrases securely">
+    - Write down offline
+    - Store separately from recovery seed
+    - Never store digitally
+    - Consider using a password manager for reference
+  </Accordion>
+  
+  <Accordion title="Entry methods">
+    - **On device** (most secure): Enter on Trezor screen
+    - **In Suite** (convenient): Type in Suite interface
+    
+    Device entry is recommended for maximum security.
+  </Accordion>
+  
+  <Accordion title="Test before funding">
+    - Create passphrase wallet
+    - Write down passphrase
+    - Eject and reconnect
+    - Access wallet with passphrase multiple times
+    - Only then transfer significant funds
+  </Accordion>
+</AccordionGroup>
+
+<Warning>
+Passphrases cannot be recovered if forgotten. There is no "forgot passphrase" option. Your funds will be permanently inaccessible.
+</Warning>
+
+## Wipe code
+
+A wipe code provides an emergency self-destruct mechanism.
+
+### What is a wipe code?
+
+A wipe code looks like a PIN but wipes the device when entered:
+
+- Acts as a PIN alternative
+- Immediately wipes device when used
+- Appears as failed PIN attempt to attacker
+- Requires recovery seed to restore funds
+
+### When to use
+
+Use a wipe code for scenarios like:
+
+- Threat of physical coercion
+- Device seizure by authorities
+- Emergency situations requiring quick data destruction
+
+<Warning>
+Entering the wipe code immediately erases all device data. Ensure you have your recovery seed backed up before setting a wipe code.
+</Warning>
+
+## Device security features
+
+### Anti-tampering measures
+
+<Tabs>
+  <Tab title="Firmware verification">
+    - All firmware is cryptographically signed
+    - Multiple signatures required
+    - Bootloader verifies signatures before installation
+    - Warning shown for unofficial firmware
+  </Tab>
+  
+  <Tab title="Secure element (Safe 3)">
+    - Dedicated security chip
+    - PIN attempt counter cannot be reset
+    - Protection against physical attacks
+    - Secure key storage
+  </Tab>
+  
+  <Tab title="Bootloader protection">
+    - Locked bootloader prevents unauthorized firmware
+    - Unlocking bootloader wipes device
+    - Cannot be bypassed
+  </Tab>
+</Tabs>
+
+### Device authenticity check
+
+Verify your device is genuine:
+
+<Steps>
+  <Step title="Check packaging">
+    - Holographic seals intact
+    - Official Trezor packaging
+    - No signs of tampering
+  </Step>
+  
+  <Step title="Verify in Suite">
+    Navigate to **Settings → Device → Check device authenticity**
+  </Step>
+  
+  <Step title="Follow verification">
+    Suite guides you through device verification using cryptographic challenge-response.
+  </Step>
+</Steps>
+
+<Info>
+Authenticity checks verify your device was manufactured by Trezor and hasn't been tampered with.
+</Info>
+
+## Suite security features
+
+### Discreet mode
+
+Hide sensitive information in Suite:
+
+1. Enable via settings or top-right icon
+2. Balances shown as **••••**
+3. Transaction amounts hidden
+4. Protects privacy when sharing screen
+
+### Tor integration
+
+Use Tor to hide your IP address:
+
+1. Go to **Settings → Application → Tor**
+2. Enable Tor routing
+3. All Suite communication routes through Tor network
+4. Prevents IP-based tracking
+
+<Note>
+Tor is currently available in Suite Desktop only.
+</Note>
+
+### Backend privacy
+
+Suite connects to blockchain backends to fetch data:
+
+- **Default**: Trezor-operated backends
+- **Custom**: Use your own blockchain node
+- **Tor**: Route through Tor for IP privacy
+
+<Tip>
+For maximum privacy, run your own Bitcoin node and configure Suite to use it.
+</Tip>
+
+## Protecting against attacks
+
+### Phishing protection
+
+Phishing is the most common attack vector:
+
+<Check>Only download Suite from trezor.io</Check>
+<Check>Verify HTTPS and certificate before entering sensitive info</Check>
+<Check>Bookmark official Trezor sites</Check>
+<Check>Never enter recovery seed into any website or software</Check>
+<Check>Ignore unsolicited support messages (Trezor never initiates contact)</Check>
+
+<Warning>
+**Never** enter your recovery seed anywhere except your Trezor device during recovery. No legitimate service will ever ask for your seed.
+</Warning>
+
+### Malware protection
+
+Even with malware, Trezor keeps funds safe:
+
+- **Address verification**: Always check addresses on device
+- **Amount verification**: Confirm amounts on device screen
+- **Transaction details**: Review all outputs on device
+
+<AccordionGroup>
+  <Accordion title="Clipboard malware">
+    **Attack**: Malware replaces copied addresses
+    
+    **Protection**: Always verify addresses on device screen before sending
+  </Accordion>
+  
+  <Accordion title="Fake Suite">
+    **Attack**: Malicious Suite clone steals data
+    
+    **Protection**: Download only from trezor.io, verify signatures
+  </Accordion>
+  
+  <Accordion title="Screen capture">
+    **Attack**: Malware screenshots recovery seed
+    
+    **Protection**: Never display seed on computer, use device entry for passphrases
+  </Accordion>
+</AccordionGroup>
+
+### Physical security
+
+<Check>Store device in secure location</Check>
+<Check>Don't leave device connected when not in use</Check>
+<Check>Use device entry for passphrases when possible</Check>
+<Check>Consider using SD card protection (Model T/Safe 3)</Check>
+<Check>Store recovery seed separately from device</Check>
+
+## Recovery seed security
+
+Your recovery seed is the master key to your funds.
+
+### Protecting your seed
+
+<Steps>
+  <Step title="Write it down">
+    - Use the provided recovery seed card
+    - Write clearly and legibly
+    - Double-check each word
+    - Never photograph or store digitally
+  </Step>
+  
+  <Step title="Verify backup">
+    - Use device's backup check feature
+    - Verify you wrote down correct words
+    - Test recovery on a secondary device if possible
+  </Step>
+  
+  <Step title="Secure storage">
+    - Fireproof/waterproof container
+    - Safe deposit box
+    - Multiple geographically separated locations
+    - Consider metal backup (fireproof)
+  </Step>
+  
+  <Step title="Split security">
+    - Store seed separately from device
+    - Store seed separately from passphrase
+    - Don't keep all in one location
+  </Step>
+</Steps>
+
+<Warning>
+Anyone with access to your recovery seed (and passphrase, if used) can steal your funds. Protect it as carefully as cash.
+</Warning>
+
+### Advanced: Shamir Backup
+
+Shamir Backup splits your seed into multiple shares:
+
+- Create 2-16 shares
+- Set threshold (e.g., 3 of 5 shares needed)
+- More flexible than single seed
+- Only available during setup
+
+<Note>
+Shamir Backup is only available on Trezor Model T and Safe 3.
+</Note>
+
+## Security checklist
+
+### Essential security practices
+
+<Check>Set a strong PIN (6+ digits)</Check>
+<Check>Create secure backup of recovery seed</Check>
+<Check>Enable passphrase for significant holdings</Check>
+<Check>Verify all addresses on device screen</Check>
+<Check>Keep firmware updated</Check>
+<Check>Only use official Suite from trezor.io</Check>
+<Check>Never share recovery seed or passphrases</Check>
+<Check>Use Discreet mode when needed</Check>
+<Check>Store recovery seed securely offline</Check>
+<Check>Test recovery before funding device</Check>
+
+### Advanced security measures
+
+<Check>Use Tor for IP privacy</Check>
+<Check>Run your own blockchain node</Check>
+<Check>Use CoinJoin for transaction privacy</Check>
+<Check>Enable SD card protection (T/Safe 3)</Check>
+<Check>Set up wipe code</Check>
+<Check>Use multiple devices for different purposes</Check>
+<Check>Implement Shamir Backup</Check>
+<Check>Regularly verify device authenticity</Check>
+
+## Incident response
+
+### If device is lost or stolen
+
+<Steps>
+  <Step title="Don't panic">
+    Your funds are safe if you have:
+    - Recovery seed
+    - Passphrase (if used)
+    - Strong PIN on device
+  </Step>
+  
+  <Step title="Secure new device">
+    - Purchase new Trezor
+    - Recover using your seed
+    - Create new PIN
+  </Step>
+  
+  <Step title="Move funds">
+    - Generate new accounts
+    - Transfer funds to new addresses
+    - Old device addresses are compromised
+  </Step>
+</Steps>
+
+### If you suspect compromise
+
+1. **Stop using the device immediately**
+2. **Transfer funds** to a new wallet with new seed
+3. **Investigate** the potential compromise
+4. **Update security practices** based on findings
+
+<Warning>
+If you suspect your recovery seed is compromised, transfer funds to a new wallet with a new seed immediately.
+</Warning>
+
+## Related topics
+
+<Columns cols={2}>
+  <Card title="Backup and recovery" icon="shield" href="/suite/backup-recovery">
+    Creating and verifying device backups
+  </Card>
+  
+  <Card title="Device settings" icon="gear" href="/suite/device-settings">
+    Configure PIN, passphrase, and security features
+  </Card>
+  
+  <Card title="Wallet management" icon="wallet" href="/suite/wallet-management">
+    Managing standard and hidden wallets
+  </Card>
+  
+  <Card title="CoinJoin privacy" icon="user-secret" href="/suite/coinjoin-privacy">
+    Enhanced transaction privacy
+  </Card>
+</Columns>

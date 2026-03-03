@@ -1,0 +1,421 @@
+---
+title: 'Releases'
+description: 'Release process and versioning for Trezor Suite and Connect'
+---
+
+## Overview
+
+The Trezor Suite monorepo contains multiple projects with different versioning schemes and release schedules:
+
+- **Connect**: Public packages following SemVer
+- **Suite App**: Calendar versioning (CalVer)
+- **Private Packages**: Fixed at version 1.0.0
+
+## Versioning
+
+### Private Packages
+
+Packages with `private: true` in their `package.json` that are not published to NPM:
+
+<Info>
+  Private packages are consumed by other packages in the monorepo via Yarn's workspace resolution or distributed as bundled applications.
+</Info>
+
+**Examples**:
+- `@trezor/suite-data`
+- `@trezor/suite`
+- `@trezor/suite-desktop`
+
+**Version**: Fixed at `1.0.0` (not incremented)
+
+### Public Packages
+
+Packages published to NPM and consumed by third parties:
+
+**Versioning Scheme**: [Semantic Versioning (SemVer)](https://semver.org/)
+
+**Format**: `MAJOR.MINOR.PATCH`
+- **MAJOR**: Breaking changes
+- **MINOR**: New features (backward compatible)
+- **PATCH**: Bug fixes (backward compatible)
+
+**Examples**:
+- `@trezor/connect`: 10.0.0-alpha.1
+- `@trezor/connect-web`: 10.0.0-alpha.1
+- `blockchain-link`: SemVer on irregular schedule
+
+**Release Schedule**: Irregular, based on feature development
+
+### Suite App
+
+The Suite application itself uses calendar versioning:
+
+**Versioning Scheme**: [Calendar Versioning (CalVer)](https://calver.org/)
+
+**Format**: `YY.MM.PATCH`
+- **YY**: Current year (e.g., 20 for 2020)
+- **MINOR**: Current month (01-12)
+- **PATCH**: Release number in that month (starts at 1)
+
+**Examples**:
+- `20.10.1`: First release in October 2020
+- `20.10.3`: Third release in October 2020
+- `19.12.1`: First release in December 2019
+
+<AccordionGroup>
+  <Accordion title="Beta Versions" icon="flask">
+    Beta versions use a similar format with special rules:
+    
+    **Format**: `YY.MM.0`
+    - **PATCH** is always 0 for beta
+    - **MM** is incremented (+1) compared to stable
+    
+    **Example Timeline**:
+    ```
+    20.10.1  → Oct 15: First stable release
+    20.10.2  → Oct 22: Second stable release
+    20.11.0  → Oct 29: Beta for November
+    20.11.0  → Nov 5:  Another beta deployment
+    20.11.1  → Nov 14: November stable release
+    ```
+    
+    **Note**: Beta testers should report the commit hash, as the version number doesn't distinguish between beta deployments.
+  </Accordion>
+
+  <Accordion title="Development Versions" icon="code">
+    Development versions follow the beta scheme:
+    
+    **Format**: `YY.MM.0`
+    - `develop` branch always has `YY.MM.0` for upcoming month
+    - When forking to `release/20YY-MM`, bump to `YY.MM.1`
+    - Increment `develop` to `YY.(MM+1).0` for next release
+    
+    **Example**:
+    ```
+    develop branch:        20.11.0
+    ↓ fork release branch
+    release/2020-11:       20.11.1
+    develop branch:        20.12.0 (next month)
+    ```
+  </Accordion>
+</AccordionGroup>
+
+**Version Location**: Tracked in `suiteVersion` field of suite `package.json`
+
+**Purpose**: Communicate evolution of Suite app between product, marketing, support teams and users
+
+## Environments
+
+### Staging
+
+**URL**: staging-suite.trezor.io
+
+**Access**: SatoshiLabs internal IP range only (office + VPN)
+
+**Purpose**: 
+- Pre-release testing
+- QA validation
+- Should be 1:1 with production
+
+**Deployment**: Before public releases
+
+### Production
+
+**URL**: [suite.trezor.io](https://suite.trezor.io)
+
+**Access**: Public
+
+| Route | Source | AssetPrefix |
+|-------|--------|-------------|
+| /web | @trezor/suite-web | /web |
+
+**Deployment**: 
+- Stable releases only
+- After successful staging testing
+- Monitored deployment process
+
+### Connect Deployment
+
+**URL**: [connect.trezor.io](https://connect.trezor.io)
+
+**Versions**:
+- Canary: Latest development builds
+- Stable: Versioned releases
+- Persistent link: [connect.trezor.io/10](https://connect.trezor.io/10/) for latest v10
+
+## Release Process
+
+### Suite Release Workflow
+
+<Steps>
+  <Step title="Development">
+    Features are developed and merged to `develop` branch:
+    
+    ```bash
+    git checkout develop
+    git pull origin develop
+    git checkout -b feature/new-feature
+    # Develop feature
+    git commit -m "feat: add new feature"
+    # Create pull request to develop
+    ```
+  </Step>
+
+  <Step title="Create Release Branch">
+    Fork `develop` to create release branch:
+    
+    ```bash
+    git checkout develop
+    git pull origin develop
+    git checkout -b release/2024-03
+    
+    # Bump version in package.json
+    # YY.MM.0 → YY.MM.1
+    
+    git commit -m "chore: bump version to 24.03.1"
+    git push origin release/2024-03
+    ```
+  </Step>
+
+  <Step title="Deploy to Staging">
+    Deploy release branch to staging environment:
+    
+    - QA team tests on staging-suite.trezor.io
+    - Bug fixes committed to release branch
+    - Critical fixes cherry-picked to develop
+  </Step>
+
+  <Step title="Production Deployment">
+    After QA approval:
+    
+    ```bash
+    # Tag the release
+    git tag v24.03.1
+    git push origin v24.03.1
+    
+    # Deploy to production
+    # (Automated via CI/CD)
+    ```
+  </Step>
+
+  <Step title="Post-Release">
+    Merge release branch back and prepare next release:
+    
+    ```bash
+    # Merge to main/master
+    git checkout main
+    git merge release/2024-03
+    
+    # Update develop for next version
+    git checkout develop
+    # Bump to next month: 24.04.0
+    git commit -m "chore: bump version to 24.04.0"
+    ```
+  </Step>
+</Steps>
+
+### Desktop App Releases
+
+<Accordion title="Desktop Update Process" icon="desktop">
+  Desktop applications require additional steps:
+  
+  **Platform Builds**:
+  - Windows: .exe installer
+  - macOS: .dmg installer
+  - Linux: .AppImage
+  
+  **Code Signing**:
+  - Windows: Sign binaries (see signing-binaries-win.md)
+  - macOS: Apple Developer signing
+  - Linux: GPG signatures
+  
+  **Auto-Updates**:
+  - Built-in update mechanism
+  - Download and verify updates
+  - User-initiated installation
+  
+  See [Desktop Updates](/resources/releases#desktop-updates) for details.
+</Accordion>
+
+<Accordion title="Firmware Bundling" icon="microchip">
+  New firmware versions must be bundled:
+  
+  **Process**:
+  1. Firmware released in trezor-firmware repo
+  2. Update firmware submodule in Suite
+  3. Bundle firmware binaries
+  4. Test with Suite
+  5. Release Suite update
+  
+  See [Bundling New Firmwares](/resources/releases#bundling-firmwares) for details.
+</Accordion>
+
+### Connect Release Workflow
+
+<Steps>
+  <Step title="Version Bump">
+    Update version following SemVer:
+    
+    ```bash
+    cd packages/connect
+    # For major version:
+    npm version major
+    # For minor version:
+    npm version minor
+    # For patch version:
+    npm version patch
+    ```
+  </Step>
+
+  <Step title="Update Changelog">
+    Document changes in CHANGELOG.md:
+    
+    ```markdown
+    # 10.0.0
+    
+    Features:
+    - Add Tron support
+    
+    Breaking Changes:
+    - Remove EOS support
+    - Remove NEM support
+    ```
+  </Step>
+
+  <Step title="Build and Test">
+    Build all Connect packages:
+    
+    ```bash
+    yarn workspace @trezor/connect build
+    yarn workspace @trezor/connect-web build
+    yarn workspace @trezor/connect-webextension build
+    yarn workspace @trezor/connect-mobile build
+    
+    # Run tests
+    yarn workspace @trezor/connect test
+    ```
+  </Step>
+
+  <Step title="Publish to NPM">
+    Publish packages to NPM:
+    
+    ```bash
+    # Publish main package
+    cd packages/connect
+    npm publish
+    
+    # Publish platform-specific packages
+    cd packages/connect-web
+    npm publish
+    # ... repeat for other packages
+    ```
+  </Step>
+
+  <Step title="Deploy Explorer">
+    Deploy to Connect Explorer:
+    
+    - Build Explorer app
+    - Deploy to connect.trezor.io
+    - Update version links
+  </Step>
+
+  <Step title="Announce Release">
+    Communicate the release:
+    
+    - GitHub release notes
+    - NPM release
+    - Update documentation
+    - Blog post for major versions
+  </Step>
+</Steps>
+
+## Release Checklist
+
+<Tabs>
+  <Tab title="Suite Release">
+    - [ ] All features merged to develop
+    - [ ] Create release branch
+    - [ ] Bump version (CalVer format)
+    - [ ] Deploy to staging
+    - [ ] QA testing completed
+    - [ ] All critical bugs fixed
+    - [ ] Deploy to production
+    - [ ] Create git tag
+    - [ ] Update documentation
+    - [ ] Merge back to main/develop
+    - [ ] Bump develop to next version
+  </Tab>
+  
+  <Tab title="Connect Release">
+    - [ ] Bump version (SemVer)
+    - [ ] Update CHANGELOG.md
+    - [ ] Build all packages
+    - [ ] Run all tests
+    - [ ] Update documentation
+    - [ ] Publish to NPM
+    - [ ] Deploy Explorer
+    - [ ] Create GitHub release
+    - [ ] Update migration guides
+    - [ ] Announce release
+  </Tab>
+  
+  <Tab title="Desktop Release">
+    - [ ] Suite release completed
+    - [ ] Build platform binaries
+    - [ ] Sign Windows binaries
+    - [ ] Sign macOS app
+    - [ ] Create GPG signatures (Linux)
+    - [ ] Test installers
+    - [ ] Upload to distribution
+    - [ ] Test auto-update
+    - [ ] Announce on website
+  </Tab>
+</Tabs>
+
+## Version Support
+
+<Info>
+  **Current Support Policy**:
+  - Latest major version: Full support
+  - Previous major version: Security fixes only
+  - Older versions: No support
+</Info>
+
+### Connect Support
+
+- **Connect 10.x**: Active development (current)
+- **Connect 9.x**: Maintenance mode (security fixes)
+- **Connect 8.x and older**: Not supported
+
+### Suite Support
+
+- **Latest release**: Full support
+- **Previous 2 releases**: Bug fixes
+- **Older releases**: Upgrade recommended
+
+## Additional Resources
+
+<CardGroup cols={2}>
+  <Card title="Changelog" icon="clock-rotate-left" href="/resources/changelog">
+    See detailed version history
+  </Card>
+  
+  <Card title="Migration Guide" icon="arrow-right" href="/resources/migration-guide">
+    Upgrade between versions
+  </Card>
+  
+  <Card title="GitHub Releases" icon="github" href="https://github.com/trezor/trezor-suite/releases">
+    View all releases
+  </Card>
+  
+  <Card title="NPM Packages" icon="npm" href="https://www.npmjs.com/package/@trezor/connect">
+    Published packages
+  </Card>
+</CardGroup>
+
+<Note>
+  For internal release process details, see:
+  - [Bundling New Firmwares](https://github.com/trezor/trezor-suite/blob/develop/docs/releases/bundling-new-firmwares.md)
+  - [Desktop Updates](https://github.com/trezor/trezor-suite/blob/develop/docs/releases/desktop_updates.md)
+  - [Signing Binaries (Windows)](https://github.com/trezor/trezor-suite/blob/develop/docs/releases/signing-binaries-win.md)
+</Note>

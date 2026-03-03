@@ -1,0 +1,510 @@
+---
+title: Device Authenticity Verification
+description: Cryptographic verification of Trezor device authenticity and integrity
+---
+
+# Device Authenticity Verification
+
+Trezor Suite includes built-in device authenticity verification to ensure users have genuine Trezor hardware and detect potential tampering.
+
+## Overview
+
+Device authenticity checks protect against:
+
+<CardGroup cols={2}>
+  <Card title="Counterfeit Devices" icon="ban">
+    Detect fake Trezor devices
+  </Card>
+  <Card title="Supply Chain Attacks" icon="truck">
+    Identify tampered devices
+  </Card>
+  <Card title="Firmware Modifications" icon="file-code">
+    Verify official firmware
+  </Card>
+  <Card title="Bootloader Integrity" icon="microchip">
+    Confirm authentic bootloader
+  </Card>
+</CardGroup>
+
+## Verification Methods
+
+Multiple layers of authenticity verification:
+
+### 1. Bootloader Verification
+
+Checks bootloader authenticity:
+
+```typescript
+interface BootloaderCheck {
+  // Official bootloader hash
+  expectedHash: string;
+  
+  // Device-reported hash
+  actualHash: string;
+  
+  // Verification result
+  valid: boolean;
+  
+  // Bootloader version
+  version: string;
+}
+```
+
+<Info>
+Bootloader is locked during manufacturing and cannot be modified without bricking the device.
+</Info>
+
+### 2. Firmware Signature
+
+Verifies firmware is officially signed:
+
+<Steps>
+  <Step title="Read Firmware">
+    Extract firmware from device
+  </Step>
+  <Step title="Check Signatures">
+    Verify cryptographic signatures
+  </Step>
+  <Step title="Validate Keys">
+    Confirm signatures from official Trezor keys
+  </Step>
+  <Step title="Report Result">
+    Display verification status to user
+  </Step>
+</Steps>
+
+### 3. Device Certificate
+
+T2T1 and newer models include device certificate:
+
+```typescript
+interface DeviceCertificate {
+  // Unique device identifier
+  deviceId: string;
+  
+  // Certificate signed by Trezor
+  signature: Buffer;
+  
+  // Public key for verification
+  publicKey: Buffer;
+  
+  // Certificate validity
+  valid: boolean;
+  
+  // Issue date
+  issuedAt: Date;
+}
+```
+
+### 4. Secure Element (T2B1, T3)
+
+Newest models with secure element:
+
+- **Attestation**: Cryptographic proof from secure chip
+- **Unique keys**: Each device has unique attestation key
+- **Certificate chain**: Verifiable back to manufacturer root
+- **Tamper detection**: Secure element detects physical attacks
+
+## Verification Flow
+
+### Automatic Checks
+
+Suite automatically verifies on device connection:
+
+<CodeGroup>
+```typescript Verification Process
+// Triggered on device connection
+const verifyDevice = async (device: Device) => {
+  const results = {
+    bootloader: await verifyBootloader(device),
+    firmware: await verifyFirmware(device),
+    certificate: await verifyCertificate(device),
+    secureElement: await verifySecureElement(device),
+  };
+  
+  // Overall authenticity assessment
+  const isAuthentic = 
+    results.bootloader.valid &&
+    results.firmware.valid &&
+    (results.certificate?.valid ?? true) &&
+    (results.secureElement?.valid ?? true);
+  
+  return {
+    authentic: isAuthentic,
+    details: results,
+    timestamp: Date.now(),
+  };
+};
+```
+</CodeGroup>
+
+### Manual Verification
+
+Users can manually trigger verification:
+
+1. Go to Device Settings
+2. Click "Check device authenticity"
+3. Wait for verification process
+4. Review detailed results
+
+## Verification Results
+
+### Status Indicators
+
+<Tabs>
+  <Tab title="Authentic">
+    ✅ **Device is authentic**
+    - All checks passed
+    - Official Trezor device
+    - No signs of tampering
+    - Safe to use
+  </Tab>
+  <Tab title="Warning">
+    ⚠️ **Verification inconclusive**
+    - Some checks failed
+    - Could be counterfeit
+    - Possible tampering
+    - Contact Trezor support
+  </Tab>
+  <Tab title="Failed">
+    ❌ **Device not authentic**
+    - Multiple checks failed
+    - Likely counterfeit
+    - Do NOT use
+    - Contact Trezor immediately
+  </Tab>
+</Tabs>
+
+### Detailed Report
+
+Comprehensive verification report:
+
+```typescript
+interface AuthenticityReport {
+  // Overall result
+  status: 'authentic' | 'warning' | 'failed';
+  
+  // Individual check results
+  checks: {
+    bootloader: CheckResult;
+    firmware: CheckResult;
+    certificate?: CheckResult;
+    secureElement?: CheckResult;
+  };
+  
+  // Device information
+  device: {
+    model: string;
+    firmwareVersion: string;
+    bootloaderVersion: string;
+    serialNumber?: string;
+  };
+  
+  // Verification metadata
+  timestamp: number;
+  suiteVersion: string;
+}
+
+interface CheckResult {
+  name: string;
+  status: 'pass' | 'fail' | 'unknown';
+  message: string;
+  details?: any;
+}
+```
+
+## Physical Security Checks
+
+Before connecting device:
+
+<AccordionGroup>
+  <Accordion title="Hologram Seal">
+    - Check holographic sticker on packaging
+    - Should be intact and not tampered
+    - Unique holographic pattern
+    - Difficult to replicate
+  </Accordion>
+  
+  <Accordion title="Packaging Integrity">
+    - Original sealed packaging
+    - No signs of opening/resealing
+    - Official Trezor branding
+    - Include authentic documentation
+  </Accordion>
+  
+  <Accordion title="Device Appearance">
+    - Compare with official photos
+    - Check build quality
+    - Verify button/screen placement
+    - Inspect for unusual modifications
+  </Accordion>
+  
+  <Accordion title="Purchase Source">
+    - Buy from official Trezor Shop or authorized resellers
+    - Avoid third-party marketplaces
+    - Never buy pre-owned devices
+    - Verify reseller authorization
+  </Accordion>
+</AccordionGroup>
+
+## Bootloader Mode Verification
+
+Bootloader mode shows authenticity info:
+
+### T2T1 Bootloader Screen
+
+```
+┌────────────────┐
+│ TREZOR        │
+│                │
+│ Bootloader     │
+│ 2.1.0          │
+│                │
+│ Vendor: trezor │
+│ VendorHash OK  │
+│ FirmwareHash OK│
+└────────────────┘
+```
+
+- **VendorHash OK**: Bootloader verifies firmware vendor
+- **FirmwareHash OK**: Bootloader verifies firmware integrity
+
+### Warning Screen
+
+If verification fails, bootloader shows warning:
+
+<Warning>
+```
+⚠️ UNOFFICIAL FIRMWARE
+
+This firmware is not from Trezor.
+Installing unofficial firmware could
+compromise your device security.
+
+Proceed with caution.
+```
+</Warning>
+
+## Firmware Installation Security
+
+### Official Firmware Only
+
+Suite only installs official firmware:
+
+```typescript
+const validateFirmware = async (firmware: Buffer) => {
+  // Check firmware signatures
+  const signatures = extractSignatures(firmware);
+  
+  // Verify against official public keys
+  const validSignatures = signatures.filter(sig => 
+    OFFICIAL_KEYS.some(key => verifySignature(firmware, sig, key))
+  );
+  
+  // Require minimum valid signatures (m-of-n)
+  const REQUIRED_SIGNATURES = 2;
+  
+  if (validSignatures.length < REQUIRED_SIGNATURES) {
+    throw new Error('Firmware not officially signed');
+  }
+  
+  return true;
+};
+```
+
+### Signature Scheme
+
+Multi-signature verification:
+
+- **M-of-N signatures**: Require multiple valid signatures
+- **Different keys**: Held by different Trezor developers
+- **Threshold**: Typically 2-of-3 or 3-of-5
+- **Revocation**: Compromised keys can be revoked
+
+## Implementation Details
+
+### Device Authenticity Package
+
+```typescript
+// Shared package for device verification
+import { verifyDevice } from '@trezor/device-authenticity';
+
+const result = await verifyDevice({
+  device,
+  timestamp: Date.now(),
+  checkAll: true,
+});
+
+if (!result.authentic) {
+  showAuthenticityWarning(result);
+}
+```
+
+### Suite Common Integration
+
+```typescript
+// Location: suite-common/device-authenticity/
+
+export interface DeviceAuthenticityCheck {
+  performCheck(device: Device): Promise<AuthenticityResult>;
+  verifyBootloader(device: Device): Promise<BootloaderResult>;
+  verifyFirmware(device: Device): Promise<FirmwareResult>;
+  verifyCertificate(device: Device): Promise<CertificateResult>;
+}
+```
+
+## Warning UI
+
+When verification fails, Suite displays prominent warning:
+
+### Warning Modal
+
+```jsx
+<AuthenticityWarning
+  severity="high"
+  title="Device Authenticity Could Not Be Verified"
+  message="This device may not be a genuine Trezor. Using counterfeit devices could result in loss of funds."
+  actions={[
+    {
+      label: 'Contact Support',
+      onClick: openSupport,
+      variant: 'primary',
+    },
+    {
+      label: 'See Details',
+      onClick: showDetails,
+      variant: 'secondary',
+    },
+    {
+      label: 'Continue Anyway',
+      onClick: continueWithWarning,
+      variant: 'tertiary',
+      warning: true,
+    },
+  ]}
+/>
+```
+
+### Banner Warning
+
+Persistent warning if user continues:
+
+```jsx
+<Banner
+  variant="critical"
+  dismissible={false}
+>
+  <Translation id="TR_DEVICE_NOT_AUTHENTIC" />
+  <Link to="/device/authenticity">
+    <Translation id="TR_LEARN_MORE" />
+  </Link>
+</Banner>
+```
+
+## Support Integration
+
+Help users with failed verification:
+
+### Contact Support
+
+Direct support access:
+
+```typescript
+const contactSupport = (report: AuthenticityReport) => {
+  const supportData = {
+    type: 'device_authenticity',
+    report: sanitizeReport(report),
+    suiteVersion: VERSION,
+    platform: PLATFORM,
+  };
+  
+  // Open support form with pre-filled data
+  window.open(
+    `https://trezor.io/support/technical/issue?` +
+    `data=${encodeURIComponent(JSON.stringify(supportData))}`
+  );
+};
+```
+
+### Documentation
+
+Links to help articles:
+
+- How to verify device authenticity
+- What to do if verification fails
+- How to identify counterfeit devices
+- Where to buy authentic Trezor devices
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="For Users" icon="user">
+    - Buy only from official sources
+    - Check physical security features
+    - Verify device on first connection
+    - Report suspicious devices
+    - Never ignore authenticity warnings
+  </Card>
+  <Card title="For Developers" icon="code">
+    - Always verify before allowing usage
+    - Implement comprehensive checks
+    - Clear warning messages
+    - Log verification results
+    - Provide support contact
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Verification Failed on Genuine Device">
+    Rare false positives possible:
+    - Update Suite to latest version
+    - Update device firmware
+    - Try different USB cable/port
+    - Contact support with verification report
+  </Accordion>
+  
+  <Accordion title="Cannot Verify Bootloader">
+    Some scenarios:
+    - Very old firmware versions
+    - Device in wrong mode
+    - Communication issues
+    - Try firmware update first
+  </Accordion>
+  
+  <Accordion title="Verification Takes Long Time">
+    Normal duration:
+    - Simple checks: 1-2 seconds
+    - Full verification: 5-10 seconds
+    - If longer, check USB connection
+  </Accordion>
+</AccordionGroup>
+
+## Security Implications
+
+### Risks of Counterfeit Devices
+
+<Warning>
+Using counterfeit or tampered devices can result in:
+- **Complete loss of funds**: Modified firmware could steal keys
+- **Privacy compromise**: Transaction monitoring
+- **Malware infection**: Compromised recovery process
+- **No support**: Trezor cannot help with counterfeit devices
+</Warning>
+
+### Protection Measures
+
+Authenticity verification provides:
+
+1. **Early detection**: Identifies counterfeit before use
+2. **User education**: Explains risks clearly
+3. **Support path**: Direct channel to Trezor support
+4. **Continuous monitoring**: Re-verification on updates
+
+## Related Resources
+
+- [Official Trezor Shop](https://shop.trezor.io/)
+- [Authorized Resellers](https://trezor.io/resellers/)
+- [Security Best Practices](https://trezor.io/learn/a/check-your-trezor-is-authentic)
+- [Support Contact](https://trezor.io/support/)

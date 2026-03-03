@@ -1,0 +1,575 @@
+---
+title: Utility Packages
+description: Common utility packages in the Trezor Suite monorepo
+---
+
+Trezor Suite includes a comprehensive collection of utility packages that provide reusable functionality across the monorepo. These packages follow the principle of being small, focused, and free from circular dependencies.
+
+## Core Utilities
+
+<CardGroup cols={2}>
+  <Card title="@trezor/utils" icon="toolbox">
+    **Purpose:** General TypeScript utilities
+    
+    **Key Features:**
+    - TypedEmitter for type-safe events
+    - Deferred promises
+    - Throttler for rate limiting
+    - Lazy initialization helpers
+    - Array and object utilities
+  </Card>
+
+  <Card title="@trezor/crypto-utils" icon="lock">
+    **Purpose:** Cryptographic utilities
+    
+    **Key Features:**
+    - Hash functions (SHA256, RIPEMD160)
+    - PBKDF2 key derivation
+    - Random number generation
+    - Base58 encoding/decoding
+    - Mnemonic utilities
+  </Card>
+
+  <Card title="@trezor/device-utils" icon="microchip">
+    **Purpose:** Device-related utilities
+    
+    **Key Features:**
+    - Device detection and identification
+    - Firmware version comparison
+    - Device capability checks
+    - USB descriptor parsing
+    - Device model utilities
+  </Card>
+
+  <Card title="@trezor/asset-utils" icon="coins">
+    **Purpose:** Asset and currency utilities
+    
+    **Key Features:**
+    - Asset data management
+    - Token list handling
+    - Currency formatting
+    - Icon and metadata access
+  </Card>
+</CardGroup>
+
+## Environment & Platform
+
+<CardGroup cols={2}>
+  <Card title="@trezor/env-utils" icon="server">
+    **Purpose:** Environment detection
+    
+    **Key Features:**
+    - Browser detection
+    - Node.js environment checks
+    - Platform capabilities
+    - Feature detection
+  </Card>
+
+  <Card title="@trezor/dom-utils" icon="browser">
+    **Purpose:** DOM manipulation utilities
+    
+    **Key Features:**
+    - Safe DOM operations
+    - Element queries
+    - Event handling
+    - Browser compatibility helpers
+  </Card>
+
+  <Card title="@trezor/node-utils" icon="node-js">
+    **Purpose:** Node.js-specific utilities
+    
+    **Key Features:**
+    - File system helpers
+    - Process utilities
+    - Path manipulation
+    - Environment variable handling
+  </Card>
+
+  <Card title="@trezor/react-utils" icon="react">
+    **Purpose:** React-specific utilities
+    
+    **Key Features:**
+    - Custom hooks
+    - Component helpers
+    - Context utilities
+    - Performance optimization helpers
+  </Card>
+</CardGroup>
+
+## Data & Validation
+
+<CardGroup cols={2}>
+  <Card title="@trezor/schema-utils" icon="check">
+    **Purpose:** Schema validation utilities
+    
+    **Key Features:**
+    - JSON schema validation
+    - Type guards
+    - Data validation helpers
+    - Schema generators
+  </Card>
+
+  <Card title="@trezor/type-utils" icon="code">
+    **Purpose:** TypeScript type utilities
+    
+    **Key Features:**
+    - Advanced type helpers
+    - Type guards
+    - Conditional types
+    - Utility types
+  </Card>
+
+  <Card title="@trezor/urls" icon="link">
+    **Purpose:** URL management
+    
+    **Key Features:**
+    - URL constants
+    - Backend endpoints
+    - Service URLs
+    - Link generators
+  </Card>
+</CardGroup>
+
+## Testing Utilities
+
+<Card title="@trezor/e2e-utils" icon="flask">
+  **Purpose:** End-to-end testing utilities
+  
+  **Key Features:**
+  - Test helpers
+  - Mock data generators
+  - Playwright utilities
+  - Device emulator integration
+</Card>
+
+## Package Deep Dive
+
+### @trezor/utils
+
+The main utility package providing core functionality used throughout the codebase.
+
+<AccordionGroup>
+  <Accordion title="TypedEmitter">
+    Type-safe event emitter extending Node.js EventEmitter:
+    
+    ```typescript
+    import { TypedEmitter } from '@trezor/utils';
+    
+    type Events = {
+        'data': (value: string) => void;
+        'error': (error: Error) => void;
+    };
+    
+    class MyClass extends TypedEmitter<Events> {
+        sendData(value: string) {
+            this.emit('data', value); // Type-safe!
+        }
+    }
+    
+    const instance = new MyClass();
+    instance.on('data', (value) => {
+        // value is typed as string
+        console.log(value);
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="Deferred Promises">
+    Create promises that can be resolved/rejected externally:
+    
+    ```typescript
+    import { createDeferred } from '@trezor/utils';
+    
+    const deferred = createDeferred<number>();
+    
+    // Resolve later
+    setTimeout(() => {
+        deferred.resolve(42);
+    }, 1000);
+    
+    // Await the promise
+    const result = await deferred.promise; // 42
+    ```
+    
+    Also includes a deferred manager for handling multiple promises:
+    
+    ```typescript
+    import { createDeferredManager } from '@trezor/utils';
+    
+    const manager = createDeferredManager();
+    
+    const { promiseId, promise } = manager.create<string>();
+    // Later...
+    manager.resolve(promiseId, 'done');
+    ```
+  </Accordion>
+
+  <Accordion title="Throttler">
+    Rate-limit function execution:
+    
+    ```typescript
+    import { Throttler } from '@trezor/utils';
+    
+    const throttler = new Throttler(1000); // Max once per second
+    
+    throttler.throttle(() => {
+        console.log('This runs max once per second');
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="Lazy Initialization">
+    Defer resource initialization until first use:
+    
+    ```typescript
+    import { createLazy } from '@trezor/utils';
+    
+    const lazyResource = createLazy(
+        () => expensiveInit(),    // Init function
+        (resource) => cleanup()    // Cleanup function
+    );
+    
+    const resource = await lazyResource.getOrInit();
+    // Later...
+    lazyResource.dispose();
+    ```
+  </Accordion>
+
+  <Accordion title="Array & Object Utilities">
+    Common data manipulation helpers:
+    
+    ```typescript
+    import { arrayDistinct, objectPartition } from '@trezor/utils';
+    
+    // Remove duplicates
+    const unique = arrayDistinct([1, 2, 2, 3]); // [1, 2, 3]
+    
+    // Partition object by predicate
+    const [matched, rest] = objectPartition(
+        { a: 1, b: 2, c: 3 },
+        (key, value) => value > 1
+    );
+    // matched: { b: 2, c: 3 }
+    // rest: { a: 1 }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### @trezor/crypto-utils
+
+Cryptographic operations needed across Suite.
+
+<AccordionGroup>
+  <Accordion title="Hash Functions">
+    ```typescript
+    import { sha256, ripemd160 } from '@trezor/crypto-utils';
+    
+    const hash = sha256(Buffer.from('hello'));
+    const hash160 = ripemd160(Buffer.from('world'));
+    ```
+  </Accordion>
+
+  <Accordion title="Key Derivation">
+    ```typescript
+    import { pbkdf2 } from '@trezor/crypto-utils';
+    
+    const key = await pbkdf2(
+        'password',
+        'salt',
+        100000,  // iterations
+        32       // key length
+    );
+    ```
+  </Accordion>
+
+  <Accordion title="Base58 Encoding">
+    ```typescript
+    import { base58 } from '@trezor/crypto-utils';
+    
+    const encoded = base58.encode(Buffer.from('data'));
+    const decoded = base58.decode(encoded);
+    ```
+  </Accordion>
+
+  <Accordion title="Random Number Generation">
+    ```typescript
+    import { randomBytes } from '@trezor/crypto-utils';
+    
+    const random = randomBytes(32); // 32 random bytes
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### @trezor/device-utils
+
+Device detection and capability checking.
+
+<AccordionGroup>
+  <Accordion title="Device Detection">
+    ```typescript
+    import { getDeviceModel, getDeviceFeatures } from '@trezor/device-utils';
+    
+    const model = getDeviceModel(device);
+    // 'T' for Trezor Model T
+    // '1' for Trezor One
+    
+    const features = getDeviceFeatures(device);
+    ```
+  </Accordion>
+
+  <Accordion title="Firmware Version Comparison">
+    ```typescript
+    import { versionCompare, isNewerOrEqual } from '@trezor/device-utils';
+    
+    const comparison = versionCompare('2.5.3', '2.5.1');
+    // Returns: 1 (first is newer)
+    
+    const isNewer = isNewerOrEqual('2.5.3', '2.5.1'); // true
+    ```
+  </Accordion>
+
+  <Accordion title="Capability Checks">
+    ```typescript
+    import { hasCapability } from '@trezor/device-utils';
+    
+    const canDoTaproot = hasCapability(device, 'Capability_Taproot');
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### @trezor/env-utils
+
+Environment and platform detection.
+
+```typescript
+import { 
+    isWeb, 
+    isDesktop, 
+    isAndroid, 
+    isIOS,
+    getBrowserName,
+    getBrowserVersion
+} from '@trezor/env-utils';
+
+if (isWeb()) {
+    console.log('Running in browser:', getBrowserName());
+}
+
+if (isDesktop()) {
+    console.log('Running in Electron');
+}
+
+if (isAndroid() || isIOS()) {
+    console.log('Running on mobile');
+}
+```
+
+### @trezor/schema-utils
+
+Data validation and schema management.
+
+```typescript
+import { validateData, isValidAddress } from '@trezor/schema-utils';
+
+// Validate against JSON schema
+const result = validateData(data, schema);
+if (!result.valid) {
+    console.error('Validation errors:', result.errors);
+}
+
+// Type guard example
+function isTransaction(obj: unknown): obj is Transaction {
+    return validateData(obj, transactionSchema).valid;
+}
+```
+
+### @trezor/type-utils
+
+Advanced TypeScript type utilities.
+
+```typescript
+import type { 
+    DeepPartial,
+    Require,
+    Without,
+    XOR
+} from '@trezor/type-utils';
+
+// Make all properties optional recursively
+type PartialConfig = DeepPartial<Config>;
+
+// Require specific properties
+type RequiredName = Require<User, 'name'>;
+
+// Exclude specific properties
+type WithoutPassword = Without<User, 'password'>;
+
+// Exclusive OR - only one of the types
+type Payment = XOR<CreditCard, BankAccount>;
+```
+
+## Common Patterns
+
+### Using Multiple Utilities Together
+
+```typescript
+import { TypedEmitter, createDeferred, Throttler } from '@trezor/utils';
+import { sha256 } from '@trezor/crypto-utils';
+import { isWeb } from '@trezor/env-utils';
+
+type Events = {
+    'hashComputed': (hash: Buffer) => void;
+};
+
+class HashService extends TypedEmitter<Events> {
+    private throttler = new Throttler(100);
+    
+    async computeHash(data: string): Promise<Buffer> {
+        const deferred = createDeferred<Buffer>();
+        
+        this.throttler.throttle(async () => {
+            const hash = sha256(Buffer.from(data));
+            this.emit('hashComputed', hash);
+            deferred.resolve(hash);
+        });
+        
+        return deferred.promise;
+    }
+}
+
+if (isWeb()) {
+    const service = new HashService();
+    service.on('hashComputed', (hash) => {
+        console.log('Hash:', hash.toString('hex'));
+    });
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Import Only What You Need">
+    Use named imports to enable tree-shaking:
+    
+    ```typescript
+    // Good
+    import { sha256, base58 } from '@trezor/crypto-utils';
+    
+    // Avoid
+    import * as crypto from '@trezor/crypto-utils';
+    ```
+  </Accordion>
+
+  <Accordion title="Prefer Utils Over Reimplementation">
+    Check utility packages before implementing common functionality:
+    
+    ```typescript
+    // Instead of implementing your own
+    function myArrayUnique(arr: number[]) { /* ... */ }
+    
+    // Use the existing utility
+    import { arrayDistinct } from '@trezor/utils';
+    const unique = arrayDistinct(arr);
+    ```
+  </Accordion>
+
+  <Accordion title="Keep Utils Focused">
+    When creating new utility functions:
+    - Keep them small and focused
+    - Make them pure functions when possible
+    - Add comprehensive tests
+    - Document with JSDoc comments
+  </Accordion>
+
+  <Accordion title="Use Type-Safe Alternatives">
+    Leverage TypeScript features in utils:
+    
+    ```typescript
+    // Instead of plain EventEmitter
+    import { EventEmitter } from 'events';
+    
+    // Use TypedEmitter for type safety
+    import { TypedEmitter } from '@trezor/utils';
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Adding New Utilities
+
+When adding utilities to an existing package:
+
+<Steps>
+  <Step title="Choose the Right Package">
+    Place utilities in the most specific appropriate package:
+    - General utils → `@trezor/utils`
+    - Crypto-specific → `@trezor/crypto-utils`
+    - React-specific → `@trezor/react-utils`
+  </Step>
+
+  <Step title="Write Tests">
+    Add comprehensive unit tests:
+    
+    ```typescript
+    // arrayDistinct.test.ts
+    import { arrayDistinct } from './arrayDistinct';
+    
+    describe('arrayDistinct', () => {
+        it('removes duplicates', () => {
+            expect(arrayDistinct([1, 2, 2, 3])).toEqual([1, 2, 3]);
+        });
+        
+        it('handles empty array', () => {
+            expect(arrayDistinct([])).toEqual([]);
+        });
+    });
+    ```
+  </Step>
+
+  <Step title="Document the Function">
+    Add JSDoc comments:
+    
+    ```typescript
+    /**
+     * Removes duplicate values from an array.
+     * 
+     * @param arr - The input array
+     * @returns A new array with duplicates removed
+     * 
+     * @example
+     * arrayDistinct([1, 2, 2, 3]) // [1, 2, 3]
+     */
+    export const arrayDistinct = <T>(arr: T[]): T[] => {
+        return Array.from(new Set(arr));
+    };
+    ```
+  </Step>
+
+  <Step title="Export from Index">
+    Add to the package's main export:
+    
+    ```typescript
+    // index.ts
+    export { arrayDistinct } from './arrayDistinct';
+    ```
+  </Step>
+</Steps>
+
+## Related Documentation
+
+<CardGroup cols={2}>
+  <Card title="Package Overview" href="/development/packages/overview" icon="boxes-stacked">
+    Browse all packages in the monorepo
+  </Card>
+
+  <Card title="Creating Packages" href="/development/packages/creating-packages" icon="plus">
+    Learn how to create new utility packages
+  </Card>
+
+  <Card title="TypeScript Guide" href="/development/typescript" icon="code">
+    TypeScript conventions and patterns
+  </Card>
+
+  <Card title="Testing" href="/development/testing" icon="flask">
+    How to test your utilities
+  </Card>
+</CardGroup>

@@ -1,0 +1,354 @@
+---
+title: Web Integration
+description: Integrate @trezor/connect-web into your web applications for seamless Trezor hardware wallet connectivity.
+---
+
+# Web Integration
+
+The `@trezor/connect-web` package provides a high-level JavaScript interface for integrating Trezor hardware wallets into web applications. It presents a secure popup-based UI served from `connect.trezor.io` and supports both WebUSB and Trezor Bridge communication protocols.
+
+## Installation
+
+Install the package using npm or yarn:
+
+<CodeGroup>
+```bash npm
+npm install @trezor/connect-web
+```
+
+```bash yarn
+yarn add @trezor/connect-web
+```
+</CodeGroup>
+
+## Basic Setup
+
+Import and initialize TrezorConnect in your application:
+
+```javascript
+import TrezorConnect from '@trezor/connect-web';
+
+await TrezorConnect.init({
+    manifest: {
+        email: 'developer@example.com',
+        appName: 'My Web App',
+        appUrl: 'https://myapp.example.com',
+        appIcon: 'https://myapp.example.com/icon.png',
+    },
+});
+```
+
+<Note>
+The `manifest` object is **required** and identifies your application to users. All fields should accurately represent your application.
+</Note>
+
+## Configuration Options
+
+Customize TrezorConnect behavior with these initialization options:
+
+```javascript
+await TrezorConnect.init({
+    manifest: {
+        email: 'developer@example.com',
+        appName: 'My Web App',
+        appUrl: 'https://myapp.example.com',
+    },
+    // Core execution mode
+    coreMode: 'auto', // 'auto' | 'popup' | 'iframe'
+    
+    // Enable debug logging
+    debug: true,
+    
+    // Lazy load resources
+    lazyLoad: true,
+    
+    // Automatic transport reconnection
+    transportReconnect: true,
+});
+```
+
+### Core Modes
+
+<AccordionGroup>
+  <Accordion title="auto" icon="wand-magic-sparkles">
+    Automatically selects the best mode based on the environment. This is the recommended default.
+  </Accordion>
+
+  <Accordion title="popup" icon="window-restore">
+    Opens Suite Web in a popup window for all operations. Works in all browsers.
+  </Accordion>
+
+  <Accordion title="iframe" icon="frame">
+    Embeds the Suite interface in an iframe (legacy mode for specific use cases).
+  </Accordion>
+</AccordionGroup>
+
+## Making API Calls
+
+Once initialized, you can call any TrezorConnect method:
+
+### Get Bitcoin Address
+
+```javascript
+const result = await TrezorConnect.getAddress({
+    path: "m/49'/0'/0'/0/0",
+    coin: 'btc',
+    showOnTrezor: true,
+});
+
+if (result.success) {
+    console.log('Address:', result.payload.address);
+    console.log('Path:', result.payload.serializedPath);
+} else {
+    console.error('Error:', result.payload.error);
+}
+```
+
+### Get Ethereum Address
+
+```javascript
+const result = await TrezorConnect.ethereumGetAddress({
+    path: "m/44'/60'/0'/0/0",
+    showOnTrezor: true,
+});
+
+if (result.success) {
+    console.log('ETH Address:', result.payload.address);
+}
+```
+
+### Sign Message
+
+```javascript
+const result = await TrezorConnect.signMessage({
+    path: "m/49'/0'/0'/0/0",
+    message: 'Hello from my web app!',
+    coin: 'btc',
+});
+
+if (result.success) {
+    console.log('Signature:', result.payload.signature);
+}
+```
+
+## Event Handling
+
+Listen to device and transport events:
+
+```javascript
+import TrezorConnect, { DEVICE_EVENT, TRANSPORT_EVENT } from '@trezor/connect-web';
+
+// Device events: connect, disconnect, changed
+TrezorConnect.on(DEVICE_EVENT, (event) => {
+    console.log('Device event:', event.type);
+    console.log('Device:', event.payload);
+});
+
+// Transport events: bridge start/stop, WebUSB availability
+TrezorConnect.on(TRANSPORT_EVENT, (event) => {
+    console.log('Transport event:', event.type);
+});
+```
+
+<CardGroup cols={2}>
+  <Card title="DEVICE_EVENT" icon="usb">
+    Fired when a device connects, disconnects, or changes state.
+  </Card>
+  
+  <Card title="TRANSPORT_EVENT" icon="bridge">
+    Fired when Trezor Bridge starts/stops or transport layer changes.
+  </Card>
+</CardGroup>
+
+## Browser Support
+
+TrezorConnect Web has different support levels across browsers:
+
+| Environment | Chrome | Firefox | Safari | Chrome Android | Firefox Android |
+|-------------|:------:|:-------:|:------:|:--------------:|:---------------:|
+| **WebUSB**  | ✓      | ✗       | ✗      | ✓              | ✗               |
+| **Bridge**  | ✓      | ✓       | ✗      | ✗              | ✗               |
+
+<Info>
+**WebUSB** allows direct browser communication with Trezor devices (Chromium-based browsers only).
+
+**Trezor Bridge** is required for Firefox and provides a more stable desktop connection.
+</Info>
+
+## Framework Integration
+
+### React Example
+
+```jsx
+import { useEffect, useState } from 'react';
+import TrezorConnect from '@trezor/connect-web';
+
+function App() {
+    const [address, setAddress] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        TrezorConnect.init({
+            manifest: {
+                email: 'developer@example.com',
+                appName: 'My React App',
+                appUrl: 'https://myapp.example.com',
+            },
+        });
+    }, []);
+
+    const getAddress = async () => {
+        setLoading(true);
+        const result = await TrezorConnect.getAddress({
+            path: "m/49'/0'/0'/0/0",
+            coin: 'btc',
+        });
+        
+        if (result.success) {
+            setAddress(result.payload.address);
+        }
+        setLoading(false);
+    };
+
+    return (
+        <div>
+            <button onClick={getAddress} disabled={loading}>
+                {loading ? 'Loading...' : 'Get Address'}
+            </button>
+            {address && <p>Address: {address}</p>}
+        </div>
+    );
+}
+```
+
+### Vue Example
+
+```vue
+<template>
+  <div>
+    <button @click="getAddress" :disabled="loading">
+      {{ loading ? 'Loading...' : 'Get Address' }}
+    </button>
+    <p v-if="address">Address: {{ address }}</p>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted } from 'vue';
+import TrezorConnect from '@trezor/connect-web';
+
+const address = ref('');
+const loading = ref(false);
+
+onMounted(async () => {
+  await TrezorConnect.init({
+    manifest: {
+      email: 'developer@example.com',
+      appName: 'My Vue App',
+      appUrl: 'https://myapp.example.com',
+    },
+  });
+});
+
+const getAddress = async () => {
+  loading.value = true;
+  const result = await TrezorConnect.getAddress({
+    path: "m/49'/0'/0'/0/0",
+    coin: 'btc',
+  });
+  
+  if (result.success) {
+    address.value = result.payload.address;
+  }
+  loading.value = false;
+};
+</script>
+```
+
+## Error Handling
+
+All TrezorConnect methods return a response object with a `success` boolean:
+
+```javascript
+const result = await TrezorConnect.getAddress({
+    path: "m/49'/0'/0'/0/0",
+    coin: 'btc',
+});
+
+if (result.success) {
+    // Success - use result.payload
+    const { address, path, serializedPath } = result.payload;
+    console.log('Address:', address);
+} else {
+    // Error - handle result.payload.error
+    console.error('Error code:', result.payload.code);
+    console.error('Error message:', result.payload.error);
+}
+```
+
+<Warning>
+Always check the `success` field before accessing `result.payload` to ensure proper error handling.
+</Warning>
+
+## Cleanup
+
+Dispose of TrezorConnect when unmounting your application:
+
+```javascript
+// Clean up when your app unmounts
+TrezorConnect.dispose();
+```
+
+## Advanced Features
+
+### Update Settings at Runtime
+
+```javascript
+TrezorConnect.updateConnectSettings({
+    debug: false,
+    transportReconnect: false,
+});
+```
+
+### Cancel Pending Requests
+
+```javascript
+// Cancel the current pending request
+TrezorConnect.cancel();
+```
+
+### UI Response Handling
+
+For custom UI implementations, you can respond to UI requests:
+
+```javascript
+import { UI_REQUEST } from '@trezor/connect-web';
+
+TrezorConnect.on(UI_REQUEST.ADDRESS_VALIDATION, (event) => {
+    // Custom address validation UI
+    TrezorConnect.uiResponse({
+        type: UI_REQUEST.ADDRESS_VALIDATION,
+        payload: true, // User confirmed
+    });
+});
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="API Methods" icon="code" href="/connect/methods">
+    Explore all available TrezorConnect methods
+  </Card>
+  
+  <Card title="Examples" icon="flask" href="/connect/examples">
+    Browse complete integration examples
+  </Card>
+  
+  <Card title="Troubleshooting" icon="wrench" href="/connect/troubleshooting">
+    Common issues and solutions
+  </Card>
+  
+  <Card title="API Explorer" icon="compass" href="https://connect.trezor.io" target="_blank">
+    Interactive API testing tool
+  </Card>
+</CardGroup>

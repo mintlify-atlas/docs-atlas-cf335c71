@@ -1,0 +1,313 @@
+---
+title: 'Supported Cryptocurrencies'
+description: 'Complete list of cryptocurrencies supported by Trezor Suite and Connect'
+---
+
+## Overview
+
+Trezor devices support a wide range of cryptocurrencies through Trezor Connect and Suite. Support varies by device model and firmware version.
+
+<Info>
+  Cryptocurrency support is defined in the [trezor-firmware](https://github.com/trezor/trezor-firmware/tree/main/common/defs) repository. Connect support must be explicitly enabled in the firmware definitions.
+</Info>
+
+## Major Cryptocurrencies
+
+<CardGroup cols={2}>
+  <Card title="Bitcoin (BTC)" icon="bitcoin">
+    **Full Support**: All Trezor models
+    
+    Features:
+    - SegWit (Native & P2SH)
+    - Taproot
+    - Multi-signature
+    - Message signing
+    
+    **Minimum Firmware**:
+    - T1B1: 1.5.2
+    - T2T1: 2.0.5
+    - T3T1: 2.6.1
+  </Card>
+
+  <Card title="Ethereum (ETH)" icon="ethereum">
+    **Full Support**: All Trezor models
+    
+    Features:
+    - ERC-20 tokens
+    - Smart contracts
+    - Message signing (EIP-712)
+    - ENS domains
+    
+    **Minimum Firmware**:
+    - T1B1: 1.5.2
+    - T2T1: 2.0.5
+    - T3T1: 2.6.1
+  </Card>
+
+  <Card title="Litecoin (LTC)" icon="coins">
+    **Full Support**: All Trezor models
+    
+    Features:
+    - SegWit support
+    - Multi-signature
+    - Message signing
+  </Card>
+
+  <Card title="Tron (TRX)" icon="circle-dollar">
+    **New in Connect 10.0.0**
+    
+    Features:
+    - Address generation
+    - Transaction signing
+    - TRC-20 tokens
+    
+    Methods:
+    - `tronGetAddress`
+    - `tronSignTransaction`
+  </Card>
+</CardGroup>
+
+## Bitcoin-Based Coins
+
+<Accordion title="View all Bitcoin-based cryptocurrencies" icon="bitcoin">
+  The following Bitcoin-based cryptocurrencies are supported:
+
+  | Coin | Symbol | SegWit | Taproot | Min. Firmware |
+  |------|--------|--------|---------|---------------|
+  | Bitcoin | BTC | Yes | Yes | T1B1: 1.5.2 |
+  | Bitcoin Cash | BCH | No | No | T1B1: 1.6.2 |
+  | Bitcoin Gold | BTG | Yes | No | T1B1: 1.6.2 |
+  | Litecoin | LTC | Yes | No | T1B1: 1.5.2 |
+  | Dash | DASH | No | No | T1B1: 1.5.2 |
+  | Zcash | ZEC | Yes | No | T1B1: 1.5.2 |
+  | Dogecoin | DOGE | No | No | T1B1: 1.5.2 |
+  | DigiByte | DGB | Yes | No | T1B1: 1.6.3 |
+  | Vertcoin | VTC | Yes | No | T1B1: 1.6.2 |
+  | Decred | DCR | No | No | T1B1: 1.6.2 |
+  | Komodo | KMD | No | No | T1B1: 1.8.0 |
+
+  <Note>
+    Bitcoin testnet and regtest networks are also supported for development purposes.
+  </Note>
+</Accordion>
+
+## Ethereum and EVM Chains
+
+<Accordion title="View all Ethereum-compatible chains" icon="ethereum">
+  Trezor supports Ethereum and many EVM-compatible chains:
+
+  | Chain | Symbol | Chain ID | EIP-1559 |
+  |-------|--------|----------|----------|
+  | Ethereum | ETH | 1 | Yes |
+  | Polygon | MATIC | 137 | Yes |
+  | Binance Smart Chain | BNB | 56 | Yes |
+  | Avalanche C-Chain | AVAX | 43114 | Yes |
+  | Arbitrum One | ARB | 42161 | Yes |
+  | Optimism | OP | 10 | Yes |
+  | Base | BASE | 8453 | Yes |
+  | Fantom | FTM | 250 | Yes |
+  | Gnosis | xDAI | 100 | Yes |
+
+  **ERC-20 Token Support**:
+  - All ERC-20 tokens on supported chains
+  - Automatic token detection
+  - Custom token addition
+
+  **Features**:
+  - Smart contract interaction
+  - Message signing (EIP-712)
+  - Token approvals
+  - NFT support
+</Accordion>
+
+## Other Cryptocurrencies
+
+<Accordion title="View additional supported coins" icon="coins">
+  | Coin | Symbol | Type | Features |
+  |------|--------|------|----------|
+  | Cardano | ADA | Native | Staking, native tokens |
+  | Ripple | XRP | Native | Payment protocol |
+  | Stellar | XLM | Native | Payment protocol |
+  | Monero | XMR | Native | Privacy coin |
+  | Tezos | XTZ | Native | Staking, smart contracts |
+  | Solana | SOL | Native | Token support |
+
+  <Note>
+    Additional coins may be supported depending on firmware version. Check your device's firmware for the latest supported coins.
+  </Note>
+</Accordion>
+
+## Deprecated Cryptocurrencies
+
+<Warning>
+  The following cryptocurrencies have been removed in Connect 10.0.0:
+</Warning>
+
+<AccordionGroup>
+  <Accordion title="EOS - Removed in v10.0.0" icon="circle-xmark">
+    **Reason for removal**: Low usage and maintenance burden
+    
+    **Migration**: 
+    - If you need EOS support, continue using Connect 9.x
+    - No direct replacement available
+    - Consider alternative cryptocurrencies
+    
+    **Removed methods**:
+    - `eosGetPublicKey`
+    - `eosSignTransaction`
+  </Accordion>
+
+  <Accordion title="NEM - Removed in v10.0.0" icon="circle-xmark">
+    **Reason for removal**: Replaced by Symbol (XYM)
+    
+    **Migration**:
+    - If you need NEM support, continue using Connect 9.x
+    - Consider migrating to Symbol (XYM)
+    
+    **Removed methods**:
+    - `nemGetAddress`
+    - `nemSignTransaction`
+  </Accordion>
+</AccordionGroup>
+
+## Device Compatibility
+
+<Tabs>
+  <Tab title="Trezor Model One (T1B1)">
+    **Supported Coins**:
+    - Bitcoin and Bitcoin-based coins
+    - Ethereum and ERC-20 tokens
+    - Select EVM chains
+    - Limited altcoin support
+    
+    **Limitations**:
+    - No touchscreen for verification
+    - Limited storage for apps
+    - No Shamir Backup
+  </Tab>
+  
+  <Tab title="Trezor Model T (T2T1)">
+    **Supported Coins**:
+    - All Bitcoin-based coins
+    - All Ethereum and EVM chains
+    - All major altcoins
+    - Full token support
+    
+    **Features**:
+    - Touchscreen verification
+    - More storage capacity
+    - Shamir Backup support
+  </Tab>
+  
+  <Tab title="Trezor Safe 3 (T2B1)">
+    **Supported Coins**:
+    - Same as Model T
+    - Latest firmware features
+    - Enhanced security
+    
+    **Features**:
+    - Button navigation
+    - Haptic feedback
+    - Latest security features
+  </Tab>
+  
+  <Tab title="Trezor Safe 5 (T3T1)">
+    **Supported Coins**:
+    - All supported cryptocurrencies
+    - Latest protocol support
+    - Future-proof compatibility
+    
+    **Features**:
+    - Color touchscreen
+    - Maximum storage
+    - All latest features
+  </Tab>
+</Tabs>
+
+## Adding New Cryptocurrencies
+
+<Info>
+  Want to add a new cryptocurrency? The process involves multiple steps across different repositories.
+</Info>
+
+<Steps>
+  <Step title="Firmware Support">
+    The cryptocurrency must first be added to [trezor-firmware](https://github.com/trezor/trezor-firmware/tree/main/common/defs):
+    
+    1. Create coin definition JSON file
+    2. Enable Connect support in support.json
+    3. Submit pull request to firmware repo
+  </Step>
+
+  <Step title="Update Submodules">
+    After firmware support is merged:
+    
+    ```bash
+    yarn update-submodules
+    ```
+  </Step>
+
+  <Step title="Build Coins Definition">
+    Set up Python environment and build:
+    
+    ```bash
+    python3 -m venv .venv
+    source .venv/bin/activate
+    pip install -r submodules/trezor-common/tools/requirements.txt
+    yarn update-coins
+    ```
+  </Step>
+
+  <Step title="Test Integration">
+    Test the new cryptocurrency:
+    - Verify address generation
+    - Test transaction signing
+    - Validate on testnet first
+  </Step>
+</Steps>
+
+<Warning>
+  Do NOT manually edit `@trezor/connect-data/files/coins.json`. It is auto-generated from firmware definitions.
+</Warning>
+
+## Checking Coin Support
+
+You can check if a coin is supported programmatically:
+
+```javascript
+import TrezorConnect from '@trezor/connect-web';
+
+// Get all supported coins
+const coins = TrezorConnect.getCoinInfo();
+
+// Check specific coin
+const btcInfo = TrezorConnect.getCoinInfo('btc');
+if (btcInfo) {
+  console.log('Bitcoin is supported');
+  console.log('Supported features:', btcInfo);
+}
+
+// Check by network
+const ethInfo = TrezorConnect.getCoinInfo('eth');
+console.log('Supported EVM chains:', ethInfo.networks);
+```
+
+## Additional Resources
+
+<CardGroup cols={2}>
+  <Card title="Migration Guide" icon="arrow-right" href="/resources/migration-guide">
+    Upgrade to newer versions
+  </Card>
+  
+  <Card title="FAQ" icon="question" href="/resources/faq">
+    Common questions about coin support
+  </Card>
+  
+  <Card title="Firmware Repository" icon="github" href="https://github.com/trezor/trezor-firmware">
+    View source definitions
+  </Card>
+  
+  <Card title="Connect Methods" icon="code" href="https://connect.trezor.io">
+    Explore all Connect methods
+  </Card>
+</CardGroup>

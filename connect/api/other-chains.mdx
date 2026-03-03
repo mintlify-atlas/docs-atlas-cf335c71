@@ -1,0 +1,616 @@
+---
+title: 'Other Blockchain Methods'
+description: 'Methods for Ripple, Tezos, Tron, and Monero blockchains'
+---
+
+Methods for additional supported blockchains including Ripple (XRP), Tezos, Tron, and Monero.
+
+## Ripple (XRP)
+
+### rippleGetAddress
+
+Retrieves a Ripple address from the device.
+
+<ParamField path="path" type="string | number[]" required>
+  BIP32 derivation path (e.g., `m/44'/144'/0'/0/0`).
+</ParamField>
+
+<ParamField path="address" type="string">
+  Expected address for verification.
+</ParamField>
+
+<ParamField path="showOnTrezor" type="boolean">
+  Display address on device screen.
+</ParamField>
+
+<ParamField path="chunkify" type="boolean">
+  Split large requests into chunks.
+</ParamField>
+
+<ResponseField name="address" type="string">
+  Ripple address (r... format).
+</ResponseField>
+
+<ResponseField name="path" type="number[]">
+  Derivation path.
+</ResponseField>
+
+<ResponseField name="serializedPath" type="string">
+  Path as string.
+</ResponseField>
+
+```typescript
+const result = await TrezorConnect.rippleGetAddress({
+    path: "m/44'/144'/0'/0/0",
+    showOnTrezor: true,
+});
+```
+
+### rippleSignTransaction
+
+Signs a Ripple (XRP) payment transaction.
+
+<ParamField path="path" type="string | number[]" required>
+  BIP32 derivation path.
+</ParamField>
+
+<ParamField path="transaction" type="object" required>
+  Ripple transaction.
+  <Expandable title="properties">
+    <ParamField path="fee" type="string" required>
+      Transaction fee in drops.
+    </ParamField>
+    <ParamField path="flags" type="number">
+      Transaction flags.
+    </ParamField>
+    <ParamField path="sequence" type="number" required>
+      Account sequence number.
+    </ParamField>
+    <ParamField path="maxLedgerVersion" type="number">
+      Last ledger sequence.
+    </ParamField>
+    <ParamField path="payment" type="object" required>
+      Payment details.
+      <Expandable title="properties">
+        <ParamField path="amount" type="string" required>
+          Amount in drops.
+        </ParamField>
+        <ParamField path="destination" type="string" required>
+          Destination address.
+        </ParamField>
+        <ParamField path="destinationTag" type="number">
+          Destination tag.
+        </ParamField>
+      </Expandable>
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="chunkify" type="boolean">
+  Split large requests.
+</ParamField>
+
+<ResponseField name="serializedTx" type="string">
+  Serialized transaction (hex).
+</ResponseField>
+
+<ResponseField name="signature" type="string">
+  Transaction signature (hex).
+</ResponseField>
+
+```typescript
+const result = await TrezorConnect.rippleSignTransaction({
+    path: "m/44'/144'/0'/0/0",
+    transaction: {
+        fee: '12',
+        sequence: 25,
+        payment: {
+            amount: '100000000', // 100 XRP in drops
+            destination: 'rNaqKtKrMSwpwZSzRckPf7S96DkimjkF4H',
+        },
+    },
+});
+
+if (result.success) {
+    console.log('Signed transaction:', result.payload.serializedTx);
+}
+```
+
+## Tezos (XTZ)
+
+### tezosGetAddress
+
+Retrieves a Tezos address from the device.
+
+<ParamField path="path" type="string | number[]" required>
+  BIP32 derivation path (e.g., `m/44'/1729'/0'/0'`).
+</ParamField>
+
+<ParamField path="address" type="string">
+  Expected address for verification.
+</ParamField>
+
+<ParamField path="showOnTrezor" type="boolean">
+  Display address on device screen.
+</ParamField>
+
+<ParamField path="chunkify" type="boolean">
+  Split large requests.
+</ParamField>
+
+<ResponseField name="address" type="string">
+  Tezos address (tz1... format).
+</ResponseField>
+
+<ResponseField name="path" type="number[]">
+  Derivation path.
+</ResponseField>
+
+<ResponseField name="serializedPath" type="string">
+  Path as string.
+</ResponseField>
+
+```typescript
+const result = await TrezorConnect.tezosGetAddress({
+    path: "m/44'/1729'/0'/0'",
+    showOnTrezor: true,
+});
+```
+
+### tezosGetPublicKey
+
+Retrieves a Tezos public key from the device.
+
+<ParamField path="path" type="string | number[]" required>
+  BIP32 derivation path.
+</ParamField>
+
+<ParamField path="showOnTrezor" type="boolean">
+  Display public key on device screen.
+</ParamField>
+
+<ResponseField name="publicKey" type="string">
+  Public key (hex).
+</ResponseField>
+
+<ResponseField name="path" type="number[]">
+  Derivation path.
+</ResponseField>
+
+<ResponseField name="serializedPath" type="string">
+  Path as string.
+</ResponseField>
+
+```typescript
+const result = await TrezorConnect.tezosGetPublicKey({
+    path: "m/44'/1729'/0'/0'",
+});
+```
+
+### tezosSignTransaction
+
+Signs a Tezos transaction. Supports reveal, transaction, origination, and delegation operations.
+
+<ParamField path="path" type="string | number[]" required>
+  BIP32 derivation path.
+</ParamField>
+
+<ParamField path="branch" type="string" required>
+  Block hash for branch.
+</ParamField>
+
+<ParamField path="operation" type="object" required>
+  Tezos operation.
+  <Expandable title="properties">
+    <ParamField path="reveal" type="object">
+      Reveal operation.
+    </ParamField>
+    <ParamField path="transaction" type="object">
+      Transaction operation.
+      <Expandable title="properties">
+        <ParamField path="source" type="string" required>
+          Source address.
+        </ParamField>
+        <ParamField path="destination" type="string" required>
+          Destination address.
+        </ParamField>
+        <ParamField path="amount" type="number" required>
+          Amount in mutez.
+        </ParamField>
+        <ParamField path="counter" type="number" required>
+          Operation counter.
+        </ParamField>
+        <ParamField path="fee" type="number" required>
+          Fee in mutez.
+        </ParamField>
+        <ParamField path="gas_limit" type="number" required>
+          Gas limit.
+        </ParamField>
+        <ParamField path="storage_limit" type="number" required>
+          Storage limit.
+        </ParamField>
+        <ParamField path="parameters" type="number[]">
+          Contract parameters (Michelson).
+        </ParamField>
+      </Expandable>
+    </ParamField>
+    <ParamField path="origination" type="object">
+      Origination operation.
+    </ParamField>
+    <ParamField path="delegation" type="object">
+      Delegation operation.
+      <Expandable title="properties">
+        <ParamField path="source" type="string" required>
+          Source address.
+        </ParamField>
+        <ParamField path="delegate" type="string" required>
+          Delegate address.
+        </ParamField>
+        <ParamField path="fee" type="number" required>
+          Fee in mutez.
+        </ParamField>
+        <ParamField path="counter" type="number" required>
+          Operation counter.
+        </ParamField>
+        <ParamField path="gas_limit" type="number" required>
+          Gas limit.
+        </ParamField>
+        <ParamField path="storage_limit" type="number" required>
+          Storage limit.
+        </ParamField>
+      </Expandable>
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="chunkify" type="boolean">
+  Split large requests.
+</ParamField>
+
+<ResponseField name="signature" type="string">
+  Operation signature.
+</ResponseField>
+
+<ResponseField name="sig_op_contents" type="string">
+  Signed operation contents.
+</ResponseField>
+
+<ResponseField name="operation_hash" type="string">
+  Operation hash.
+</ResponseField>
+
+```typescript
+const result = await TrezorConnect.tezosSignTransaction({
+    path: "m/44'/1729'/0'/0'",
+    branch: 'BLzyjjHKEKMU...',
+    operation: {
+        transaction: {
+            source: 'tz1UKmZhi8dhUX5a5QTfCrsH9pK4dt1dVfJo',
+            destination: 'tz1Kef7BSg6fo75jk37WkKRYSnJDs69KVqt9',
+            amount: 1000000,
+            counter: 10,
+            fee: 10000,
+            gas_limit: 10600,
+            storage_limit: 277,
+        },
+    },
+});
+```
+
+## Tron (TRX)
+
+### tronGetAddress
+
+Retrieves a Tron address from the device.
+
+<ParamField path="path" type="string | number[]" required>
+  BIP32 derivation path (e.g., `m/44'/195'/0'/0/0`).
+</ParamField>
+
+<ParamField path="address" type="string">
+  Expected address for verification.
+</ParamField>
+
+<ParamField path="showOnTrezor" type="boolean">
+  Display address on device screen.
+</ParamField>
+
+<ParamField path="chunkify" type="boolean">
+  Split large requests.
+</ParamField>
+
+<ResponseField name="address" type="string">
+  Tron address (T... format).
+</ResponseField>
+
+<ResponseField name="path" type="number[]">
+  Derivation path.
+</ResponseField>
+
+<ResponseField name="serializedPath" type="string">
+  Path as string.
+</ResponseField>
+
+```typescript
+const result = await TrezorConnect.tronGetAddress({
+    path: "m/44'/195'/0'/0/0",
+    showOnTrezor: true,
+});
+```
+
+### tronSignTransaction
+
+Signs a Tron transaction. Supports TRX transfers, TRC-20 token transfers, and staking operations.
+
+<ParamField path="path" type="string | number[]" required>
+  BIP32 derivation path.
+</ParamField>
+
+<ParamField path="ref_block_bytes" type="string" required>
+  Reference block bytes (hex).
+</ParamField>
+
+<ParamField path="ref_block_hash" type="string" required>
+  Reference block hash (hex).
+</ParamField>
+
+<ParamField path="expiration" type="number" required>
+  Transaction expiration timestamp.
+</ParamField>
+
+<ParamField path="timestamp" type="number" required>
+  Transaction timestamp.
+</ParamField>
+
+<ParamField path="fee_limit" type="number">
+  Fee limit in SUN.
+</ParamField>
+
+<ParamField path="data" type="string">
+  Transaction memo.
+</ParamField>
+
+<ParamField path="contract" type="array" required>
+  Array with single contract (Tron limitation).
+  <Expandable title="Transfer Contract">
+    <ParamField path="type" type="string" required>
+      Contract type: `TransferContract`, `TriggerSmartContract`, `FreezeBalanceV2Contract`, etc.
+    </ParamField>
+    <ParamField path="parameter" type="object" required>
+      Contract parameters.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ResponseField name="signature" type="string">
+  Transaction signature (hex).
+</ResponseField>
+
+```typescript
+// TRX transfer
+const result = await TrezorConnect.tronSignTransaction({
+    path: "m/44'/195'/0'/0/0",
+    ref_block_bytes: 'ab12',
+    ref_block_hash: 'cd34ef...',
+    expiration: 1632150000000,
+    timestamp: 1632150000000,
+    contract: [
+        {
+            type: 'TransferContract',
+            parameter: {
+                value: {
+                    amount: '1000000', // 1 TRX in SUN
+                    owner_address: 'TYsrxDfRqptqKDWJCe5FJAUXbFXJNh4Lfq',
+                    to_address: 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8',
+                },
+            },
+        },
+    ],
+});
+
+// TRC-20 token transfer
+const tokenResult = await TrezorConnect.tronSignTransaction({
+    path: "m/44'/195'/0'/0/0",
+    ref_block_bytes: 'ab12',
+    ref_block_hash: 'cd34ef...',
+    expiration: 1632150000000,
+    timestamp: 1632150000000,
+    fee_limit: 10000000,
+    contract: [
+        {
+            type: 'TriggerSmartContract',
+            parameter: {
+                value: {
+                    contract_address: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t', // USDT
+                    owner_address: 'TYsrxDfRqptqKDWJCe5FJAUXbFXJNh4Lfq',
+                    data: 'a9059cbb...', // transfer(address,uint256) encoded
+                },
+            },
+        },
+    ],
+});
+```
+
+## Monero (XMR)
+
+### moneroGetAddress
+
+Retrieves a Monero address from the device.
+
+<ParamField path="path" type="string | number[]" required>
+  BIP32 derivation path (e.g., `m/44'/128'/0'/0/0`).
+</ParamField>
+
+<ParamField path="networkType" type="number">
+  Network type: 0=Mainnet, 1=Testnet, 2=Stagenet.
+</ParamField>
+
+<ParamField path="account" type="number">
+  Account index.
+</ParamField>
+
+<ParamField path="minor" type="number">
+  Minor index (subaddress).
+</ParamField>
+
+<ParamField path="paymentId" type="string">
+  Payment ID for integrated address.
+</ParamField>
+
+<ParamField path="address" type="string">
+  Expected address for verification.
+</ParamField>
+
+<ParamField path="showOnTrezor" type="boolean">
+  Display address on device screen.
+</ParamField>
+
+<ParamField path="chunkify" type="boolean">
+  Split large requests.
+</ParamField>
+
+<ResponseField name="address" type="string">
+  Monero address.
+</ResponseField>
+
+<ResponseField name="path" type="number[]">
+  Derivation path.
+</ResponseField>
+
+<ResponseField name="serializedPath" type="string">
+  Path as string.
+</ResponseField>
+
+```typescript
+const result = await TrezorConnect.moneroGetAddress({
+    path: "m/44'/128'/0'",
+    networkType: 0,
+    showOnTrezor: true,
+});
+```
+
+### moneroGetWatchKey
+
+Retrieves a Monero watch-only key (view key).
+
+<ParamField path="path" type="string | number[]" required>
+  BIP32 derivation path.
+</ParamField>
+
+<ParamField path="networkType" type="number">
+  Network type.
+</ParamField>
+
+<ResponseField name="watch_key" type="string">
+  Watch key (view key).
+</ResponseField>
+
+<ResponseField name="address" type="string">
+  Primary address.
+</ResponseField>
+
+```typescript
+const result = await TrezorConnect.moneroGetWatchKey({
+    path: "m/44'/128'/0'",
+    networkType: 0,
+});
+```
+
+### moneroKeyImageSync
+
+Synchronizes key images for Monero outputs.
+
+<ParamField path="path" type="string | number[]" required>
+  BIP32 derivation path.
+</ParamField>
+
+<ParamField path="networkType" type="number">
+  Network type.
+</ParamField>
+
+<ParamField path="tdis" type="array" required>
+  Transfer details (outputs to sync).
+</ParamField>
+
+<ParamField path="subs" type="array">
+  Subaddress indices.
+</ParamField>
+
+<ResponseField name="key_images" type="array">
+  Exported key images.
+</ResponseField>
+
+<ResponseField name="signature" type="string">
+  Key image export signature.
+</ResponseField>
+
+```typescript
+const result = await TrezorConnect.moneroKeyImageSync({
+    path: "m/44'/128'/0'",
+    networkType: 0,
+    tdis: [
+        {
+            out_key: '...',
+            tx_pub_key: '...',
+            internal_output_index: 0,
+        },
+    ],
+});
+```
+
+### moneroSignTransaction
+
+Signs a Monero transaction. This is a complex operation requiring transaction source entries and destination entries.
+
+<ParamField path="path" type="string | number[]" required>
+  BIP32 derivation path.
+</ParamField>
+
+<ParamField path="networkType" type="number" required>
+  Network type.
+</ParamField>
+
+<ParamField path="tsx_data" type="object" required>
+  Transaction data (version, outputs, fee, etc.).
+</ParamField>
+
+<ParamField path="inputs" type="array" required>
+  Transaction source entries (ring signatures).
+</ParamField>
+
+<ResponseField name="signatures" type="array">
+  Ring signatures.
+</ResponseField>
+
+<ResponseField name="tx_prefix_hash" type="string">
+  Transaction prefix hash.
+</ResponseField>
+
+<ResponseField name="rv" type="object">
+  RingCT signature data.
+</ResponseField>
+
+<ResponseField name="cout_key" type="string">
+  Commitment key.
+</ResponseField>
+
+```typescript
+// Note: Monero signing is complex and typically handled by wallet software
+const result = await TrezorConnect.moneroSignTransaction({
+    path: "m/44'/128'/0'",
+    networkType: 0,
+    tsx_data: {
+        version: 2,
+        unlock_time: 0,
+        outputs: [...],
+        num_inputs: 2,
+        mixin: 10,
+        fee: 100000000,
+        account: 0,
+        rsig_data: {...},
+        client_version: 1,
+        hard_fork: 15,
+    },
+    inputs: [...],
+});
+```

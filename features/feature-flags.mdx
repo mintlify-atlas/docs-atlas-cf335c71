@@ -1,0 +1,568 @@
+---
+title: Feature Flags System
+description: Build-time feature flags for environment-specific functionality
+---
+
+# Feature Flags System
+
+Trezor Suite uses feature flags to enable or disable specific features at build time, allowing different builds for different environments without code duplication.
+
+## Overview
+
+Feature flags provide:
+
+<CardGroup cols={2}>
+  <Card title="Build Variants" icon="code-branch">
+    Create platform-specific builds
+  </Card>
+  <Card title="Gradual Rollout" icon="timeline">
+    Test features before full release
+  </Card>
+  <Card title="Environment Control" icon="sliders">
+    Different features for dev/prod
+  </Card>
+  <Card title="A/B Testing" icon="flask">
+    Experimental feature testing
+  </Card>
+</CardGroup>
+
+## Flag Definition
+
+All flags defined in central location:
+
+```typescript
+// Location: suite-common/suite-config/src/features.ts
+
+export const FLAGS = {
+  // CoinJoin privacy feature
+  COINJOIN: true,
+  
+  // Account labeling and metadata
+  LABELING: true,
+  
+  // Trading/exchange integration
+  TRADING: true,
+  
+  // Staking features
+  STAKING: false,
+  
+  // Debug features
+  DEBUG_MENU: false,
+} as const;
+```
+
+### Naming Conventions
+
+<AccordionGroup>
+  <Accordion title="Always Capitals">
+    ```typescript
+    // ✅ Correct
+    COINJOIN: true
+    
+    // ❌ Incorrect
+    coinJoin: true
+    coinjoin: true
+    ```
+  </Accordion>
+  
+  <Accordion title="No Enable/Disable Prefix">
+    ```typescript
+    // ✅ Correct - name describes the feature
+    TRADING: true
+    
+    // ❌ Incorrect - avoid enable/disable prefix
+    ENABLE_TRADING: true
+    DISABLE_TRADING: false
+    ```
+  </Accordion>
+  
+  <Accordion title="No 'Flag' Suffix">
+    ```typescript
+    // ✅ Correct
+    LABELING: true
+    
+    // ❌ Incorrect - 'flag' is implied
+    LABELING_FLAG: true
+    ```
+  </Accordion>
+  
+  <Accordion title="Add Comments">
+    ```typescript
+    // ✅ Correct - explain what the flag controls
+    // Enable CoinJoin privacy mixing
+    COINJOIN: true,
+    
+    // Enable account labeling via Dropbox
+    LABELING: true,
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Environment Overrides
+
+Override flags per environment:
+
+### Desktop Overrides
+
+```typescript
+// Desktop-specific feature flags
+export const DESKTOP_FLAGS = {
+  ...FLAGS,
+  
+  // Desktop has Tor built-in
+  TOR: true,
+  
+  // Desktop supports auto-updates
+  AUTO_UPDATE: true,
+  
+  // Disable web-only features
+  WEBUSB: false,
+};
+```
+
+### Web Overrides
+
+```typescript
+// Web-specific feature flags
+export const WEB_FLAGS = {
+  ...FLAGS,
+  
+  // Web depends on external Tor
+  TOR: false,
+  
+  // No auto-update in web
+  AUTO_UPDATE: false,
+  
+  // Web supports WebUSB
+  WEBUSB: true,
+};
+```
+
+### Mobile Overrides
+
+```typescript
+// Mobile-specific feature flags
+export const MOBILE_FLAGS = {
+  ...FLAGS,
+  
+  // Mobile uses Bluetooth instead
+  WEBUSB: false,
+  BLUETOOTH: true,
+  
+  // Simplified UI for mobile
+  ADVANCED_SETTINGS: false,
+};
+```
+
+## Usage in Code
+
+### Checking Flags
+
+Use utility function:
+
+```typescript
+import { isFeatureFlagEnabled } from '@suite-utils/features';
+
+const MyComponent = () => {
+  // Check if feature is enabled
+  if (isFeatureFlagEnabled('COINJOIN')) {
+    return <CoinjoinFeature />;
+  }
+  
+  return <StandardFeature />;
+};
+```
+
+### Conditional Rendering
+
+Wrap feature code:
+
+```jsx
+import { FeatureFlag } from '@suite-components';
+
+const Dashboard = () => (
+  <>
+    <StandardDashboard />
+    
+    <FeatureFlag flag="TRADING">
+      <TradingWidget />
+    </FeatureFlag>
+    
+    <FeatureFlag flag="STAKING">
+      <StakingWidget />
+    </FeatureFlag>
+  </>
+);
+```
+
+### Hook Usage
+
+React hook for flags:
+
+```typescript
+import { useFeatureFlag } from '@suite-hooks';
+
+const Settings = () => {
+  const isTradingEnabled = useFeatureFlag('TRADING');
+  const isDebugEnabled = useFeatureFlag('DEBUG_MENU');
+  
+  return (
+    <>
+      {isTradingEnabled && <TradingSettings />}
+      {isDebugEnabled && <DebugSettings />}
+    </>
+  );
+};
+```
+
+### Route Protection
+
+Protect routes based on flags:
+
+```typescript
+import { ProtectedRoute } from '@suite-components';
+
+const routes = [
+  {
+    path: '/coinjoin',
+    component: CoinjoinView,
+    featureFlag: 'COINJOIN',
+  },
+  {
+    path: '/trade',
+    component: TradeView,
+    featureFlag: 'TRADING',
+  },
+];
+
+// Router configuration
+<Switch>
+  {routes.map(route => (
+    <ProtectedRoute
+      key={route.path}
+      path={route.path}
+      featureFlag={route.featureFlag}
+      component={route.component}
+    />
+  ))}
+</Switch>
+```
+
+## Build-Time Optimization
+
+Flags enable dead code elimination:
+
+### Webpack Configuration
+
+```javascript
+// webpack.config.js
+module.exports = {
+  plugins: [
+    new webpack.DefinePlugin({
+      'process.env.FEATURE_COINJOIN': JSON.stringify(
+        FLAGS.COINJOIN
+      ),
+    }),
+  ],
+};
+```
+
+### Tree Shaking
+
+Disabled features removed from bundle:
+
+```typescript
+// Before build
+if (isFeatureFlagEnabled('STAKING')) {
+  // 500 KB of staking code
+  import('./staking').then(module => {
+    // ...
+  });
+}
+
+// After build (STAKING = false)
+// → Staking code completely removed
+// → 500 KB saved in bundle
+```
+
+## Flag Types
+
+### Boolean Flags
+
+Simple on/off:
+
+```typescript
+const FLAGS = {
+  // Feature completely enabled/disabled
+  COINJOIN: true,
+  STAKING: false,
+};
+```
+
+### Object Flags
+
+Complex configuration:
+
+```typescript
+const FLAGS = {
+  // Feature with sub-options
+  ANALYTICS: {
+    enabled: true,
+    sentry: true,
+    mixpanel: false,
+    logLevel: 'info',
+  },
+};
+```
+
+### Function Flags
+
+Computed at runtime:
+
+```typescript
+const FLAGS = {
+  // Computed based on environment
+  DEBUG_MENU: () => {
+    return process.env.NODE_ENV === 'development';
+  },
+};
+```
+
+## Common Flags
+
+Frequently used feature flags:
+
+<Tabs>
+  <Tab title="User Features">
+    ```typescript
+    COINJOIN: true,        // Privacy mixing
+    LABELING: true,        // Account labels
+    TRADING: true,         // Exchange integration
+    STAKING: false,        // Staking features
+    EARN: true,            // Earning products
+    ```
+  </Tab>
+  <Tab title="Technical">
+    ```typescript
+    TOR: true,             // Tor integration
+    WEBUSB: true,          // WebUSB support
+    BRIDGE: true,          // Trezor Bridge
+    BLUETOOTH: false,      // Bluetooth (mobile)
+    EXPERIMENTAL: false,   // Experimental features
+    ```
+  </Tab>
+  <Tab title="Development">
+    ```typescript
+    DEBUG_MENU: false,     // Debug tools
+    DEV_TOOLS: false,      // Redux DevTools
+    CONSOLE_LOGS: false,   // Console logging
+    MOCK_DATA: false,      // Use mock data
+    ```
+  </Tab>
+</Tabs>
+
+## Integration with Message System
+
+Feature flags can be controlled remotely:
+
+```json
+// Message system config
+{
+  "message": {
+    "category": "feature",
+    "feature": [
+      {
+        "domain": "coinjoin",
+        "flag": false
+      }
+    ],
+    "content": {
+      "en": "CoinJoin is temporarily disabled for maintenance"
+    }
+  }
+}
+```
+
+See [Message System](/features/message-system) for details.
+
+## Testing with Flags
+
+### Test Different Configurations
+
+```typescript
+import { setFeatureFlags } from '@suite-utils/testing';
+
+describe('Feature with flag', () => {
+  it('works when feature enabled', () => {
+    setFeatureFlags({ COINJOIN: true });
+    
+    render(<CoinjoinComponent />);
+    expect(screen.getByText('CoinJoin')).toBeInTheDocument();
+  });
+  
+  it('hidden when feature disabled', () => {
+    setFeatureFlags({ COINJOIN: false });
+    
+    render(<CoinjoinComponent />);
+    expect(screen.queryByText('CoinJoin')).not.toBeInTheDocument();
+  });
+});
+```
+
+### Mock Flags
+
+```typescript
+jest.mock('@suite-utils/features', () => ({
+  isFeatureFlagEnabled: (flag: string) => {
+    // Force specific flags for tests
+    if (flag === 'TRADING') return true;
+    if (flag === 'STAKING') return false;
+    return false;
+  },
+}));
+```
+
+## Runtime vs Build-Time
+
+### Build-Time Flags (Recommended)
+
+Compiled into build:
+
+<CardGroup cols={2}>
+  <Card title="Pros" icon="check">
+    - Dead code elimination
+    - Smaller bundle size
+    - Better performance
+    - Type-safe
+  </Card>
+  <Card title="Cons" icon="xmark">
+    - Requires rebuild
+    - Cannot change after build
+    - Different builds per environment
+  </Card>
+</CardGroup>
+
+### Runtime Flags
+
+Evaluated at runtime:
+
+<CardGroup cols={2}>
+  <Card title="Pros" icon="check">
+    - Can change without rebuild
+    - Remote control possible
+    - Same build everywhere
+    - A/B testing support
+  </Card>
+  <Card title="Cons" icon="xmark">
+    - All code in bundle
+    - Larger bundle size
+    - Performance overhead
+    - More complex
+  </Card>
+</CardGroup>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="When to Use Flags">
+    - **Unfinished features**: Hide work-in-progress
+    - **Platform differences**: Desktop vs Web vs Mobile
+    - **Experimental features**: Test before release
+    - **Optional features**: Let users choose
+    - **Emergency disable**: Quick feature disable
+  </Accordion>
+  
+  <Accordion title="When NOT to Use Flags">
+    - **Stable features**: Don't flag everything
+    - **Core functionality**: Essential features shouldn't be flagged
+    - **User settings**: Use proper settings instead
+    - **Temporary fixes**: Remove flag after fix
+  </Accordion>
+  
+  <Accordion title="Flag Lifecycle">
+    1. **Add flag**: New feature development
+    2. **Enable in dev**: Test in development
+    3. **Enable in staging**: QA testing
+    4. **Enable in prod**: Release to users
+    5. **Remove flag**: After stable release
+    
+    Don't accumulate flags indefinitely!
+  </Accordion>
+</AccordionGroup>
+
+## Debugging
+
+### View Active Flags
+
+Debug menu shows all flags:
+
+```typescript
+import { getAllFlags } from '@suite-utils/features';
+
+const DebugFeatureFlags = () => {
+  const flags = getAllFlags();
+  
+  return (
+    <table>
+      {Object.entries(flags).map(([name, enabled]) => (
+        <tr key={name}>
+          <td>{name}</td>
+          <td>{enabled ? '✅' : '❌'}</td>
+        </tr>
+      ))}
+    </table>
+  );
+};
+```
+
+### Override Flags Locally
+
+For testing:
+
+```typescript
+// In browser console
+localStorage.setItem('DEBUG_FLAGS', JSON.stringify({
+  STAKING: true,
+  TRADING: false,
+}));
+
+// Reload Suite
+window.location.reload();
+```
+
+## Implementation Files
+
+```typescript
+// Flag definitions
+suite-common/suite-config/
+  src/
+    features.ts         // Main flag definitions
+    features.desktop.ts // Desktop overrides
+    features.web.ts     // Web overrides
+    features.mobile.ts  // Mobile overrides
+
+// Utilities
+packages/suite/src/utils/suite/features.ts
+
+// Components
+packages/suite/src/components/suite/FeatureFlag.tsx
+
+// Hooks
+packages/suite/src/hooks/suite/useFeatureFlag.ts
+```
+
+## Future Enhancements
+
+<Info>
+Planned improvements:
+- **Runtime control**: Change flags without rebuild
+- **User preferences**: Let users enable experimental features
+- **Gradual rollout**: Enable for percentage of users
+- **Kill switches**: Emergency disable via API
+</Info>
+
+## Related Resources
+
+- [Message System](/features/message-system)
+- [Building the Project](/development/building)
+- [Environment Setup](/development/environment-setup)

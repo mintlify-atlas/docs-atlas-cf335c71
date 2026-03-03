@@ -1,0 +1,668 @@
+---
+title: "Device Management"
+description: "Managing device connections, state, and lifecycle"
+---
+
+## Overview
+
+Device management in TrezorConnect involves handling device connections, monitoring state changes, managing passphrases, and coordinating multiple devices. The SDK provides comprehensive tools for device lifecycle management.
+
+## Device Discovery
+
+TrezorConnect automatically discovers and manages connected devices:
+
+```typescript
+import TrezorConnect, { DEVICE_EVENT, DEVICE } from '@trezor/connect';
+
+// Listen for device connections
+TrezorConnect.on(DEVICE_EVENT, (event) => {
+  if (event.type === DEVICE.CONNECT) {
+    console.log('Device connected:', event.payload);
+    handleNewDevice(event.payload);
+  }
+});
+```
+
+## Device Object
+
+Each device is represented by a `Device` object:
+
+```typescript
+interface Device {
+  path: string;              // Unique device path
+  label: string;             // Device label
+  state?: string;            // Device state (passphrase dependent)
+  status: DeviceStatus;      // 'available' | 'occupied' | 'used'
+  mode: DeviceMode;          // 'normal' | 'bootloader' | 'initialize' | 'seedless'
+  firmware: DeviceFirmwareStatus; // Firmware status
+  features?: Features;       // Device features
+  unavailableCapabilities?: UnavailableCapabilities;
+}
+```
+
+### Device Features
+
+Access device capabilities and information:
+
+<CodeGroup>
+```typescript Get Features
+const result = await TrezorConnect.getFeatures();
+
+if (result.success) {
+  const { features } = result.payload;
+  console.log('Model:', features.model);
+  console.log('Firmware version:', features.fw_version);
+  console.log('Label:', features.label);
+  console.log('Initialized:', features.initialized);
+  console.log('Passphrase protection:', features.passphrase_protection);
+  console.log('PIN protection:', features.pin_protection);
+}
+```
+
+```typescript Features Object
+interface Features {
+  vendor: string;
+  model: string;
+  fw_version: VersionArray;  // [major, minor, patch]
+  label: string;
+  initialized: boolean;
+  passphrase_protection: boolean;
+  pin_protection: boolean;
+  needs_backup: boolean;
+  bootloader_mode: boolean;
+  capabilities: string[];
+  // ... many more fields
+}
+```
+</CodeGroup>
+
+## Device Status
+
+Monitor device availability:
+
+<Tabs>
+  <Tab title="Available">
+    Device is ready for operations:
+
+    ```typescript
+    TrezorConnect.on(DEVICE_EVENT, (event) => {
+      if (event.type === DEVICE.CONNECT) {
+        if (event.payload.status === 'available') {
+          console.log('Device ready');
+          // Can start operations
+        }
+      }
+    });
+    ```
+  </Tab>
+
+  <Tab title="Occupied">
+    Device is busy with another operation:
+
+    ```typescript
+    if (device.status === 'occupied') {
+      console.log('Device busy, waiting...');
+      // Wait for device to become available
+    }
+    ```
+  </Tab>
+
+  <Tab title="Used Elsewhere">
+    Device is used by another application:
+
+    ```typescript
+    TrezorConnect.on(DEVICE_EVENT, (event) => {
+      if (event.type === DEVICE.CONNECT_UNACQUIRED) {
+        console.warn('Device used by another app');
+        showWarning('Please close other apps using Trezor');
+      }
+    });
+    ```
+  </Tab>
+</Tabs>
+
+## Device Modes
+
+Devices can operate in different modes:
+
+<AccordionGroup>
+  <Accordion title="Normal Mode" icon="check">
+    Standard operational mode:
+
+    ```typescript
+    if (device.mode === 'normal' && device.features?.initialized) {
+      // Device ready for transactions
+      await performTransaction();
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Bootloader Mode" icon="download">
+    Firmware update mode:
+
+    ```typescript
+    TrezorConnect.on(UI_EVENT, (event) => {
+      if (event.type === UI_REQUEST.BOOTLOADER) {
+        console.log('Device in bootloader mode');
+        // Can perform firmware update
+        await TrezorConnect.firmwareUpdate();
+      }
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="Initialize Mode" icon="plus">
+    Device needs initialization:
+
+    ```typescript
+    TrezorConnect.on(UI_EVENT, (event) => {
+      if (event.type === UI_REQUEST.INITIALIZE) {
+        // Device not initialized
+        const shouldSetup = await confirmSetup();
+        
+        if (shouldSetup) {
+          await TrezorConnect.resetDevice({
+            strength: 256,
+            label: 'My Trezor'
+          });
+        }
+      }
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="Seedless Mode" icon="exclamation-triangle">
+    Device without seed (backup missing):
+
+    ```typescript
+    if (device.mode === 'seedless' || device.features?.needs_backup) {
+      showWarning('Please backup your device!');
+      
+      await TrezorConnect.backupDevice();
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Device State Management
+
+### Passphrase and Device State
+
+Device state changes with different passphrases:
+
+```typescript
+// Get device state (derives from passphrase)
+const result = await TrezorConnect.getDeviceState();
+
+if (result.success) {
+  const state = result.payload.state;
+  console.log('Device state:', state);
+  
+  // State is a hash derived from:
+  // - Device session
+  // - Passphrase (if enabled)
+  // Used to identify different "wallets" on same device
+}
+```
+
+### State Validation
+
+<Warning>
+Device state validation prevents passphrase-related errors. Always validate state before sensitive operations.
+</Warning>
+
+```typescript
+// Store state after first successful operation
+let expectedState: string;
+
+const firstResult = await TrezorConnect.getAddress({
+  path: "m/49'/0'/0'/0/0",
+  coin: 'btc'
+});
+
+if (firstResult.success && firstResult.device) {
+  expectedState = firstResult.device.state!;
+}
+
+// Later, validate state matches
+const secondResult = await TrezorConnect.signTransaction({
+  // ... transaction params
+});
+
+if (secondResult.success && secondResult.device) {
+  if (secondResult.device.state !== expectedState) {
+    // Different passphrase was used!
+    throw new Error('Device state mismatch - wrong passphrase?');
+  }
+}
+```
+
+## Session Management
+
+TrezorConnect manages device sessions automatically:
+
+```typescript
+// Sessions are acquired automatically when calling methods
+const result = await TrezorConnect.getAddress({
+  path: "m/49'/0'/0'/0/0",
+  coin: 'btc'
+});
+// Session is released after method completes
+
+// For multiple operations, sessions are reused when possible
+await TrezorConnect.getAddress({ path: "m/49'/0'/0'/0/0", coin: 'btc' });
+await TrezorConnect.getAddress({ path: "m/49'/0'/0'/0/1", coin: 'btc' });
+// Same session used if device state matches
+```
+
+## Firmware Management
+
+### Check Firmware Status
+
+<CodeGroup>
+```typescript Firmware Version
+const result = await TrezorConnect.getFeatures();
+
+if (result.success) {
+  const { fw_version, bootloader_mode } = result.payload;
+  console.log('Firmware:', fw_version.join('.'));
+  console.log('Bootloader mode:', bootloader_mode);
+}
+```
+
+```typescript Firmware Update
+const result = await TrezorConnect.firmwareUpdate({
+  binary: firmwareBuffer, // ArrayBuffer with firmware
+  version: [2, 5, 3]
+});
+
+if (result.success) {
+  console.log('Firmware updated successfully');
+}
+```
+
+```typescript Firmware Hash
+const result = await TrezorConnect.getFirmwareHash();
+
+if (result.success) {
+  console.log('Firmware hash:', result.payload.hash);
+  // Verify against official hashes
+}
+```
+</CodeGroup>
+
+### Firmware Events
+
+Monitor firmware update progress:
+
+```typescript
+TrezorConnect.on(UI_EVENT, (event) => {
+  if (event.type === UI_REQUEST.FIRMWARE_PROGRESS) {
+    const { operation, progress } = event.payload;
+    
+    switch (operation) {
+      case 'downloading':
+        updateUI(`Downloading firmware: ${progress}%`);
+        break;
+      case 'start-flashing':
+        updateUI('Starting firmware installation...');
+        break;
+      case 'flashing':
+        updateUI(`Installing firmware: ${progress}%`);
+        break;
+    }
+  }
+  
+  if (event.type === UI_REQUEST.FIRMWARE_RECONNECT) {
+    const { disconnected, method, target } = event.payload;
+    
+    if (disconnected) {
+      showMessage(`Please reconnect device in ${target} mode`);
+    }
+  }
+});
+```
+
+## Device Configuration
+
+### Apply Settings
+
+<CodeGroup>
+```typescript Change Label
+await TrezorConnect.applySettings({
+  label: 'My Trezor Wallet'
+});
+```
+
+```typescript Enable Passphrase
+await TrezorConnect.applySettings({
+  use_passphrase: true
+});
+```
+
+```typescript Auto-lock Timeout
+await TrezorConnect.applySettings({
+  auto_lock_delay_ms: 600000 // 10 minutes
+});
+```
+
+```typescript Display Settings
+await TrezorConnect.applySettings({
+  display_rotation: 90,
+  brightness: 255
+});
+```
+</CodeGroup>
+
+### PIN Management
+
+<Tabs>
+  <Tab title="Change PIN">
+    ```typescript
+    const result = await TrezorConnect.changePin();
+    
+    // Handle PIN requests via UI events
+    TrezorConnect.on(UI_EVENT, async (event) => {
+      if (event.type === UI_REQUEST.REQUEST_PIN) {
+        const pin = await getUserInput('Enter new PIN:');
+        TrezorConnect.uiResponse({
+          type: UI_REQUEST.RECEIVE_PIN,
+          payload: pin
+        });
+      }
+    });
+    ```
+  </Tab>
+
+  <Tab title="Remove PIN">
+    ```typescript
+    // Set empty PIN to remove protection
+    await TrezorConnect.changePin({ remove: true });
+    ```
+  </Tab>
+
+  <Tab title="Wipe Code">
+    ```typescript
+    // Set wipe code (alternative PIN that wipes device)
+    await TrezorConnect.changeWipeCode();
+    ```
+  </Tab>
+</Tabs>
+
+## Device Initialization
+
+### New Device Setup
+
+<Steps>
+  <Step title="Reset Device">
+    Initialize a new device with seed generation:
+
+    ```typescript
+    const result = await TrezorConnect.resetDevice({
+      strength: 256,              // 256-bit entropy (24 words)
+      label: 'My Trezor',
+      passphrase_protection: true,
+      pin_protection: true,
+      skip_backup: false
+    });
+    ```
+  </Step>
+
+  <Step title="Backup Device">
+    Backup the seed phrase:
+
+    ```typescript
+    const result = await TrezorConnect.backupDevice();
+    
+    // User will write down seed words on device
+    ```
+  </Step>
+
+  <Step title="Verify Setup">
+    Check device is properly initialized:
+
+    ```typescript
+    const features = await TrezorConnect.getFeatures();
+    
+    if (features.success) {
+      const { initialized, needs_backup, pin_protection } = features.payload;
+      
+      if (initialized && !needs_backup && pin_protection) {
+        console.log('Device setup complete!');
+      }
+    }
+    ```
+  </Step>
+</Steps>
+
+### Device Recovery
+
+Recover device from seed phrase:
+
+```typescript
+const result = await TrezorConnect.recoveryDevice({
+  word_count: 24,
+  passphrase_protection: true,
+  pin_protection: true,
+  label: 'Recovered Trezor'
+});
+
+// Handle word requests
+TrezorConnect.on(UI_EVENT, async (event) => {
+  if (event.type === UI_REQUEST.REQUEST_WORD) {
+    const word = await promptForSeedWord(event.payload.type);
+    
+    TrezorConnect.uiResponse({
+      type: UI_REQUEST.RECEIVE_WORD,
+      payload: word
+    });
+  }
+});
+```
+
+## Multiple Devices
+
+<Warning>
+Most TrezorConnect methods don't support multiple devices simultaneously. Ensure only one device is connected or use device filtering.
+</Warning>
+
+### Device Path Filtering
+
+```typescript
+// Track connected devices
+const devices = new Map<string, Device>();
+
+TrezorConnect.on(DEVICE_EVENT, (event) => {
+  if (event.type === DEVICE.CONNECT) {
+    devices.set(event.payload.path, event.payload);
+  }
+  
+  if (event.type === DEVICE.DISCONNECT) {
+    devices.delete(event.payload.path);
+  }
+});
+
+// Use specific device by path
+const devicePath = Array.from(devices.keys())[0];
+const result = await TrezorConnect.getAddress({
+  path: "m/49'/0'/0'/0/0",
+  coin: 'btc',
+  device: { path: devicePath } // Specify device
+});
+```
+
+## Advanced Features
+
+### THP (Trezor Host Protocol)
+
+Manage THP credentials for enhanced security:
+
+<CodeGroup>
+```typescript Get Credentials
+const result = await TrezorConnect.thpGetCredentials();
+
+if (result.success) {
+  console.log('THP credentials:', result.payload.credentials);
+  // Store credentials securely
+}
+```
+
+```typescript Remove Credentials
+await TrezorConnect.thpRemoveCredentials();
+```
+
+```typescript THP Pairing
+TrezorConnect.on(DEVICE_EVENT, (event) => {
+  if (event.type === DEVICE.THP_CREDENTIALS_CHANGED) {
+    console.log('New credentials:', event.payload.credentials);
+    storeCredentials(event.payload.credentials);
+  }
+});
+```
+</CodeGroup>
+
+### Device Authentication
+
+```typescript
+const result = await TrezorConnect.authenticateDevice({
+  challenge_hidden: 'random-challenge',
+  challenge_visual: 'Confirm authentication'
+});
+
+if (result.success) {
+  console.log('Device authenticated');
+  console.log('Signature:', result.payload.signature);
+}
+```
+
+### Bluetooth Management
+
+```typescript
+// Unpair Bluetooth device
+const result = await TrezorConnect.bleUnpair();
+
+if (result.success) {
+  console.log('Bluetooth device unpaired');
+}
+```
+
+## Best Practices
+
+<Check>
+1. **Always handle disconnections** - Listen for `DEVICE.DISCONNECT` and gracefully handle device removal
+2. **Validate device state** - Check state consistency for passphrase-protected devices
+3. **Monitor firmware status** - Warn users about outdated firmware
+4. **Handle errors gracefully** - Device can disconnect during operations
+5. **Clean up listeners** - Remove event listeners when components unmount
+</Check>
+
+<Warning>
+Never cache sensitive data (PINs, passphrases) in your application. Always prompt users when needed.
+</Warning>
+
+## Complete Example
+
+```typescript
+import TrezorConnect, { DEVICE_EVENT, DEVICE, UI_EVENT, UI_REQUEST } from '@trezor/connect';
+
+class DeviceManager {
+  private currentDevice: Device | null = null;
+  private deviceState: string | null = null;
+
+  async initialize() {
+    await TrezorConnect.init({
+      manifest: {
+        email: 'developer@example.com',
+        appUrl: 'https://example.com'
+      }
+    });
+
+    // Monitor device connections
+    TrezorConnect.on(DEVICE_EVENT, this.handleDeviceEvent);
+    TrezorConnect.on(UI_EVENT, this.handleUIEvent);
+  }
+
+  handleDeviceEvent = (event) => {
+    switch (event.type) {
+      case DEVICE.CONNECT:
+        this.currentDevice = event.payload;
+        this.checkDeviceStatus(event.payload);
+        break;
+        
+      case DEVICE.DISCONNECT:
+        if (this.currentDevice?.path === event.payload.path) {
+          this.currentDevice = null;
+          this.deviceState = null;
+        }
+        break;
+        
+      case DEVICE.CHANGED:
+        this.currentDevice = event.payload;
+        break;
+    }
+  };
+
+  async checkDeviceStatus(device: Device) {
+    if (!device.features?.initialized) {
+      console.warn('Device not initialized');
+      return;
+    }
+
+    if (device.features.needs_backup) {
+      console.warn('Device needs backup!');
+    }
+
+    if (device.firmware === 'outdated') {
+      console.warn('Firmware update available');
+    }
+  }
+
+  handleUIEvent = async (event) => {
+    if (event.type === UI_REQUEST.REQUEST_PIN) {
+      const pin = await this.promptPin();
+      TrezorConnect.uiResponse({
+        type: UI_REQUEST.RECEIVE_PIN,
+        payload: pin
+      });
+    }
+  };
+
+  async performOperation() {
+    if (!this.currentDevice) {
+      throw new Error('No device connected');
+    }
+
+    const result = await TrezorConnect.getAddress({
+      path: "m/49'/0'/0'/0/0",
+      coin: 'btc'
+    });
+
+    if (result.success && result.device) {
+      // Store state for validation
+      this.deviceState = result.device.state!;
+      return result.payload;
+    }
+
+    throw result.error;
+  }
+
+  cleanup() {
+    TrezorConnect.off(DEVICE_EVENT, this.handleDeviceEvent);
+    TrezorConnect.off(UI_EVENT, this.handleUIEvent);
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Methods" icon="code" href="/connect/methods">
+    Explore TrezorConnect methods
+  </Card>
+  <Card title="Events" icon="tower-broadcast" href="/connect/events">
+    Learn about event handling
+  </Card>
+  <Card title="Error Handling" icon="triangle-exclamation" href="/connect/error-handling">
+    Handle errors effectively
+  </Card>
+</CardGroup>

@@ -1,0 +1,730 @@
+---
+title: Monorepo Structure
+description: Understanding the Trezor Suite monorepo organization, workspace structure, and package architecture.
+---
+
+# Monorepo Structure
+
+Trezor Suite is organized as a monorepo using Yarn workspaces, containing multiple applications and shared packages. This structure enables code sharing, consistent tooling, and unified development workflows.
+
+## Overview
+
+The repository contains three main projects:
+
+<CardGroup cols={3}>
+  <Card title="Trezor Connect" icon="plug">
+    Developer API for integrating Trezor into third-party applications
+  </Card>
+  <Card title="Trezor Suite" icon="desktop">
+    Desktop and web application for managing Trezor hardware wallets
+  </Card>
+  <Card title="Suite Mobile" icon="mobile">
+    Native mobile application for iOS and Android
+  </Card>
+</CardGroup>
+
+## Workspace Configuration
+
+The monorepo uses **Yarn 4.12.0** with workspace configuration defined in `package.json`:
+
+```json
+{
+  "workspaces": {
+    "packages": [
+      "packages/*",
+      "packages/connect-examples/*",
+      "suite-native/*",
+      "suite-common/*",
+      "suite/*",
+      "scripts"
+    ]
+  }
+}
+```
+
+<Note>
+  Node.js version **24** is required, managed via NVM. See the `.nvmrc` file in the repository root.
+</Note>
+
+## Directory Structure
+
+### High-Level Layout
+
+<CodeGroup>
+```text Repository Root
+trezor-suite/
+├── packages/          # 📦 Core libraries and tools
+├── suite/             # 🖥️ Desktop & web application
+├── suite-native/      # 📱 Mobile application
+├── suite-common/      # 🤝 Shared code between Suite & Mobile
+├── docs/              # 📖 Documentation
+├── scripts/           # 🔧 Build and automation scripts
+├── docker/            # 🐳 Docker configurations
+└── submodules/        # 🔗 Git submodules (firmware, etc.)
+```
+</CodeGroup>
+
+---
+
+## Packages Directory
+
+The `packages/` directory contains core libraries, Trezor Connect, and reusable components.
+
+### Key Packages
+
+<Tabs>
+  <Tab title="Connect Packages">
+    <Accordion title="@trezor/connect">
+      **Main Connect API**
+      
+      - Entry point for all Trezor Connect functionality
+      - Version 9 (rewritten for Suite monorepo)
+      - Used by both Suite and third-party integrations
+      
+      Location: `packages/connect/`
+      
+      [Documentation](/connect/overview)
+    </Accordion>
+
+    <Accordion title="@trezor/connect-web">
+      **Web-specific Connect implementation**
+      
+      - Browser-compatible version
+      - Uses WebUSB for device communication
+      - Loaded as JavaScript module in Suite Web
+      
+      Location: `packages/connect-web/`
+    </Accordion>
+
+    <Accordion title="@trezor/connect-mobile">
+      **Mobile Connect implementation**
+      
+      - React Native compatible
+      - Uses native USB/Bluetooth transports
+      - Optimized for mobile platforms
+      
+      Location: `packages/connect-mobile/`
+    </Accordion>
+
+    <Accordion title="@trezor/connect-explorer">
+      **Interactive API explorer**
+      
+      - Test Connect methods in browser
+      - Example implementations
+      - Development tool
+      
+      Location: `packages/connect-explorer/`
+    </Accordion>
+  </Tab>
+
+  <Tab title="Suite Packages">
+    <Accordion title="@trezor/suite">
+      **Core Suite application**
+      
+      - Main application logic
+      - Redux store and state management
+      - Shared UI components
+      - Business logic for wallet operations
+      
+      Location: `packages/suite/`
+    </Accordion>
+
+    <Accordion title="@trezor/suite-desktop">
+      **Desktop build target**
+      
+      - Electron application wrapper
+      - Native OS integrations
+      - Offline capabilities
+      - Tor support
+      
+      Location: `packages/suite-desktop/`
+      
+      [Architecture Details](/architecture/suite-desktop)
+    </Accordion>
+
+    <Accordion title="@trezor/suite-web">
+      **Web build target**
+      
+      - Browser-based version
+      - Production builds with security headers
+      - CDN deployment
+      
+      Location: `packages/suite-web/`
+      
+      [Architecture Details](/architecture/suite-web)
+    </Accordion>
+
+    <Accordion title="@trezor/suite-desktop-core">
+      **Electron core functionality**
+      
+      - Main process logic
+      - IPC communication
+      - Native module integrations
+      
+      Location: `packages/suite-desktop-core/`
+    </Accordion>
+
+    <Accordion title="@trezor/suite-build">
+      **Build tools and configurations**
+      
+      - Webpack configurations
+      - Vite configurations (experimental)
+      - Build scripts
+      
+      Location: `packages/suite-build/`
+    </Accordion>
+  </Tab>
+
+  <Tab title="Shared Libraries">
+    <Accordion title="@trezor/components">
+      **UI component library**
+      
+      - Reusable React components
+      - Design system components
+      - Used across Suite Web, Desktop, and Connect Explorer
+      
+      Location: `packages/components/`
+    </Accordion>
+
+    <Accordion title="@trezor/blockchain-link">
+      **Blockchain communication**
+      
+      - WebSocket connections to blockchain backends
+      - Transaction broadcasting
+      - Balance and history fetching
+      
+      Location: `packages/blockchain-link/`
+    </Accordion>
+
+    <Accordion title="@trezor/device-utils">
+      **Device-related utilities**
+      
+      - Device state management
+      - Firmware version handling
+      - Model detection
+      
+      Location: `packages/device-utils/`
+    </Accordion>
+
+    <Accordion title="@trezor/utils">
+      **General utilities**
+      
+      - Common helper functions
+      - Type utilities
+      - Shared constants
+      
+      Location: `packages/utils/`
+    </Accordion>
+
+    <Accordion title="@trezor/connect-common">
+      **Connect shared code**
+      
+      - Protocol definitions
+      - Shared types
+      - Common utilities
+      
+      Location: `packages/connect-common/`
+    </Accordion>
+  </Tab>
+
+  <Tab title="Other Packages">
+    Notable packages in the `packages/` directory:
+    
+    - **@trezor/coinjoin**: CoinJoin privacy features
+    - **@trezor/crypto-utils**: Cryptographic utilities
+    - **@trezor/address-validator**: Address validation
+    - **@trezor/asset-utils**: Asset/token utilities
+    - **@trezor/analytics-uploader**: Analytics infrastructure
+    - **@trezor/transport-bridge**: Trezor Bridge communication
+    - **@trezor/auth-server**: Authentication services
+    - **@trezor/bundler-security**: Build security tooling
+    
+    <Info>
+      Total packages: **60+** in the packages directory
+    </Info>
+  </Tab>
+</Tabs>
+
+---
+
+## Suite Directory
+
+The `suite/` directory contains packages specific to the desktop and web applications.
+
+```text
+suite/
+├── analytics/              # Analytics collection
+├── e2e/                    # End-to-end tests (Playwright)
+├── experimental/           # Experimental features
+├── experimental-feedback/  # Feedback system
+├── idb-migration-utils/    # IndexedDB migration tools
+├── intl/                   # Internationalization
+├── metadata/               # Labeling and metadata sync
+├── platform-encryption-electron/
+├── platform-encryption-webauthn/
+├── sentry/                 # Error tracking
+├── suite-sync/             # Cloud sync features
+├── test-utils/             # Testing utilities
+├── trading/                # Exchange integrations
+└── tx-simulation/          # Transaction simulation
+```
+
+<Info>
+  These packages are specific to Suite Desktop and Suite Web, and are not used in Suite Mobile.
+</Info>
+
+---
+
+## Suite Native Directory
+
+The `suite-native/` directory contains the mobile application and its modules.
+
+### Structure
+
+```text
+suite-native/
+├── app/                    # 👑 Main mobile application
+├── accounts/               # Account management
+├── alerts/                 # Alert system
+├── analytics/              # Mobile analytics
+├── atoms/                  # UI primitives (Jotai atoms)
+├── biometrics/             # Biometric authentication
+├── bluetooth/              # Bluetooth connectivity
+├── device/                 # Device management
+├── discovery/              # Account discovery
+├── firmware/               # Firmware update flows
+├── formatters/             # Data formatting
+├── icons/                  # Icon library
+├── navigation/             # React Navigation setup
+├── module-*/               # Feature modules
+├── receive/                # Receive flows
+├── send/                   # Send flows
+├── state/                  # Redux state
+├── theme/                  # Theming system
+└── ... (90+ packages)
+```
+
+### Key Mobile Packages
+
+<CardGroup cols={2}>
+  <Card title="@suite-native/app" icon="mobile">
+    Main mobile application entry point
+  </Card>
+  <Card title="@suite-native/atoms" icon="atom">
+    UI primitives and design system
+  </Card>
+  <Card title="@suite-native/navigation" icon="route">
+    Navigation structure and routing
+  </Card>
+  <Card title="@suite-native/state" icon="database">
+    Redux store configuration
+  </Card>
+</CardGroup>
+
+<Accordion title="Module Organization">
+  Mobile features are organized as self-contained modules with the `module-*` prefix:
+  
+  - `module-home/` - Home screen
+  - `module-accounts-management/` - Account management
+  - `module-send/` - Send functionality
+  - `module-settings/` - Settings screens
+  - `module-device-onboarding/` - Device setup flows
+  - `module-trading/` - Exchange features
+  - etc.
+  
+  Each module typically contains:
+  - React components
+  - Navigation screens
+  - Business logic
+  - Tests
+</Accordion>
+
+<Note>
+  Suite Native is built with **React Native 0.81.5** and **Expo SDK 54**.
+</Note>
+
+[Learn more about Mobile Architecture](/architecture/suite-mobile)
+
+---
+
+## Suite Common Directory
+
+The `suite-common/` directory contains code shared between Suite (Desktop/Web) and Suite Native.
+
+### Shared Packages
+
+```text
+suite-common/
+├── wallet-core/           # Core wallet logic
+├── wallet-types/          # Shared TypeScript types
+├── analytics/             # Analytics abstractions
+├── device/                # Device utilities
+├── suite-types/           # Suite-wide types
+├── suite-constants/       # Shared constants
+├── message-system/        # Message system
+├── fiat-services/         # Fiat rate services
+├── formatters/            # Data formatters
+├── connect-init/          # Connect initialization
+└── ... (50+ packages)
+```
+
+<Info>
+  **Key principle**: Code in `suite-common/` must work on both React (web/desktop) and React Native (mobile).
+</Info>
+
+<CardGroup cols={2}>
+  <Card title="wallet-core" icon="wallet">
+    Redux slices, selectors, and wallet business logic
+  </Card>
+  <Card title="wallet-types" icon="code">
+    TypeScript definitions for wallet operations
+  </Card>
+  <Card title="suite-types" icon="shapes">
+    Application-wide TypeScript types
+  </Card>
+  <Card title="suite-constants" icon="hashtag">
+    Shared constants and enums
+  </Card>
+</CardGroup>
+
+---
+
+## Build System
+
+### Package Manager
+
+**Yarn 4.12.0** (Berry) with:
+- Workspace protocol for internal dependencies
+- Plug'n'Play (PnP) for faster installs
+- Constraints and policies for consistency
+
+### Build Tools
+
+<Tabs>
+  <Tab title="TypeScript">
+    **TypeScript 5.8.3** used throughout:
+    
+    - Project references for incremental builds
+    - Strict type checking
+    - Path aliases via `tsconfig.base.json`
+    
+    ```json
+    {
+      "compilerOptions": {
+        "target": "ES2022",
+        "module": "ESNext",
+        "strict": true,
+        "esModuleInterop": true
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab title="Bundlers">
+    Different bundlers for different targets:
+    
+    **Webpack 5**: Suite Web & Desktop (production)
+    - Code splitting
+    - Tree shaking
+    - Asset optimization
+    
+    **Vite**: Suite Web (experimental dev mode)
+    - Faster dev server
+    - ESM-based
+    - Hot Module Replacement
+    
+    **Metro**: Suite Native
+    - React Native bundler
+    - Fast refresh
+    - Platform-specific bundling
+    
+    **Electron Builder**: Desktop packaging
+    - App signing
+    - Auto-updates
+    - Platform-specific builds
+  </Tab>
+
+  <Tab title="Testing">
+    **Jest 29.7.0** for unit tests:
+    ```bash
+    yarn test:unit
+    ```
+    
+    **Playwright** for E2E tests (Suite Web/Desktop):
+    ```bash
+    cd suite/e2e
+    yarn test:e2e
+    ```
+    
+    **Detox** for mobile E2E tests:
+    ```bash
+    yarn workspace @suite-native/app test:e2e
+    ```
+  </Tab>
+
+  <Tab title="Nx">
+    **Nx 22.4.3** for build orchestration:
+    
+    - Affected command detection
+    - Computation caching
+    - Parallel execution
+    
+    ```bash
+    # Build only affected packages
+    yarn nx:build:libs
+    
+    # Test only affected packages
+    yarn nx:test-unit
+    
+    # Show affected projects
+    yarn nx:show-affected
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Dependency Management
+
+### Workspace Dependencies
+
+Internal dependencies use the `workspace:*` protocol:
+
+```json
+{
+  "dependencies": {
+    "@trezor/connect": "workspace:*",
+    "@suite-common/wallet-core": "workspace:*"
+  }
+}
+```
+
+### Version Resolutions
+
+Critical packages are pinned in the root `package.json`:
+
+```json
+{
+  "resolutions": {
+    "typescript": "5.8.3",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "electron": "40.1.0"
+  }
+}
+```
+
+<Warning>
+  Changes to resolutions affect all packages. Test thoroughly before updating.
+</Warning>
+
+---
+
+## Development Workflow
+
+### Initial Setup
+
+<Steps>
+  <Step title="Clone Repository">
+    ```bash
+    git clone git@github.com:trezor/trezor-suite.git
+    cd trezor-suite
+    ```
+  </Step>
+
+  <Step title="Initialize Submodules">
+    ```bash
+    git submodule update --init --recursive
+    git config --global submodule.recurse true  # Optional but recommended
+    ```
+  </Step>
+
+  <Step title="Set Up Git LFS">
+    ```bash
+    git lfs install
+    git lfs pull
+    ```
+  </Step>
+
+  <Step title="Install Dependencies">
+    ```bash
+    nvm install  # Uses .nvmrc
+    yarn         # Installs all workspace dependencies
+    ```
+  </Step>
+
+  <Step title="Build Essential Packages">
+    ```bash
+    yarn build:essential
+    ```
+  </Step>
+</Steps>
+
+### Common Commands
+
+<CodeGroup>
+```bash Development
+# Suite Web
+yarn suite:dev
+
+# Suite Desktop
+yarn suite:dev:desktop
+
+# Suite Mobile
+yarn native:start
+yarn native:android  # or yarn native:ios
+```
+
+```bash Building
+# Build libraries
+yarn build:libs
+
+# Build production web
+yarn suite:build:web
+
+# Build desktop (platform-specific)
+yarn workspace @trezor/suite-desktop build:mac
+yarn workspace @trezor/suite-desktop build:win
+yarn workspace @trezor/suite-desktop build:linux
+```
+
+```bash Testing & Linting
+# Type check all packages
+yarn type-check
+
+# Run unit tests
+yarn test:unit
+
+# Lint JavaScript/TypeScript
+yarn lint:js
+
+# Lint styles
+yarn lint:styles
+
+# Format code
+yarn format
+```
+
+```bash Maintenance
+# Update dependencies
+yarn deps
+
+# Check for outdated packages
+yarn list-outdated
+
+# Update submodules
+yarn update-submodules
+
+# Check dependency usage
+yarn depcheck
+```
+</CodeGroup>
+
+---
+
+## Architecture Patterns
+
+### Code Organization Principles
+
+<AccordionGroup>
+  <Accordion title="Feature-Based Organization" icon="folder-tree">
+    Packages are organized by feature/domain rather than technical layer:
+    
+    ✅ Good:
+    ```
+    suite-native/
+    ├── module-send/
+    │   ├── components/
+    │   ├── hooks/
+    │   ├── screens/
+    │   └── utils/
+    ```
+    
+    ❌ Bad:
+    ```
+    suite-native/
+    ├── components/
+    ├── hooks/
+    └── screens/
+    ```
+  </Accordion>
+
+  <Accordion title="Dependency Direction" icon="arrow-right">
+    Clear dependency hierarchy:
+    
+    ```
+    suite-native/app
+          ↓
+    suite-native/module-*
+          ↓
+    suite-common/*
+          ↓
+    packages/*
+    ```
+    
+    Lower-level packages never depend on higher-level ones.
+  </Accordion>
+
+  <Accordion title="Platform Separation" icon="layer-group">
+    Platform-specific code is isolated:
+    
+    - `suite/*` - Desktop/Web only
+    - `suite-native/*` - Mobile only
+    - `suite-common/*` - Shared across platforms
+    - `packages/*` - Platform-agnostic when possible
+  </Accordion>
+
+  <Accordion title="Naming Conventions" icon="signature">
+    Consistent package naming:
+    
+    - `@trezor/*` - Core libraries, Connect, Suite Web/Desktop
+    - `@suite-native/*` - Mobile-specific packages
+    - `@suite-common/*` - Shared platform-agnostic code
+    - `@suite/*` - Desktop/Web-specific utilities
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Performance Considerations
+
+<CardGroup cols={2}>
+  <Card title="Build Caching" icon="database">
+    Nx caches build outputs for faster rebuilds
+  </Card>
+  <Card title="Incremental Builds" icon="layer-group">
+    TypeScript project references enable incremental compilation
+  </Card>
+  <Card title="Code Splitting" icon="scissors">
+    Webpack splits bundles for optimal loading
+  </Card>
+  <Card title="Tree Shaking" icon="tree">
+    Unused code is eliminated in production builds
+  </Card>
+</CardGroup>
+
+<Info>
+  Initial setup takes **15-20 minutes**. Incremental builds are much faster thanks to caching.
+</Info>
+
+---
+
+## Next Steps
+
+Explore specific architectures:
+
+<CardGroup cols={3}>
+  <Card title="Suite Desktop" icon="desktop" href="/architecture/suite-desktop">
+    Electron-based desktop architecture
+  </Card>
+  <Card title="Suite Web" icon="globe" href="/architecture/suite-web">
+    Browser-based web architecture
+  </Card>
+  <Card title="Suite Mobile" icon="mobile" href="/architecture/suite-mobile">
+    React Native mobile architecture
+  </Card>
+</CardGroup>
+
+<Tip>
+  For package-specific documentation, check the README files in each package directory.
+</Tip>

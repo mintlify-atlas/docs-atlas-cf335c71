@@ -1,0 +1,142 @@
+---
+title: Introduction to Trezor Suite
+description: Trezor Suite is a comprehensive application for managing your Trezor hardware wallet, available as a desktop, web, and mobile application.
+---
+
+<img
+  src="https://repository-images.githubusercontent.com/148657224/439f6100-765f-11e9-9bff-b725eef3c4a6"
+  alt="Trezor Suite"
+/>
+
+# Welcome to Trezor Suite
+
+Trezor Suite is a comprehensive cryptocurrency management application designed for Trezor hardware wallets. It provides a secure, user-friendly interface for managing your digital assets across multiple platforms.
+
+## What is Trezor Suite?
+
+Trezor Suite is the official application for managing your Trezor hardware wallet. It combines security, simplicity, and powerful features to give you complete control over your cryptocurrency portfolio.
+
+<CardGroup cols={2}>
+  <Card title="Desktop Application" icon="desktop" href="/installation#desktop">
+    Electron-based desktop app for Windows, macOS, and Linux with full offline capabilities
+  </Card>
+  <Card title="Web Application" icon="globe" href="/installation#web">
+    Browser-based version accessible from anywhere with enhanced security headers
+  </Card>
+  <Card title="Mobile Application" icon="mobile" href="/installation#mobile">
+    React Native mobile app for iOS and Android with portfolio tracking features
+  </Card>
+  <Card title="Trezor Connect" icon="plug" href="/connect/overview">
+    Developer tool for integrating Trezor functionality into third-party applications
+  </Card>
+</CardGroup>
+
+## Key Features
+
+<AccordionGroup>
+  <Accordion title="Multi-Currency Support" icon="coins">
+    Support for Bitcoin, Ethereum, and hundreds of other cryptocurrencies and tokens. Manage multiple accounts across different blockchain networks from a single interface.
+  </Accordion>
+
+  <Accordion title="Portfolio Management" icon="chart-line">
+    Track your portfolio value, view transaction history, and monitor price changes across all your accounts. Export transaction data and generate reports.
+  </Accordion>
+
+  <Accordion title="Advanced Privacy" icon="shield">
+    Built-in Tor support for enhanced privacy, CoinJoin for Bitcoin privacy, and optional anonymization mode. Your data stays on your device.
+  </Accordion>
+
+  <Accordion title="Send & Receive" icon="exchange">
+    Send and receive cryptocurrencies with address validation, QR code scanning, and UTXO management. Support for custom fees and advanced transaction features.
+  </Accordion>
+
+  <Accordion title="Firmware Updates" icon="arrow-up">
+    Keep your Trezor device up-to-date with the latest firmware directly from the Suite application. Bundled firmware binaries ensure offline updates.
+  </Accordion>
+
+  <Accordion title="Labeling & Metadata" icon="tag">
+    Label your accounts and transactions for better organization. Sync labels across devices using encrypted cloud storage.
+  </Accordion>
+</AccordionGroup>
+
+## Monorepo Structure
+
+This repository is organized as a monorepo containing three main projects:
+
+<CardGroup cols={3}>
+  <Card title="Trezor Suite" icon="desktop">
+    Desktop and web application for managing Trezor hardware wallets
+  </Card>
+  <Card title="Suite Mobile" icon="mobile">
+    Mobile/Tablet application designed for managing Trezor on the go
+  </Card>
+  <Card title="Trezor Connect" icon="code">
+    Tool for developers to integrate Trezor functionality into their applications
+  </Card>
+</CardGroup>
+
+### Workspace Organization
+
+The monorepo uses Yarn workspaces to manage packages:
+
+- **`packages/*`** - Core libraries, Connect, UI components, and shared utilities
+- **`suite/*`** - Desktop and web application packages
+- **`suite-native/*`** - Mobile application modules and components
+- **`suite-common/*`** - Shared code between Suite and Suite Native
+
+<Note>
+  Learn more about the monorepo structure in the [Architecture section](/architecture/monorepo-structure).
+</Note>
+
+## Quick Links
+
+<CardGroup cols={2}>
+  <Card title="Quick Start Guide" icon="rocket" href="/quickstart">
+    Get started with Trezor Suite in minutes
+  </Card>
+  <Card title="Installation" icon="download" href="/installation">
+    Install Suite Desktop, Web, or Mobile
+  </Card>
+  <Card title="Development Setup" icon="code" href="/quickstart#for-developers">
+    Set up your development environment
+  </Card>
+  <Card title="Architecture Overview" icon="diagram-project" href="/architecture/monorepo-structure">
+    Understand the technical architecture
+  </Card>
+</CardGroup>
+
+## For Developers
+
+If you're a developer looking to:
+- Contribute to Trezor Suite
+- Integrate Trezor into your application
+- Build on top of Trezor Connect
+
+Start with our [Quick Start Guide](/quickstart) and explore the [Architecture documentation](/architecture/monorepo-structure).
+
+<Tip>
+  You don't need a physical Trezor device to develop with Suite. Use the [Trezor User Env](https://github.com/trezor/trezor-user-env) emulator for testing.
+</Tip>
+
+## Security
+
+Trezor Suite is designed with security as the top priority:
+
+- **Open Source**: All code is publicly available for audit
+- **Hardware-Based Security**: Private keys never leave your Trezor device
+- **Offline Capabilities**: Desktop version works without internet connection
+- **Regular Updates**: Continuous security improvements and bug fixes
+
+<Warning>
+  Please report suspected security vulnerabilities privately to [security@satoshilabs.com](mailto:security@satoshilabs.com). Do NOT create publicly viewable issues for suspected security vulnerabilities.
+</Warning>
+
+## Community & Support
+
+- **GitHub**: [trezor/trezor-suite](https://github.com/trezor/trezor-suite)
+- **Documentation**: [docs.trezor.io/trezor-suite](https://docs.trezor.io/trezor-suite)
+- **Contributing**: See [CONTRIBUTING.md](https://github.com/trezor/trezor-suite/blob/develop/COMMITS.md) for guidelines
+
+<Info>
+  Trezor Suite uses [Conventional Commits](https://github.com/trezor/trezor-suite/blob/develop/COMMITS.md) for commit messages.
+</Info>

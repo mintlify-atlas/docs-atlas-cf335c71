@@ -1,0 +1,265 @@
+---
+title: Portfolio Tracker
+description: Real-time cryptocurrency portfolio tracking and management in Trezor Suite
+---
+
+# Portfolio Tracker
+
+Trezor Suite provides comprehensive portfolio tracking capabilities, displaying real-time values, performance metrics, and asset breakdowns across all connected accounts.
+
+## Dashboard Overview
+
+The Suite dashboard serves as the central portfolio hub:
+
+### Total Balance Display
+
+- **Aggregate value**: Combined balance across all enabled cryptocurrencies
+- **Fiat conversion**: Real-time conversion to user's selected fiat currency
+- **Privacy mode**: Discreet mode to hide balances
+
+### Asset Breakdown
+
+Detailed view of portfolio composition:
+
+<CardGroup cols={2}>
+  <Card title="Coin Distribution" icon="chart-pie">
+    Visual breakdown of holdings by cryptocurrency with percentage allocation
+  </Card>
+  <Card title="Account Summary" icon="wallet">
+    Individual account balances with recent transaction activity
+  </Card>
+</CardGroup>
+
+## Real-Time Tracking
+
+### Balance Updates
+
+Portfolio values update automatically:
+
+- **Blockchain sync**: Real-time synchronization with blockchain networks
+- **Fiat rates**: Current exchange rates updated every 3 minutes
+- **Rate threshold**: Rates older than 10 minutes are automatically refreshed
+
+### Performance Indicators
+
+Track portfolio performance over time:
+
+```typescript
+// Weekly rate comparison
+{
+  currentRate: number,
+  weeklyRate: number,
+  change: number, // Percentage change
+  direction: 'up' | 'down'
+}
+```
+
+- **7-day trends**: Green/red arrows indicate weekly performance
+- **Daily deltas**: Transaction-level value changes
+- **Historical tracking**: Value at time of transaction
+
+## Multi-Asset Support
+
+### Supported Networks
+
+Trezor Suite tracks balances across:
+
+- **Bitcoin**: BTC, LTC, BCH, DOGE, and other Bitcoin-like chains
+- **Ethereum**: ETH and all ERC-20 tokens
+- **Other networks**: XRP, ADA, SOL, and their tokens
+- **Testnet**: Development networks in Debug mode
+
+### Token Handling
+
+<Tabs>
+  <Tab title="ERC-20 Tokens">
+    - Auto-discovery on account creation
+    - Fiat rates fetched on `ACCOUNT.CREATE` and `ACCOUNT.UPDATE`
+    - Only tokens with definitions show fiat values
+  </Tab>
+  <Tab title="SOL Tokens">
+    - SPL token support
+    - Integrated with Solana account discovery
+  </Tab>
+  <Tab title="ADA Tokens">
+    - Native Cardano tokens
+    - Custom asset support
+  </Tab>
+</Tabs>
+
+## Account Management
+
+### Account Discovery
+
+Automatic discovery of accounts with balance:
+
+1. Connect Trezor device
+2. Suite scans for accounts with transaction history
+3. Discovered accounts added to portfolio
+4. Balance tracking begins automatically
+
+### Multiple Devices
+
+Manage portfolios across multiple Trezor devices:
+
+- **Device switching**: Quick toggle between connected devices
+- **Separate portfolios**: Each device maintains independent portfolio
+- **Remembered wallets**: Previous devices accessible without connection
+
+## Portfolio Analytics
+
+### Assets Table
+
+Comprehensive asset overview:
+
+| Column | Description |
+|--------|-------------|
+| Asset | Cryptocurrency name and symbol |
+| Balance | Current holdings in native units |
+| Value | Fiat-converted value |
+| Rate | Current exchange rate |
+| Change | 7-day percentage change |
+
+### Filtering and Sorting
+
+- Filter by coin type
+- Sort by value, balance, or change percentage
+- Hide zero-balance assets
+- Search by coin name or symbol
+
+## Fiat Integration
+
+### Currency Selection
+
+Support for multiple fiat currencies:
+
+```typescript
+// Supported fiat currencies
+type FiatCurrency = 
+  | 'usd' | 'eur' | 'gbp' | 'jpy'
+  | 'aud' | 'cad' | 'chf' | ...
+```
+
+Change fiat currency anytime in Settings without affecting blockchain data.
+
+### Exchange Rate Sources
+
+<Info>
+Trezor Suite uses multiple rate providers for reliability:
+- **Blockbook**: Primary source for most networks
+- **CoinGecko**: XRP, SOL, ADA, and fallback provider
+</Info>
+
+See [Fiat Rates](/features/fiat-rates) for detailed rate fetching behavior.
+
+## Privacy Features
+
+### Discreet Mode
+
+Hide sensitive balance information:
+
+- Toggle with keyboard shortcut or menu
+- Blurs all balance and value displays
+- Persists across sessions
+- Affects entire application
+
+### Data Storage
+
+Portfolio data storage:
+
+- **Local only**: Balances never leave your device
+- **IndexedDB**: Persistent storage in browser/app
+- **No cloud sync**: Complete privacy by default
+- **Optional metadata**: Opt-in for labeled accounts
+
+## Technical Implementation
+
+### Redux State Structure
+
+```typescript
+interface WalletState {
+  accounts: Account[];
+  transactions: { [accountKey: string]: Transaction[] };
+  fiat: FiatRates;
+  graph: {
+    selectedRange: GraphRange;
+    data: GraphData[];
+  };
+}
+```
+
+### Balance Calculation
+
+Portfolio totals computed from:
+
+1. Individual account balances
+2. Current fiat exchange rates
+3. Token holdings with valid definitions
+4. Pending/unconfirmed transactions
+
+### Update Triggers
+
+```typescript
+// Balance updates triggered by:
+- BLOCKCHAIN.BLOCK // New block mined
+- BLOCKCHAIN.NOTIFICATION // Transaction detected  
+- ACCOUNT.CREATE // New account added
+- ACCOUNT.UPDATE // Account data changed
+- FIAT.UPDATE // Exchange rates updated
+```
+
+## Performance Optimization
+
+### Efficient Updates
+
+- **Debounced recalculation**: Prevents excessive recomputation
+- **Memoized selectors**: Cached portfolio calculations
+- **Incremental updates**: Only changed accounts recalculated
+- **Worker threads**: Heavy calculations offloaded
+
+### Rate Limiting
+
+Protects against API rate limits:
+
+- 3-minute intervals for current rates
+- 1-hour cache for weekly rates
+- Exponential backoff on failures
+
+## Export Capabilities
+
+Portfolio data export options:
+
+<CardGroup cols={2}>
+  <Card title="CSV Export" icon="file-csv">
+    Export account list with balances and values
+  </Card>
+  <Card title="Transaction Export" icon="file-export">
+    Export transaction history for tax reporting
+  </Card>
+</CardGroup>
+
+See [Transactions](/suite/transactions) for export details.
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="For Users">
+    - Enable all cryptocurrencies you hold
+    - Regularly sync with Trezor device
+    - Use discreet mode in public
+    - Export data regularly for records
+  </Accordion>
+  
+  <Accordion title="For Developers">
+    - Cache computed portfolio values
+    - Handle rate fetch failures gracefully
+    - Debounce rapid update triggers
+    - Test with many accounts/tokens
+  </Accordion>
+</AccordionGroup>
+
+## Related Resources
+
+- [Fiat Rates](/features/fiat-rates)
+- [Account Discovery](/suite/account-discovery)
+- [Transactions](/suite/transactions)

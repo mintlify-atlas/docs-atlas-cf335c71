@@ -1,0 +1,659 @@
+---
+title: "Error Handling"
+description: "Error handling patterns and common errors in TrezorConnect"
+---
+
+## Overview
+
+TrezorConnect uses a consistent error handling pattern across all methods. Every method returns a result object with a `success` field that indicates whether the operation completed successfully.
+
+## Error Response Structure
+
+All errors follow a standardized format:
+
+```typescript
+{
+  success: false,
+  error: {
+    code: string,    // Error code identifier
+    message: string  // Human-readable error message
+  },
+  device?: Device    // Device info (when applicable)
+}
+```
+
+## Basic Error Handling
+
+<CodeGroup>
+```typescript Simple Check
+const result = await TrezorConnect.getAddress({
+  path: "m/49'/0'/0'/0/0",
+  coin: 'btc'
+});
+
+if (result.success) {
+  console.log('Address:', result.payload.address);
+} else {
+  console.error('Error:', result.error.message);
+  console.error('Code:', result.error.code);
+}
+```
+
+```typescript Try-Catch Pattern
+try {
+  const result = await TrezorConnect.getAddress({
+    path: "m/49'/0'/0'/0/0",
+    coin: 'btc'
+  });
+  
+  if (!result.success) {
+    throw new Error(result.error.message);
+  }
+  
+  return result.payload.address;
+} catch (error) {
+  handleError(error);
+}
+```
+
+```typescript Type Guard
+import type { Unsuccessful } from '@trezor/connect';
+
+const result = await TrezorConnect.getAddress({ /* ... */ });
+
+if (!result.success) {
+  // TypeScript knows result.error is available
+  const error: Unsuccessful = result;
+  logError(error.error.code, error.error.message);
+  return;
+}
+
+// TypeScript knows result.payload is available
+const address = result.payload.address;
+```
+</CodeGroup>
+
+## Error Categories
+
+Errors are organized into several categories:
+
+<AccordionGroup>
+  <Accordion title="Initialization Errors" icon="power-off">
+    Errors that occur during TrezorConnect initialization:
+
+    | Error Code | Message | Cause |
+    |------------|---------|-------|
+    | `Init_NotInitialized` | TrezorConnect not initialized | Called method before `init()` |
+    | `Init_AlreadyInitialized` | TrezorConnect has been already initialized | Called `init()` multiple times |
+    | `Init_ManifestMissing` | Manifest not set | Missing manifest in `init()` |
+    | `Init_IframeBlocked` | Iframe blocked | Ad-blocker blocking iframe |
+    | `Init_IframeTimeout` | Iframe timeout | Iframe failed to load |
+
+    ```typescript
+    // Prevent initialization errors
+    try {
+      await TrezorConnect.init({
+        manifest: {
+          email: 'developer@example.com',
+          appUrl: 'https://example.com'
+        }
+      });
+    } catch (error) {
+      if (error.code === 'Init_IframeBlocked') {
+        showMessage('Please disable ad-blocker for this site');
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Device Errors" icon="microchip">
+    Errors related to device state and connectivity:
+
+    | Error Code | Message | Cause |
+    |------------|---------|-------|
+    | `Device_NotFound` | Device not found | No device connected |
+    | `Device_Disconnected` | Device disconnected | Device unplugged during operation |
+    | `Device_UsedElsewhere` | Device is used in another window | Another app is using the device |
+    | `Device_InvalidState` | Passphrase is incorrect | Wrong passphrase entered |
+    | `Device_CallInProgress` | Device call in progress | Attempted concurrent calls |
+    | `Device_MultipleNotSupported` | Multiple devices are not supported | Multiple devices connected |
+
+    ```typescript
+    const result = await TrezorConnect.getAddress({ /* ... */ });
+    
+    if (!result.success) {
+      switch (result.error.code) {
+        case 'Device_NotFound':
+          showMessage('Please connect your Trezor device');
+          break;
+        case 'Device_Disconnected':
+          showMessage('Device was disconnected. Please reconnect.');
+          break;
+        case 'Device_UsedElsewhere':
+          showMessage('Device is being used by another application');
+          break;
+        case 'Device_InvalidState':
+          showMessage('Incorrect passphrase entered');
+          break;
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Method Errors" icon="code">
+    Errors during method execution:
+
+    | Error Code | Message | Cause |
+    |------------|---------|-------|
+    | `Method_InvalidParameter` | Invalid parameter | Invalid method parameters |
+    | `Method_NotAllowed` | Method not allowed | Method unavailable in current mode |
+    | `Method_PermissionsNotGranted` | Permissions not granted | User denied permission |
+    | `Method_Cancel` | Canceled | User canceled operation |
+    | `Method_Interrupted` | Popup closed | Popup/window closed |
+    | `Method_UnknownCoin` | Coin not found | Invalid coin identifier |
+    | `Method_AddressNotMatch` | Addresses do not match | Address validation failed |
+
+    ```typescript
+    const result = await TrezorConnect.getAddress({
+      path: "m/49'/0'/0'/0/0",
+      coin: 'btc',
+      address: 'expected-address'
+    });
+    
+    if (!result.success) {
+      if (result.error.code === 'Method_AddressNotMatch') {
+        showError('Address mismatch - possible security issue!');
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Transport Errors" icon="plug">
+    Communication layer errors:
+
+    | Error Code | Message | Cause |
+    |------------|---------|-------|
+    | `Transport_Missing` | Transport is missing | No transport available |
+    | `Popup_ConnectionMissing` | Unable to establish connection | Communication failure |
+
+    ```typescript
+    import { TRANSPORT_EVENT, TRANSPORT } from '@trezor/connect';
+    
+    TrezorConnect.on(TRANSPORT_EVENT, (event) => {
+      if (event.type === TRANSPORT.ERROR) {
+        console.error('Transport error:', event.payload.error);
+        
+        if (event.payload.code === 'Transport_Missing') {
+          showMessage('Please install Trezor Bridge');
+        }
+      }
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="Backend Errors" icon="server">
+    Blockchain backend errors:
+
+    | Error Code | Message | Cause |
+    |------------|---------|-------|
+    | `Backend_NotSupported` | BlockchainLink settings not found | No backend for this coin |
+    | `Backend_Disconnected` | Backend disconnected | Lost connection to backend |
+    | `Backend_Invalid` | Invalid backend | Wrong backend configuration |
+    | `Backend_Error` | (varies) | Backend-specific error |
+
+    ```typescript
+    const result = await TrezorConnect.getAccountInfo({
+      path: "m/84'/0'/0'",
+      coin: 'btc'
+    });
+    
+    if (!result.success) {
+      if (result.error.code === 'Backend_Disconnected') {
+        showMessage('Lost connection to blockchain. Reconnecting...');
+        // Will automatically reconnect
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Firmware Errors" icon="download">
+    Firmware-related errors:
+
+    | Error Code | Message | Cause |
+    |------------|---------|-------|
+    | `Device_FwException` | (varies) | Firmware version issue |
+    | `Firmware_Old` | Device firmware is too old | Outdated firmware |
+    | `Firmware_Outdated` | Firmware update recommended | Non-critical update available |
+    | `Firmware_NotSupported` | Firmware not supported | Unsupported version |
+
+    ```typescript
+    import { UI_EVENT, UI_REQUEST } from '@trezor/connect';
+    
+    TrezorConnect.on(UI_EVENT, async (event) => {
+      if (event.type === UI_REQUEST.FIRMWARE_OLD) {
+        const shouldUpdate = await confirm(
+          'Your firmware is outdated. Update now?'
+        );
+        
+        if (shouldUpdate) {
+          await TrezorConnect.firmwareUpdate();
+        }
+      }
+    });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Common Error Patterns
+
+### User Cancellation
+
+```typescript
+const result = await TrezorConnect.signTransaction({ /* ... */ });
+
+if (!result.success) {
+  if (result.error.code === 'Method_Cancel') {
+    // User clicked cancel
+    showMessage('Transaction canceled');
+    return;
+  }
+  
+  if (result.error.code === 'Method_Interrupted') {
+    // User closed popup
+    showMessage('Operation interrupted');
+    return;
+  }
+}
+```
+
+### Passphrase Validation
+
+<Warning>
+Always validate device state to detect passphrase mismatches.
+</Warning>
+
+```typescript
+let expectedState: string | undefined;
+
+// First operation - store state
+const firstResult = await TrezorConnect.getAddress({
+  path: "m/49'/0'/0'/0/0",
+  coin: 'btc'
+});
+
+if (firstResult.success && firstResult.device) {
+  expectedState = firstResult.device.state;
+}
+
+// Later operation - validate state
+const secondResult = await TrezorConnect.signTransaction({ /* ... */ });
+
+if (!secondResult.success) {
+  if (secondResult.error.code === 'Device_InvalidState') {
+    showError('Wrong passphrase entered!');
+    return;
+  }
+}
+
+// Additional validation
+if (secondResult.success && secondResult.device) {
+  if (secondResult.device.state !== expectedState) {
+    throw new Error('Device state mismatch - different passphrase used');
+  }
+}
+```
+
+### Connection Issues
+
+```typescript
+import { DEVICE_EVENT, DEVICE } from '@trezor/connect';
+
+class ConnectionHandler {
+  private isDeviceConnected = false;
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 3;
+
+  constructor() {
+    TrezorConnect.on(DEVICE_EVENT, this.handleDeviceEvent);
+  }
+
+  handleDeviceEvent = (event) => {
+    if (event.type === DEVICE.CONNECT) {
+      this.isDeviceConnected = true;
+      this.reconnectAttempts = 0;
+      console.log('Device connected');
+    }
+    
+    if (event.type === DEVICE.DISCONNECT) {
+      this.isDeviceConnected = false;
+      this.handleDisconnection();
+    }
+  };
+
+  async handleDisconnection() {
+    if (this.reconnectAttempts < this.maxReconnectAttempts) {
+      this.reconnectAttempts++;
+      showMessage(`Device disconnected. Waiting for reconnection... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+      
+      // Wait for device to reconnect
+      await this.waitForReconnection(5000);
+    } else {
+      showError('Device disconnected. Please reconnect manually.');
+    }
+  }
+
+  waitForReconnection(timeout: number): Promise<boolean> {
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        resolve(false);
+      }, timeout);
+
+      const checkConnection = () => {
+        if (this.isDeviceConnected) {
+          clearTimeout(timer);
+          resolve(true);
+        }
+      };
+
+      const interval = setInterval(checkConnection, 100);
+      setTimeout(() => clearInterval(interval), timeout);
+    });
+  }
+}
+```
+
+### Invalid Parameters
+
+```typescript
+function validatePath(path: string): boolean {
+  // BIP32 path validation
+  const pathRegex = /^m(\/\d+'?)+$/;
+  return pathRegex.test(path);
+}
+
+try {
+  const path = "m/49'/0'/0'/0/0";
+  
+  if (!validatePath(path)) {
+    throw new Error('Invalid derivation path');
+  }
+  
+  const result = await TrezorConnect.getAddress({
+    path,
+    coin: 'btc'
+  });
+  
+  if (!result.success) {
+    if (result.error.code === 'Method_InvalidParameter') {
+      console.error('Parameter validation failed:', result.error.message);
+    }
+  }
+} catch (error) {
+  handleValidationError(error);
+}
+```
+
+## Error Recovery Strategies
+
+### Retry Logic
+
+```typescript
+async function callWithRetry<T>(
+  operation: () => Promise<T>,
+  maxRetries = 3,
+  delay = 1000
+): Promise<T> {
+  let lastError: Error;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const result = await operation();
+      
+      if (!result.success) {
+        // Check if error is retryable
+        if (isRetryableError(result.error.code)) {
+          lastError = new Error(result.error.message);
+          await sleep(delay * (attempt + 1));
+          continue;
+        }
+        // Non-retryable error
+        throw new Error(result.error.message);
+      }
+      
+      return result;
+    } catch (error) {
+      lastError = error;
+      if (attempt < maxRetries - 1) {
+        await sleep(delay * (attempt + 1));
+      }
+    }
+  }
+  
+  throw lastError!;
+}
+
+function isRetryableError(code: string): boolean {
+  const retryableCodes = [
+    'Backend_Disconnected',
+    'Transport_Missing',
+    'Device_CallInProgress'
+  ];
+  return retryableCodes.includes(code);
+}
+
+// Usage
+const result = await callWithRetry(() =>
+  TrezorConnect.getAddress({
+    path: "m/49'/0'/0'/0/0",
+    coin: 'btc'
+  })
+);
+```
+
+### Graceful Degradation
+
+```typescript
+class TrezorService {
+  async getAddress(path: string, coin: string) {
+    try {
+      const result = await TrezorConnect.getAddress({ path, coin });
+      
+      if (result.success) {
+        return { address: result.payload.address };
+      }
+      
+      // Handle specific errors
+      switch (result.error.code) {
+        case 'Device_NotFound':
+          return { error: 'DEVICE_NOT_FOUND', fallback: 'watch-only' };
+          
+        case 'Method_PermissionsNotGranted':
+          return { error: 'PERMISSION_DENIED', fallback: null };
+          
+        case 'Backend_Disconnected':
+          return { error: 'NETWORK_ERROR', fallback: 'cached' };
+          
+        default:
+          return { error: 'UNKNOWN', message: result.error.message };
+      }
+    } catch (error) {
+      console.error('Unexpected error:', error);
+      return { error: 'EXCEPTION', message: error.message };
+    }
+  }
+}
+```
+
+## Error Logging
+
+<Tip>
+Implement comprehensive error logging for debugging and monitoring.
+</Tip>
+
+```typescript
+interface ErrorLog {
+  timestamp: number;
+  method: string;
+  errorCode: string;
+  errorMessage: string;
+  deviceInfo?: any;
+  context?: any;
+}
+
+class ErrorLogger {
+  private logs: ErrorLog[] = [];
+  
+  log(method: string, error: any, context?: any) {
+    const log: ErrorLog = {
+      timestamp: Date.now(),
+      method,
+      errorCode: error.code || 'UNKNOWN',
+      errorMessage: error.message,
+      context
+    };
+    
+    this.logs.push(log);
+    
+    // Send to monitoring service
+    this.sendToMonitoring(log);
+    
+    // Log to console in development
+    if (process.env.NODE_ENV === 'development') {
+      console.error('TrezorConnect Error:', log);
+    }
+  }
+  
+  async sendToMonitoring(log: ErrorLog) {
+    // Send to Sentry, LogRocket, etc.
+    try {
+      await fetch('/api/errors', {
+        method: 'POST',
+        body: JSON.stringify(log)
+      });
+    } catch (e) {
+      console.error('Failed to send error log:', e);
+    }
+  }
+  
+  getRecentErrors(limit = 10): ErrorLog[] {
+    return this.logs.slice(-limit);
+  }
+}
+
+const errorLogger = new ErrorLogger();
+
+// Usage
+const result = await TrezorConnect.getAddress({ /* ... */ });
+
+if (!result.success) {
+  errorLogger.log('getAddress', result.error, {
+    path: "m/49'/0'/0'/0/0",
+    coin: 'btc'
+  });
+}
+```
+
+## User-Friendly Error Messages
+
+```typescript
+function getUserFriendlyMessage(errorCode: string): string {
+  const messages: Record<string, string> = {
+    'Device_NotFound': 'Please connect your Trezor device and try again.',
+    'Device_Disconnected': 'Your Trezor was disconnected. Please reconnect it.',
+    'Device_UsedElsewhere': 'Your Trezor is being used by another application. Please close other apps and try again.',
+    'Device_InvalidState': 'The passphrase you entered doesn\'t match. Please try again.',
+    'Method_Cancel': 'You canceled the operation.',
+    'Method_PermissionsNotGranted': 'Permission denied. Please approve the request on your device.',
+    'Transport_Missing': 'Trezor Bridge is not installed or running. Please install it from trezor.io/start',
+    'Backend_Disconnected': 'Lost connection to blockchain. Please check your internet connection.',
+    'Firmware_Old': 'Your Trezor firmware is outdated. Please update it for security.',
+  };
+  
+  return messages[errorCode] || 'An unexpected error occurred. Please try again.';
+}
+
+// Usage
+const result = await TrezorConnect.signTransaction({ /* ... */ });
+
+if (!result.success) {
+  const friendlyMessage = getUserFriendlyMessage(result.error.code);
+  showNotification(friendlyMessage, 'error');
+}
+```
+
+## TypeScript Error Types
+
+```typescript
+import type { TrezorError } from '@trezor/connect';
+
+// Type-safe error handling
+function handleTrezorError(error: TrezorError) {
+  switch (error.code) {
+    case 'Device_NotFound':
+      // Handle device not found
+      break;
+    case 'Method_Cancel':
+      // Handle cancellation
+      break;
+    // TypeScript ensures all error codes are handled
+  }
+}
+
+// Custom error types
+class TrezorOperationError extends Error {
+  constructor(
+    public code: string,
+    message: string,
+    public originalError?: any
+  ) {
+    super(message);
+    this.name = 'TrezorOperationError';
+  }
+}
+
+// Wrap errors
+async function safeGetAddress(path: string, coin: string) {
+  const result = await TrezorConnect.getAddress({ path, coin });
+  
+  if (!result.success) {
+    throw new TrezorOperationError(
+      result.error.code,
+      result.error.message,
+      result.error
+    );
+  }
+  
+  return result.payload.address;
+}
+```
+
+## Best Practices
+
+<Check>
+1. **Always check `success` field** before accessing `payload`
+2. **Handle specific error codes** for better UX
+3. **Implement retry logic** for transient errors
+4. **Log errors** for debugging and monitoring
+5. **Provide user-friendly messages** instead of raw error codes
+6. **Validate inputs** before calling methods
+7. **Handle device disconnections** gracefully
+8. **Test error scenarios** in your application
+</Check>
+
+<Warning>
+Never expose sensitive error details (device paths, states) in production logs or to users.
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Methods" icon="code" href="/connect/methods">
+    Learn about TrezorConnect methods
+  </Card>
+  <Card title="Events" icon="tower-broadcast" href="/connect/events">
+    Understand event handling
+  </Card>
+  <Card title="Device Management" icon="laptop-mobile" href="/connect/device-management">
+    Manage devices effectively
+  </Card>
+</CardGroup>

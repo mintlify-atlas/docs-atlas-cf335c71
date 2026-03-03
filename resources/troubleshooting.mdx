@@ -1,0 +1,350 @@
+---
+title: 'Troubleshooting'
+description: 'Common issues and solutions for Trezor Suite and Connect'
+---
+
+## Development Environment Issues
+
+<AccordionGroup>
+  <Accordion title="Build Fails on Windows" icon="windows">
+    **Symptoms**: Build errors, native module compilation failures
+    
+    **Solutions**:
+    
+    1. **Use Git Bash**: Always run commands in Git Bash, never cmd or PowerShell
+       ```bash
+       # Wrong: Running in cmd/PowerShell
+       # Right: Use Git Bash for Windows
+       ```
+    
+    2. **Install Visual Studio Build Tools**:
+       - Install Visual Studio Community with "Desktop development with C++"
+       - Include "C++ Clang Tools for Windows"
+    
+    3. **Clean and Rebuild**:
+       ```bash
+       # If you ran yarn in wrong shell:
+       rm -rf node_modules
+       yarn install
+       ```
+    
+    4. **Exclude from Windows Defender**: Add trezor-suite folder to exclusions for better performance
+    
+    See the [Windows Development Guide](https://docs.trezor.io/trezor-suite/misc/development-on-windows.html) for complete setup instructions.
+  </Accordion>
+
+  <Accordion title="Python Environment Issues" icon="python">
+    **Symptoms**: Coin update scripts fail, cointool errors
+    
+    **Solutions**:
+    
+    1. **Create Virtual Environment**:
+       ```bash
+       python3 -m venv .venv
+       source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+       ```
+    
+    2. **Install Dependencies**:
+       ```bash
+       pip install -r submodules/trezor-common/tools/requirements.txt
+       ```
+    
+    3. **Update Coins**:
+       ```bash
+       yarn update-submodules
+       yarn update-coins
+       ```
+  </Accordion>
+
+  <Accordion title="Submodule Issues" icon="code-branch">
+    **Symptoms**: Missing files, outdated dependencies
+    
+    **Solutions**:
+    
+    1. **Update Submodules**:
+       ```bash
+       git submodule update --init --recursive
+       ```
+    
+    2. **Enable Auto-Update** (recommended):
+       ```bash
+       git config --global submodule.recurse true
+       ```
+    
+    3. **Clean Submodules**:
+       ```bash
+       git submodule foreach --recursive git clean -fd
+       git submodule update --init --recursive
+       ```
+  </Accordion>
+
+  <Accordion title="Yarn Install Fails" icon="box">
+    **Symptoms**: Dependency resolution errors, network timeouts
+    
+    **Solutions**:
+    
+    1. **Clear Cache**:
+       ```bash
+       yarn cache clean
+       rm -rf node_modules
+       yarn install
+       ```
+    
+    2. **Check Node Version**:
+       ```bash
+       nvm install  # Install version from .nvmrc
+       nvm use      # Switch to correct version
+       ```
+    
+    3. **Network Issues**: Use a stable network connection, try again if timeout occurs
+  </Accordion>
+
+  <Accordion title="Git LFS Issues" icon="file-arrow-down">
+    **Symptoms**: Binary files corrupted, large files missing
+    
+    **Solutions**:
+    
+    1. **Install Git LFS**:
+       ```bash
+       git lfs install
+       ```
+    
+    2. **Pull LFS Files**:
+       ```bash
+       git lfs pull
+       ```
+    
+    3. **Verify LFS Files**:
+       ```bash
+       git lfs ls-files
+       ```
+  </Accordion>
+</AccordionGroup>
+
+## Connect Integration Issues
+
+<AccordionGroup>
+  <Accordion title="Connect Not Initializing" icon="plug">
+    **Symptoms**: TrezorConnect.init() fails or times out
+    
+    **Solutions**:
+    
+    1. **Check Manifest Configuration**:
+       ```javascript
+       TrezorConnect.init({
+         manifest: {
+           email: 'developer@example.com',  // Required
+           appUrl: 'https://example.com'     // Required
+         }
+       });
+       ```
+    
+    2. **Verify Package Import**:
+       ```javascript
+       // Correct imports for v10:
+       import TrezorConnect from '@trezor/connect-web';
+       // or
+       import TrezorConnect from '@trezor/connect-webextension';
+       ```
+    
+    3. **Check Console Errors**: Open browser DevTools and check for detailed error messages
+  </Accordion>
+
+  <Accordion title="Device Not Detected" icon="usb">
+    **Symptoms**: Device connected but not recognized
+    
+    **Solutions**:
+    
+    1. **Check USB Connection**: Try different USB port or cable
+    
+    2. **Update Browser**: Ensure you're using a supported browser (Chrome, Firefox, Brave)
+    
+    3. **Bridge Installation** (for older browsers):
+       - Download from [trezor.io/start](https://trezor.io/start)
+       - Restart browser after installation
+    
+    4. **Linux udev Rules**:
+       ```bash
+       # Install udev rules
+       wget https://data.trezor.io/udev/51-trezor.rules
+       sudo mv 51-trezor.rules /etc/udev/rules.d/
+       sudo udevadm control --reload-rules
+       sudo udevadm trigger
+       ```
+  </Accordion>
+
+  <Accordion title="Method Returns Error" icon="circle-exclamation">
+    **Symptoms**: API methods fail with error responses
+    
+    **Solutions**:
+    
+    1. **Check Result Object**:
+       ```javascript
+       const result = await TrezorConnect.getAddress({...});
+       
+       if (!result.success) {
+         console.error('Error:', result.payload.error);
+         console.error('Code:', result.payload.code);
+       }
+       ```
+    
+    2. **Verify Parameters**: Ensure all required parameters are provided
+    
+    3. **Check Device State**: Device must be unlocked and ready
+    
+    4. **Review Error Codes**: See error code documentation for specific issues
+  </Accordion>
+
+  <Accordion title="Unsupported Coin Error" icon="coins">
+    **Symptoms**: "Coin not supported" or similar errors
+    
+    **Solutions**:
+    
+    1. **Check Supported Coins**: See [Supported Cryptocurrencies](/resources/supported-cryptocurrencies)
+    
+    2. **Verify Device Firmware**: Some coins require minimum firmware version
+    
+    3. **Update Connect**: Ensure you're using latest version
+    
+    4. **Migration Required**: EOS and NEM removed in v10, see [Migration Guide](/resources/migration-guide)
+  </Accordion>
+</AccordionGroup>
+
+## Suite Application Issues
+
+<AccordionGroup>
+  <Accordion title="Suite Won't Start" icon="desktop">
+    **Symptoms**: Application crashes on startup or won't open
+    
+    **Solutions**:
+    
+    1. **Clear Application Cache**:
+       - macOS: `~/Library/Application Support/Trezor Suite`
+       - Windows: `%APPDATA%/Trezor Suite`
+       - Linux: `~/.config/trezor-suite`
+    
+    2. **Check Logs**:
+       - macOS: `~/Library/Logs/Trezor Suite`
+       - Windows: `%APPDATA%/Trezor Suite/logs`
+       - Linux: `~/.config/trezor-suite/logs`
+    
+    3. **Reinstall Application**: Download fresh copy from trezor.io
+  </Accordion>
+
+  <Accordion title="Backend Connection Failed" icon="server">
+    **Symptoms**: "Backend offline" or connection errors
+    
+    **Solutions**:
+    
+    1. **Check Internet Connection**: Ensure stable internet access
+    
+    2. **Firewall Settings**: Allow Suite through firewall
+    
+    3. **Try Different Network**: Switch from VPN or restrictive network
+    
+    4. **Backend Status**: Check if backend services are operational
+  </Accordion>
+
+  <Accordion title="Transaction Not Broadcasting" icon="paper-plane">
+    **Symptoms**: Transaction signed but not appearing on blockchain
+    
+    **Solutions**:
+    
+    1. **Wait for Confirmation**: Network congestion may delay broadcast
+    
+    2. **Check Transaction ID**: Verify on blockchain explorer
+    
+    3. **Retry Broadcast**: Some wallets allow manual rebroadcast
+    
+    4. **Verify Fee**: Low fees may cause delays or rejection
+  </Accordion>
+</AccordionGroup>
+
+## Performance Issues
+
+<AccordionGroup>
+  <Accordion title="Slow Build Times" icon="clock">
+    **Symptoms**: Initial setup takes over 20 minutes, builds over 15 minutes
+    
+    **Solutions**:
+    
+    1. **Windows Performance**:
+       - Use WSL2 for better performance
+       - Exclude from Windows Defender
+       - Use SSD for project directory
+    
+    2. **Incremental Builds**: Use `yarn dev` instead of full rebuilds
+    
+    3. **Parallel Builds**: Ensure yarn is using parallel builds
+  </Accordion>
+
+  <Accordion title="High Memory Usage" icon="memory">
+    **Symptoms**: Build process consumes excessive RAM
+    
+    **Solutions**:
+    
+    1. **Increase Node Memory**:
+       ```bash
+       export NODE_OPTIONS="--max-old-space-size=8192"
+       ```
+    
+    2. **Close Other Applications**: Free up system memory
+    
+    3. **Use Production Build**: Dev builds consume more memory
+  </Accordion>
+</AccordionGroup>
+
+## Testing Issues
+
+<AccordionGroup>
+  <Accordion title="Tests Timeout in CI" icon="stopwatch">
+    **Symptoms**: Tests fail in CI but pass locally
+    
+    **Solutions**:
+    
+    1. **Check Network Access**: Some tests require network connectivity
+    
+    2. **Increase Timeout**: Adjust timeout values for slower environments
+    
+    3. **Use Emulator**: Set up trezor-user-env for hardware wallet emulation
+  </Accordion>
+
+  <Accordion title="Emulator Not Starting" icon="computer">
+    **Symptoms**: trezor-user-env fails to start
+    
+    **Solutions**:
+    
+    1. **Check Docker**: Ensure Docker is running
+    
+    2. **Port Conflicts**: Check if required ports are available
+    
+    3. **Pull Latest Image**:
+       ```bash
+       docker pull trezor/trezor-user-env
+       ```
+  </Accordion>
+</AccordionGroup>
+
+## Getting More Help
+
+<CardGroup cols={2}>
+  <Card title="FAQ" icon="question" href="/resources/faq">
+    Check frequently asked questions
+  </Card>
+  
+  <Card title="Best Practices" icon="star" href="/resources/best-practices">
+    Learn recommended approaches
+  </Card>
+  
+  <Card title="GitHub Issues" icon="github" href="https://github.com/trezor/trezor-suite/issues">
+    Report bugs and request features
+  </Card>
+  
+  <Card title="Trezor Support" icon="life-ring" href="https://trezor.io/support">
+    Contact official support
+  </Card>
+</CardGroup>
+
+<Warning>
+  **Security Issues**: For security vulnerabilities, email [security@satoshilabs.com](mailto:security@satoshilabs.com) instead of creating public issues.
+</Warning>

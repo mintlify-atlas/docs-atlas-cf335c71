@@ -1,0 +1,699 @@
+---
+title: Error Reporting (Sentry)
+description: Automated error tracking and performance monitoring with Sentry.io
+---
+
+# Error Reporting (Sentry)
+
+Trezor Suite uses [Sentry.io](https://sentry.io/) for automated error tracking and performance monitoring, helping the team quickly identify and fix issues across different environments.
+
+## Overview
+
+Sentry integration provides:
+
+<CardGroup cols={2}>
+  <Card title="Error Tracking" icon="bug">
+    Automatic capture of unhandled errors
+  </Card>
+  <Card title="Performance Monitoring" icon="gauge">
+    Track app performance metrics
+  </Card>
+  <Card title="Breadcrumbs" icon="shoe-prints">
+    User actions leading to errors
+  </Card>
+  <Card title="Context" icon="circle-info">
+    Device, system, and app state information
+  </Card>
+</CardGroup>
+
+<Warning>
+Sentry only receives data when users have enabled anonymous data collection in Settings.
+</Warning>
+
+## What Gets Reported
+
+When analytics enabled:
+
+### Error Information
+
+```typescript
+interface SentryError {
+  // Error details
+  message: string;
+  stack: string;
+  type: string;
+  
+  // Context
+  level: 'error' | 'warning' | 'info';
+  timestamp: number;
+  
+  // User actions (breadcrumbs)
+  breadcrumbs: Breadcrumb[];
+  
+  // System info
+  context: SentryContext;
+}
+```
+
+### Breadcrumbs
+
+User actions before error:
+
+```typescript
+interface Breadcrumb {
+  // Action type
+  type: 'navigation' | 'click' | 'network' | 'redux';
+  
+  // Action details
+  message: string;
+  data?: Record<string, any>;
+  
+  // Timing
+  timestamp: number;
+  level: 'info' | 'warning' | 'error';
+}
+
+// Example breadcrumbs:
+[
+  {
+    type: 'navigation',
+    message: 'Navigated to /accounts/btc',
+    timestamp: 1634644852099,
+  },
+  {
+    type: 'redux',
+    message: '@account/update',
+    timestamp: 1634644853131,
+  },
+  {
+    type: 'network',
+    message: 'GET /api/rates',
+    data: { status: 200 },
+    timestamp: 1634644853306,
+  },
+  {
+    type: 'error',
+    message: 'TypeError: Cannot read property...',
+    timestamp: 1634644854072,
+    level: 'error',
+  }
+]
+```
+
+### System Context
+
+Environment information:
+
+```typescript
+interface SentryContext {
+  // Application
+  app: {
+    version: string;
+    environment: 'desktop' | 'web' | 'mobile';
+    commitId: string;
+  };
+  
+  // System
+  os: {
+    name: string;      // 'Windows', 'macOS', 'Linux'
+    version: string;   // '10.0.19042'
+  };
+  
+  // Browser (web only)
+  browser?: {
+    name: string;      // 'Chrome', 'Firefox'
+    version: string;   // '96.0.4664.110'
+  };
+  
+  // Device (mobile only)
+  device?: {
+    model: string;
+    manufacturer: string;
+  };
+}
+```
+
+### Device Information
+
+Redacted device details:
+
+```typescript
+// Device features (sensitive fields redacted)
+const deviceInfo = {
+  available: boolean,
+  connected: boolean,
+  features: {
+    model: 'T',                    // T1B1, T2T1, etc.
+    major_version: 2,
+    minor_version: 4,
+    patch_version: 2,
+    firmware: 'valid',
+    
+    // Capabilities
+    capabilities: [
+      'Capability_Bitcoin',
+      'Capability_Ethereum',
+      // ...
+    ],
+    
+    // Redacted fields
+    device_id: '[redacted]',
+    label: '[redacted]',
+    session_id: '[redacted]',
+  },
+};
+```
+
+### Redux State
+
+Limited app state:
+
+```typescript
+// Enabled coins
+enabledCoins: ['btc', 'ltc', 'eth', 'xrp', 'doge']
+
+// Discovery status
+walletDiscovery: [
+  {
+    bundleSize: 0,
+    deviceState: '[redacted]',
+    failed: [],
+    index: 0,
+    loaded: 14,
+    networks: ['btc', 'ltc', 'eth', 'xrp'],
+    status: 4,
+    total: 14,
+  }
+]
+
+// Recent actions (last 20)
+actionLog: [
+  { time: 1634644852099, type: '@suite/online-status' },
+  { time: 1634644852104, type: '@suite/init' },
+  { time: 1634644852966, type: '@message-system/save-valid-messages' },
+  // ...
+]
+```
+
+### What's Redacted
+
+Sensitive data removed:
+
+<Warning>
+**Always redacted:**
+- Device IDs
+- Device labels
+- Session IDs
+- State keys
+- Addresses
+- XPUBs
+- Transaction data
+- Balances
+- Private information
+</Warning>
+
+## Initialization
+
+Sentry setup:
+
+```typescript
+import * as Sentry from '@sentry/electron';
+import { SENTRY_CONFIG } from '@suite-config';
+
+// Initialize on app start
+Sentry.init({
+  dsn: SENTRY_CONFIG.dsn,
+  environment: SENTRY_CONFIG.environment,
+  release: `suite@${VERSION}`,
+  
+  // Only if analytics enabled
+  enabled: analyticsEnabled,
+  
+  // Sample rate
+  tracesSampleRate: 0.1,
+  
+  // Integrations
+  integrations: [
+    new Sentry.Integrations.Breadcrumbs({
+      console: false,  // Don't log console
+      dom: true,       // Track clicks
+      fetch: true,     // Track network
+      history: true,   // Track navigation
+    }),
+  ],
+  
+  // Before sending
+  beforeSend: (event, hint) => {
+    // Redact sensitive data
+    return redactSensitiveData(event);
+  },
+});
+```
+
+## Error Capture
+
+### Automatic Capture
+
+Unhandled errors automatically reported:
+
+```typescript
+// Uncaught exceptions
+window.addEventListener('error', (event) => {
+  Sentry.captureException(event.error);
+});
+
+// Promise rejections
+window.addEventListener('unhandledrejection', (event) => {
+  Sentry.captureException(event.reason);
+});
+
+// React error boundaries
+class ErrorBoundary extends React.Component {
+  componentDidCatch(error, errorInfo) {
+    Sentry.captureException(error, {
+      contexts: { react: errorInfo },
+    });
+  }
+}
+```
+
+### Manual Capture
+
+Explicit error reporting:
+
+```typescript
+import * as Sentry from '@sentry/electron';
+
+try {
+  await riskyOperation();
+} catch (error) {
+  // Report with context
+  Sentry.captureException(error, {
+    tags: {
+      operation: 'blockchain-sync',
+      network: 'btc',
+    },
+    extra: {
+      accountIndex: 0,
+      retryCount: 3,
+    },
+  });
+  
+  // Handle error
+  showErrorMessage(error);
+}
+```
+
+### Message Capture
+
+Log important events:
+
+```typescript
+// Non-error messages
+Sentry.captureMessage('User exceeded rate limit', {
+  level: 'warning',
+  tags: {
+    feature: 'coinjoin',
+  },
+});
+```
+
+## Breadcrumb Tracking
+
+Custom breadcrumb recording:
+
+```typescript
+import * as Sentry from '@sentry/electron';
+
+// Redux actions
+store.subscribe(() => {
+  const action = store.getState().lastAction;
+  
+  Sentry.addBreadcrumb({
+    category: 'redux',
+    message: action.type,
+    level: 'info',
+    data: sanitizeAction(action),
+  });
+});
+
+// User interactions
+const handleClick = (element: string) => {
+  Sentry.addBreadcrumb({
+    category: 'ui',
+    message: `Clicked ${element}`,
+    level: 'info',
+  });
+};
+
+// Network requests
+const fetchData = async (url: string) => {
+  Sentry.addBreadcrumb({
+    category: 'http',
+    message: `GET ${url}`,
+    level: 'info',
+  });
+  
+  const response = await fetch(url);
+  
+  Sentry.addBreadcrumb({
+    category: 'http',
+    message: `Response ${response.status}`,
+    data: { status: response.status },
+  });
+  
+  return response;
+};
+```
+
+## Performance Monitoring
+
+Track app performance:
+
+### Transactions
+
+Measure operations:
+
+```typescript
+// Start transaction
+const transaction = Sentry.startTransaction({
+  op: 'account.discovery',
+  name: 'Account Discovery',
+});
+
+try {
+  // Perform discovery
+  const accounts = await discoverAccounts();
+  
+  transaction.setStatus('ok');
+  transaction.setData('accountsFound', accounts.length);
+} catch (error) {
+  transaction.setStatus('error');
+  throw error;
+} finally {
+  transaction.finish();
+}
+```
+
+### Spans
+
+Measure sub-operations:
+
+```typescript
+const transaction = Sentry.getCurrentTransaction();
+
+// Network span
+const span = transaction?.startChild({
+  op: 'http',
+  description: 'Fetch blockchain data',
+});
+
+try {
+  await fetch(url);
+  span?.setStatus('ok');
+} finally {
+  span?.finish();
+}
+```
+
+## User Context
+
+Associate errors with users:
+
+```typescript
+// Set user context (anonymized)
+Sentry.setUser({
+  id: instanceId,  // Anonymous instance ID
+  // Never include:
+  // - Real names
+  // - Email addresses
+  // - Device IDs
+});
+
+// Clear on logout/disable
+Sentry.setUser(null);
+```
+
+## Tags and Context
+
+Organize errors:
+
+```typescript
+// Set tags for filtering
+Sentry.setTag('environment', 'desktop');
+Sentry.setTag('feature', 'coinjoin');
+Sentry.setTag('network', 'btc');
+
+// Set additional context
+Sentry.setContext('device', {
+  model: device.features.model,
+  firmware: device.firmware,
+});
+
+Sentry.setContext('wallet', {
+  enabledCoins: coins,
+  accountCount: accounts.length,
+});
+```
+
+## Privacy Protection
+
+### Data Scrubbing
+
+Automatic PII removal:
+
+```typescript
+const beforeSend = (event: SentryEvent): SentryEvent | null => {
+  // Redact sensitive patterns
+  event = redactPatterns(event, [
+    /xpub[a-zA-Z0-9]+/gi,        // XPUBs
+    /[13][a-km-zA-HJ-NP-Z1-9]{25,34}/gi, // Bitcoin addresses
+    /0x[a-fA-F0-9]{40}/gi,       // Ethereum addresses
+  ]);
+  
+  // Remove sensitive fields
+  if (event.extra) {
+    delete event.extra.privateKey;
+    delete event.extra.mnemonic;
+    delete event.extra.xpriv;
+  }
+  
+  return event;
+};
+```
+
+### IP Address Handling
+
+<Info>
+**Rare exception:** In rare cases before Suite loads its storage, an error might be sent before Suite knows if analytics are enabled. However, no private data can be sent since storage isn't loaded yet.
+</Info>
+
+## Consent Management
+
+Respect user preferences:
+
+```typescript
+// Enable/disable based on consent
+const updateSentryConsent = (enabled: boolean) => {
+  const client = Sentry.getCurrentHub().getClient();
+  
+  if (enabled) {
+    client?.getOptions().enabled = true;
+  } else {
+    client?.getOptions().enabled = false;
+    // Clear any queued events
+    client?.close();
+  }
+};
+
+// React to consent changes
+store.subscribe(() => {
+  const consent = store.getState().analytics.enabled;
+  updateSentryConsent(consent);
+});
+```
+
+## Error Grouping
+
+Sentry groups similar errors:
+
+```typescript
+// Custom fingerprinting
+Sentry.configureScope(scope => {
+  scope.setFingerprint([
+    '{{ default }}',
+    errorType,
+    componentName,
+  ]);
+});
+
+// Group by error type + location
+// Instead of by message (which varies)
+```
+
+## Release Tracking
+
+Track errors by version:
+
+```typescript
+Sentry.init({
+  release: `suite@${VERSION}`,  // e.g., "suite@24.5.1"
+  
+  // Source maps for stack traces
+  integrations: [
+    new Sentry.Integrations.RewriteFrames({
+      iteratee: (frame) => {
+        frame.filename = frame.filename.replace(
+          'app:///',
+          '~/'
+        );
+        return frame;
+      },
+    }),
+  ],
+});
+```
+
+## Testing
+
+### Test Error Capture
+
+```typescript
+// Trigger test error
+Sentry.captureException(new Error('Test error'));
+
+// Verify in Sentry dashboard
+// Should appear within seconds
+```
+
+### Local Development
+
+```typescript
+// Disable in development
+Sentry.init({
+  enabled: process.env.NODE_ENV === 'production',
+  // OR
+  enabled: false,  // Always disabled locally
+});
+```
+
+## Dashboard & Monitoring
+
+Sentry dashboard provides:
+
+<Tabs>
+  <Tab title="Issues">
+    - Grouped errors
+    - Frequency graphs
+    - Affected users
+    - Release tracking
+  </Tab>
+  <Tab title="Performance">
+    - Transaction durations
+    - Slow operations
+    - Performance trends
+    - Bottleneck identification
+  </Tab>
+  <Tab title="Releases">
+    - Version tracking
+    - New issues per release
+    - Regression detection
+    - Adoption rates
+  </Tab>
+  <Tab title="Alerts">
+    - Spike notifications
+    - New issue alerts
+    - Performance degradation
+    - Error rate thresholds
+  </Tab>
+</Tabs>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="For Users">
+    - Enable analytics to help fix bugs
+    - No sensitive data is sent
+    - Can disable anytime
+    - Use Tor for extra privacy
+  </Accordion>
+  
+  <Accordion title="For Developers">
+    - Never log sensitive data
+    - Add context to errors
+    - Use breadcrumbs effectively
+    - Test error reporting
+    - Monitor Sentry dashboard
+    - Triage issues promptly
+  </Accordion>
+</AccordionGroup>
+
+## Common Issues
+
+<AccordionGroup>
+  <Accordion title="Too Many Events">
+    **Problem:** Sentry quota exceeded
+    
+    **Solution:**
+    - Increase sample rate filtering
+    - Ignore noisy errors
+    - Use before-send filtering
+    - Upgrade Sentry plan
+  </Accordion>
+  
+  <Accordion title="Missing Context">
+    **Problem:** Errors lack useful context
+    
+    **Solution:**
+    - Add more breadcrumbs
+    - Set appropriate tags
+    - Include relevant extra data
+    - Improve error messages
+  </Accordion>
+  
+  <Accordion title="PII in Reports">
+    **Problem:** Sensitive data in Sentry
+    
+    **Solution:**
+    - Update beforeSend filter
+    - Add redaction patterns
+    - Review reported data
+    - Use data scrubbing rules
+  </Accordion>
+</AccordionGroup>
+
+## Implementation Files
+
+```typescript
+// Sentry integration
+suite-common/sentry/
+  src/
+    init.ts           // Sentry initialization
+    redaction.ts      // Data scrubbing
+    breadcrumbs.ts    // Breadcrumb tracking
+
+// Configuration
+suite-common/suite-config/
+  src/
+    sentry.ts         // Sentry config
+
+// Platform-specific
+packages/suite-desktop/
+  src/
+    sentry.ts         // Desktop Sentry setup
+    
+packages/suite-web/
+  src/
+    sentry.ts         // Web Sentry setup
+    
+suite-native/
+  src/
+    sentry.ts         // Mobile Sentry setup
+```
+
+## Related Resources
+
+- [Sentry.io Documentation](https://docs.sentry.io/)
+- [Analytics Implementation](/features/analytics)
+- [Privacy Policy](https://trezor.io/privacy)
+- [Data Analytics Docs](https://github.com/trezor/trezor-suite/blob/develop/docs/analytics/sentry.md)

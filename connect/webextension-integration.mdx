@@ -1,0 +1,629 @@
+---
+title: Browser Extension Integration
+description: Use @trezor/connect-webextension in Manifest V3 browser extensions with service worker support.
+---
+
+# Browser Extension Integration
+
+The `@trezor/connect-webextension` package provides a specialized implementation of TrezorConnect designed for **Manifest V3 (MV3)** browser extensions, with full support for service worker environments.
+
+<Info>
+This package is specifically designed for **Manifest V3** extensions and handles the constraints of service workers, including limitations on DOM access and long-running scripts.
+</Info>
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Service Worker Compatible" icon="gears">
+    Fully functional in MV3 service worker contexts
+  </Card>
+  
+  <Card title="Popup-based UI" icon="window-restore">
+    User interaction through Suite Web popup
+  </Card>
+  
+  <Card title="No Inline Frames" icon="ban">
+    Uses `externally_connectable` API, no iframe injection
+  </Card>
+  
+  <Card title="Full API Access" icon="code">
+    Complete TrezorConnect API available
+  </Card>
+</CardGroup>
+
+## Installation
+
+Install the package using npm or yarn:
+
+<CodeGroup>
+```bash npm
+npm install @trezor/connect-webextension
+```
+
+```bash yarn
+yarn add @trezor/connect-webextension
+```
+</CodeGroup>
+
+## Architecture
+
+Understand how the extension integration works:
+
+<Steps>
+  <Step title="Service Worker Check">
+    The service worker checks for the Suite Desktop app. If running, it opens a WebSocket connection.
+  </Step>
+  
+  <Step title="Suite Web Fallback">
+    If Suite Desktop is not available, it opens Suite Web in the browser.
+  </Step>
+  
+  <Step title="User Interaction">
+    The user completes their request inside the Trezor Suite UI (desktop or web).
+  </Step>
+  
+  <Step title="Response Delivery">
+    The response is delivered back to your service worker, resolving the original promise.
+  </Step>
+</Steps>
+
+## Manifest Configuration
+
+Configure your `manifest.json` for Manifest V3:
+
+### Basic Manifest V3 Setup
+
+```json
+{
+  "manifest_version": 3,
+  "name": "My Trezor Extension",
+  "version": "1.0.0",
+  
+  "background": {
+    "service_worker": "service-worker.js"
+  },
+  
+  "action": {
+    "default_popup": "popup.html"
+  },
+  
+  "externally_connectable": {
+    "matches": [
+      "https://suite.trezor.io/*"
+    ]
+  },
+  
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ]
+}
+```
+
+<Warning>
+The `externally_connectable` entry is **required** for Suite Web to communicate with your extension. Without it, the popup flow will not work.
+</Warning>
+
+## Service Worker Setup
+
+Implement TrezorConnect in your service worker:
+
+### Basic Service Worker
+
+```javascript
+// service-worker.js
+import TrezorConnect from '@trezor/connect-webextension';
+
+chrome.runtime.onInstalled.addListener((details) => {
+    console.log('Extension installed:', details);
+
+    // Initialize TrezorConnect
+    TrezorConnect.init({
+        manifest: {
+            email: 'developer@example.com',
+            appName: 'My Trezor Extension',
+            appUrl: 'https://myextension.example.com/',
+        },
+    });
+});
+```
+
+### Complete Service Worker Example
+
+```javascript
+// service-worker.js
+import TrezorConnect from '@trezor/connect-webextension';
+
+chrome.runtime.onInstalled.addListener((details) => {
+    console.log('Extension installed:', details);
+
+    // Initialize TrezorConnect
+    TrezorConnect.init({
+        manifest: {
+            email: 'developer@example.com',
+            appName: 'Trezor Extension Example',
+            appUrl: 'https://example.com/',
+        },
+    });
+
+    // Handle messages from popup or content scripts
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        if (message.action === 'getAddress') {
+            TrezorConnect.getAddress({
+                showOnTrezor: true,
+                path: "m/49'/0'/0'/0/0",
+                coin: 'btc',
+            }).then((res) => {
+                sendResponse(res);
+            });
+
+            // Return true to indicate async response
+            return true;
+        }
+        
+        if (message.action === 'getFeatures') {
+            TrezorConnect.getFeatures().then((res) => {
+                sendResponse(res);
+            });
+
+            return true;
+        }
+    });
+});
+```
+
+<Note>
+The service worker may be suspended when idle. Chrome will wake it up when messages arrive, so you don't need to keep it permanently active.
+</Note>
+
+## Popup/UI Communication
+
+Communicate with the service worker from your extension UI:
+
+### Popup HTML
+
+```html
+<!-- popup.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Trezor Extension</title>
+    <style>
+        body {
+            width: 300px;
+            padding: 16px;
+            font-family: system-ui;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            cursor: pointer;
+        }
+        #result {
+            margin-top: 16px;
+            padding: 8px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            word-break: break-all;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Trezor Extension</h2>
+    <button id="get-address">Get Bitcoin Address</button>
+    <button id="get-features">Get Device Features</button>
+    <div id="result"></div>
+    
+    <script src="popup.js"></script>
+</body>
+</html>
+```
+
+### Popup JavaScript
+
+```javascript
+// popup.js
+const result = document.getElementById('result');
+const getAddressBtn = document.getElementById('get-address');
+const getFeaturesBtn = document.getElementById('get-features');
+
+getAddressBtn.addEventListener('click', () => {
+    // Send message to service worker
+    chrome.runtime.sendMessage(
+        { action: 'getAddress' },
+        (response) => {
+            if (response.success) {
+                console.log('Success:', response);
+                result.innerText = `Address: ${response.payload.address}`;
+            } else {
+                console.error('Error:', response);
+                result.innerText = `Error: ${response.payload.error}`;
+            }
+        }
+    );
+});
+
+getFeaturesBtn.addEventListener('click', () => {
+    chrome.runtime.sendMessage(
+        { action: 'getFeatures' },
+        (response) => {
+            if (response.success) {
+                console.log('Device features:', response);
+                result.innerText = JSON.stringify(response.payload, null, 2);
+            } else {
+                console.error('Error:', response);
+                result.innerText = `Error: ${response.payload.error}`;
+            }
+        }
+    );
+});
+```
+
+## TypeScript Support
+
+Use TypeScript for type-safe extension development:
+
+### Service Worker with TypeScript
+
+```typescript
+/// <reference lib="webworker" />
+// Reference the Web Worker library for service worker globals
+
+import TrezorConnect from '@trezor/connect-webextension';
+import type { Success, Unsuccessful } from '@trezor/connect-webextension';
+
+chrome.runtime.onInstalled.addListener((details: chrome.runtime.InstalledDetails) => {
+    console.log('Extension installed:', details);
+
+    TrezorConnect.init({
+        manifest: {
+            email: 'developer@example.com',
+            appName: 'My Typed Extension',
+            appUrl: 'https://example.com/',
+        },
+    });
+
+    chrome.runtime.onMessage.addListener(
+        (message: any, sender: chrome.runtime.MessageSender, sendResponse: (response: any) => void) => {
+            if (message.action === 'getAddress') {
+                TrezorConnect.getAddress({
+                    showOnTrezor: true,
+                    path: "m/49'/0'/0'/0/0",
+                    coin: 'btc',
+                }).then((res) => {
+                    sendResponse(res);
+                });
+
+                return true;
+            }
+        }
+    );
+});
+```
+
+## Building Your Extension
+
+Use Webpack to bundle your extension:
+
+### Webpack Configuration
+
+```javascript
+// webpack.config.js
+const CopyWebpackPlugin = require('copy-webpack-plugin');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+const path = require('path');
+
+module.exports = {
+    entry: {
+        'service-worker': './src/service-worker.ts',
+        popup: './src/popup.ts',
+    },
+    output: {
+        path: path.resolve(__dirname, 'dist'),
+        filename: '[name].js',
+    },
+    resolve: {
+        extensions: ['.ts', '.js'],
+    },
+    module: {
+        rules: [
+            {
+                test: /\.ts$/,
+                exclude: /node_modules/,
+                use: {
+                    loader: 'babel-loader',
+                    options: {
+                        presets: ['@babel/preset-typescript'],
+                    },
+                },
+            },
+        ],
+    },
+    plugins: [
+        new HtmlWebpackPlugin({
+            template: './src/popup.html',
+            filename: 'popup.html',
+            chunks: ['popup'],
+        }),
+        new CopyWebpackPlugin({
+            patterns: [
+                { from: 'src/manifest.json', to: 'manifest.json' },
+            ],
+        }),
+    ],
+    mode: process.env.NODE_ENV || 'development',
+};
+```
+
+### Build Commands
+
+```json
+// package.json
+{
+  "scripts": {
+    "build": "webpack --mode=production",
+    "dev": "webpack --mode=development --watch"
+  },
+  "devDependencies": {
+    "@babel/preset-typescript": "^7.28.5",
+    "babel-loader": "^10.0.0",
+    "copy-webpack-plugin": "^11.0.0",
+    "html-webpack-plugin": "^5.5.0",
+    "webpack": "^5.88.0",
+    "webpack-cli": "^5.1.0"
+  }
+}
+```
+
+## Common Use Cases
+
+### Get Ethereum Address
+
+```javascript
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === 'getEthAddress') {
+        TrezorConnect.ethereumGetAddress({
+            path: "m/44'/60'/0'/0/0",
+            showOnTrezor: true,
+        }).then((res) => {
+            sendResponse(res);
+        });
+
+        return true;
+    }
+});
+```
+
+### Sign Ethereum Transaction
+
+```javascript
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === 'signEthTx') {
+        TrezorConnect.ethereumSignTransaction({
+            path: "m/44'/60'/0'/0/0",
+            transaction: {
+                to: message.to,
+                value: message.value,
+                gasPrice: message.gasPrice,
+                gasLimit: message.gasLimit,
+                nonce: message.nonce,
+                chainId: 1,
+            },
+        }).then((res) => {
+            sendResponse(res);
+        });
+
+        return true;
+    }
+});
+```
+
+### Get Public Key
+
+```javascript
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === 'getPublicKey') {
+        TrezorConnect.getPublicKey({
+            path: message.path || "m/49'/0'/0'",
+            coin: 'btc',
+        }).then((res) => {
+            sendResponse(res);
+        });
+
+        return true;
+    }
+});
+```
+
+## Content Script Integration
+
+If you need to interact with web pages:
+
+### Content Script
+
+```javascript
+// content-script.js
+const getTrezorAddress = async () => {
+    return new Promise((resolve) => {
+        chrome.runtime.sendMessage(
+            { action: 'getAddress' },
+            (response) => {
+                resolve(response);
+            }
+        );
+    });
+};
+
+// Example: Inject into page
+const injectTrezorButton = () => {
+    const button = document.createElement('button');
+    button.textContent = 'Connect Trezor';
+    button.onclick = async () => {
+        const result = await getTrezorAddress();
+        if (result.success) {
+            console.log('Address:', result.payload.address);
+        }
+    };
+    document.body.appendChild(button);
+};
+
+injectTrezorButton();
+```
+
+### Manifest for Content Script
+
+```json
+{
+  "content_scripts": [
+    {
+      "matches": ["https://example.com/*"],
+      "js": ["content-script.js"]
+    }
+  ]
+}
+```
+
+## Error Handling
+
+Handle errors in your extension:
+
+```javascript
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === 'getAddress') {
+        TrezorConnect.getAddress({
+            path: "m/49'/0'/0'/0/0",
+            coin: 'btc',
+        })
+            .then((res) => {
+                if (res.success) {
+                    sendResponse({
+                        success: true,
+                        address: res.payload.address,
+                    });
+                } else {
+                    sendResponse({
+                        success: false,
+                        error: res.payload.error,
+                    });
+                }
+            })
+            .catch((error) => {
+                sendResponse({
+                    success: false,
+                    error: error.message,
+                });
+            });
+
+        return true;
+    }
+});
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Initialize in onInstalled" icon="rocket">
+    Always initialize TrezorConnect in the `chrome.runtime.onInstalled` listener to ensure it's ready when the extension starts.
+  </Accordion>
+
+  <Accordion title="Return true for Async" icon="clock">
+    When using `sendResponse` asynchronously, always return `true` from the message listener.
+  </Accordion>
+
+  <Accordion title="Handle Service Worker Suspension" icon="sleep">
+    Service workers can be suspended. Design your code to handle wake-ups gracefully.
+  </Accordion>
+
+  <Accordion title="Use externally_connectable" icon="link">
+    Don't forget the `externally_connectable` manifest entry for Suite Web communication.
+  </Accordion>
+
+  <Accordion title="Test Thoroughly" icon="vial">
+    Test both Suite Desktop and Suite Web flows, as users may have different setups.
+  </Accordion>
+</AccordionGroup>
+
+## Loading Your Extension
+
+<Steps>
+  <Step title="Build the Extension">
+    Run `npm run build` to create the `dist` folder with your bundled extension.
+  </Step>
+  
+  <Step title="Open Chrome Extensions">
+    Navigate to `chrome://extensions` in your browser.
+  </Step>
+  
+  <Step title="Enable Developer Mode">
+    Toggle "Developer mode" in the top right corner.
+  </Step>
+  
+  <Step title="Load Unpacked">
+    Click "Load unpacked" and select your `dist` folder.
+  </Step>
+  
+  <Step title="Test the Extension">
+    Click your extension icon and test the Trezor integration.
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Suite Web Not Opening" icon="window-restore">
+    Check that `externally_connectable` is correctly configured in your manifest.json.
+  </Accordion>
+
+  <Accordion title="Service Worker Errors" icon="triangle-exclamation">
+    Check the service worker console in `chrome://extensions` → your extension → "service worker" link.
+  </Accordion>
+
+  <Accordion title="Popup Not Responding" icon="spinner">
+    Ensure you're returning `true` from async message listeners to keep the message channel open.
+  </Accordion>
+
+  <Accordion title="CORS Errors" icon="shield">
+    Add necessary `host_permissions` to your manifest.json for any external API calls.
+  </Accordion>
+</AccordionGroup>
+
+## Example Project
+
+The Trezor Suite repository includes a complete webextension example:
+
+```bash
+# Clone the repository
+git clone https://github.com/trezor/trezor-suite.git
+cd trezor-suite/packages/connect-examples/webextension
+
+# Install dependencies
+yarn install
+
+# Build the extension
+yarn build
+
+# The built extension is in the 'build' folder
+# Load it as an unpacked extension in Chrome
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="API Methods" icon="code" href="/connect/methods">
+    Explore all available TrezorConnect methods
+  </Card>
+  
+  <Card title="WebExtension Example" icon="puzzle-piece" href="https://github.com/trezor/trezor-suite/tree/develop/packages/connect-examples/webextension" target="_blank">
+    Complete browser extension example
+  </Card>
+  
+  <Card title="Manifest V3 Docs" icon="chrome" href="https://developer.chrome.com/docs/extensions/mv3/" target="_blank">
+    Chrome Extension Manifest V3 documentation
+  </Card>
+  
+  <Card title="TypeScript Guide" icon="code" href="/connect/typescript">
+    TypeScript integration guide
+  </Card>
+</CardGroup>

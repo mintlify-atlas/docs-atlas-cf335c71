@@ -1,0 +1,486 @@
+---
+title: 'Initialization'
+description: 'Initialize and configure Trezor Connect in your application'
+keywords: ['initialization', 'init', 'setup', 'configuration', 'manifest']
+icon: 'power-off'
+---
+
+## Basic Initialization
+
+Before using any Trezor Connect methods, you must initialize the SDK with your application manifest:
+
+```typescript
+import TrezorConnect from '@trezor/connect';
+
+await TrezorConnect.init({
+  manifest: {
+    appName: 'My Application',
+    appUrl: 'https://myapp.example.com',
+    email: 'developer@example.com',
+  },
+});
+```
+
+<Warning>
+  The `manifest` object is **required**. Initialization will fail if the manifest is not provided or is incomplete.
+</Warning>
+
+## Manifest Configuration
+
+The manifest identifies your application to Trezor devices and users:
+
+```typescript
+const manifest = {
+  // Required: Display name of your application
+  appName: 'My Crypto Wallet',
+  
+  // Required: Your application's URL
+  appUrl: 'https://wallet.example.com',
+  
+  // Required: Developer contact email
+  email: 'support@example.com',
+  
+  // Optional: Icon URL (displayed in Trezor Suite)
+  appIcon: 'https://wallet.example.com/icon.png',
+};
+
+await TrezorConnect.init({ manifest });
+```
+
+<Info>
+  The manifest information is displayed to users during certain operations and helps them identify which application is requesting access to their device.
+</Info>
+
+## Complete Example
+
+Here's a full example with proper error handling and event listeners:
+
+```typescript index.ts
+import TrezorConnect, { DEVICE_EVENT, TRANSPORT_EVENT } from '@trezor/connect';
+
+const initializeTrezor = async () => {
+  try {
+    // Initialize Trezor Connect
+    await TrezorConnect.init({
+      manifest: {
+        appName: 'My Crypto Wallet',
+        appUrl: 'https://wallet.example.com',
+        email: 'support@example.com',
+      },
+      // Optional: Enable debug logging
+      debug: false,
+      // Optional: Configure lazy loading
+      lazyLoad: false,
+    });
+
+    console.log('Trezor Connect initialized successfully');
+
+    // Listen for device events
+    TrezorConnect.on(DEVICE_EVENT, event => {
+      console.log('Device event:', event.type, event.payload);
+      
+      if (event.type === 'device-connect') {
+        console.log('Device connected:', event.payload);
+      } else if (event.type === 'device-disconnect') {
+        console.log('Device disconnected:', event.payload);
+      }
+    });
+
+    // Listen for transport events
+    TrezorConnect.on(TRANSPORT_EVENT, event => {
+      console.log('Transport event:', event.type, event.payload);
+    });
+
+  } catch (error) {
+    console.error('Failed to initialize Trezor Connect:', error);
+  }
+};
+
+initializeTrezor();
+```
+
+## Configuration Options
+
+Trezor Connect accepts various configuration options during initialization:
+
+### Debug Mode
+
+Enable detailed logging for development:
+
+```typescript
+await TrezorConnect.init({
+  manifest: { /* ... */ },
+  debug: true,
+});
+```
+
+<Tip>
+  Enable debug mode during development to see detailed logs of device communication, method calls, and events. Disable it in production to reduce console noise.
+</Tip>
+
+### Lazy Loading
+
+Control when the core Connect engine initializes:
+
+```typescript
+await TrezorConnect.init({
+  manifest: { /* ... */ },
+  lazyLoad: true,
+});
+```
+
+<AccordionGroup>
+  <Accordion title="What is lazy loading?">
+    When `lazyLoad` is `true`, the Connect core engine won't initialize until the first API method is called. This can improve initial load time for applications that don't immediately need device access.
+    
+    Default: `false`
+  </Accordion>
+</AccordionGroup>
+
+### Transport Configuration
+
+Specify which transport methods to use for device communication:
+
+```typescript
+await TrezorConnect.init({
+  manifest: { /* ... */ },
+  transports: ['BridgeTransport'],
+});
+```
+
+Available transports:
+- `'BridgeTransport'`: Trezor Bridge (default for Node.js)
+- `'WebUsbTransport'`: Direct WebUSB connection (web only)
+
+<Note>
+  In Node.js environments, if no transports are specified, `BridgeTransport` is used by default.
+</Note>
+
+### Transport Reconnect
+
+Automatically reconnect to transport when connection is lost:
+
+```typescript
+await TrezorConnect.init({
+  manifest: { /* ... */ },
+  transportReconnect: true, // default: true
+});
+```
+
+### Binary Files Configuration
+
+Configure the location of firmware and binary files:
+
+```typescript
+await TrezorConnect.init({
+  manifest: { /* ... */ },
+  binFilesBaseUrl: 'https://data.trezor.io',
+  enableFirmwareHashCheck: true,
+});
+```
+
+<Info>
+  Setting `binFilesBaseUrl` is required if you want to use firmware update features or enable automatic firmware hash verification.
+</Info>
+
+### THP (Trezor Host Protocol) Settings
+
+Configure THP protocol for enhanced device communication:
+
+```typescript
+await TrezorConnect.init({
+  manifest: { /* ... */ },
+  thp: {
+    hostName: 'My Application',
+    appName: 'Crypto Wallet',
+    pairingMethods: ['CodeEntry', 'QrCode'],
+  },
+});
+```
+
+## Event Handling
+
+Trezor Connect uses an event-driven architecture. Subscribe to events to react to device and transport changes:
+
+### Device Events
+
+```typescript
+import { DEVICE_EVENT } from '@trezor/connect';
+
+TrezorConnect.on(DEVICE_EVENT, event => {
+  switch (event.type) {
+    case 'device-connect':
+      console.log('Device connected:', event.payload);
+      break;
+    case 'device-disconnect':
+      console.log('Device disconnected:', event.payload);
+      break;
+    case 'device-changed':
+      console.log('Device state changed:', event.payload);
+      break;
+  }
+});
+```
+
+### Transport Events
+
+```typescript
+import { TRANSPORT_EVENT } from '@trezor/connect';
+
+TrezorConnect.on(TRANSPORT_EVENT, event => {
+  switch (event.type) {
+    case 'transport-start':
+      console.log('Transport started:', event.payload);
+      break;
+    case 'transport-error':
+      console.log('Transport error:', event.payload);
+      break;
+  }
+});
+```
+
+### Blockchain Events
+
+```typescript
+import { BLOCKCHAIN_EVENT } from '@trezor/connect';
+
+TrezorConnect.on(BLOCKCHAIN_EVENT, event => {
+  console.log('Blockchain event:', event.type, event.payload);
+});
+```
+
+### Removing Event Listeners
+
+Clean up event listeners when they're no longer needed:
+
+```typescript
+const handleDeviceEvent = event => {
+  console.log('Device event:', event);
+};
+
+// Add listener
+TrezorConnect.on(DEVICE_EVENT, handleDeviceEvent);
+
+// Remove specific listener
+TrezorConnect.off(DEVICE_EVENT, handleDeviceEvent);
+
+// Remove all listeners
+TrezorConnect.removeAllListeners();
+```
+
+## Environment-Specific Configuration
+
+### Node.js
+
+```typescript
+import TrezorConnect from '@trezor/connect';
+
+await TrezorConnect.init({
+  manifest: {
+    appName: 'My Node App',
+    appUrl: 'http://localhost:3000',
+    email: 'dev@example.com',
+  },
+  transports: ['BridgeTransport'],
+});
+
+// Use the API
+const result = await TrezorConnect.getFeatures();
+if (result.success) {
+  console.log('Device features:', result.payload);
+}
+```
+
+<Info>
+  **Prerequisites for Node.js:**
+  - Trezor Bridge must be installed and running
+  - Device must be connected via USB
+</Info>
+
+### Web Application
+
+```typescript web-app.ts
+import TrezorConnect from '@trezor/connect-web';
+
+await TrezorConnect.init({
+  manifest: {
+    appName: 'My Web Wallet',
+    appUrl: 'https://wallet.example.com',
+    email: 'support@example.com',
+  },
+  // Web-specific: popup will handle user interactions
+  lazyLoad: false,
+});
+
+// The popup will automatically appear for user interactions
+const result = await TrezorConnect.getAddress({
+  path: "m/49'/0'/0'/0/0",
+  coin: 'btc',
+  showOnTrezor: true,
+});
+```
+
+### React Integration
+
+```typescript use-trezor.ts
+import { useEffect, useState } from 'react';
+import TrezorConnect, { DEVICE_EVENT } from '@trezor/connect-web';
+
+export const useTrezor = () => {
+  const [initialized, setInitialized] = useState(false);
+  const [device, setDevice] = useState(null);
+
+  useEffect(() => {
+    const initTrezor = async () => {
+      try {
+        await TrezorConnect.init({
+          manifest: {
+            appName: 'My React App',
+            appUrl: window.location.origin,
+            email: 'support@example.com',
+          },
+        });
+        setInitialized(true);
+      } catch (error) {
+        console.error('Failed to initialize:', error);
+      }
+    };
+
+    initTrezor();
+
+    const handleDeviceEvent = event => {
+      if (event.type === 'device-connect') {
+        setDevice(event.payload);
+      } else if (event.type === 'device-disconnect') {
+        setDevice(null);
+      }
+    };
+
+    TrezorConnect.on(DEVICE_EVENT, handleDeviceEvent);
+
+    return () => {
+      TrezorConnect.off(DEVICE_EVENT, handleDeviceEvent);
+    };
+  }, []);
+
+  return { initialized, device };
+};
+```
+
+## Error Handling
+
+Always handle initialization errors:
+
+```typescript
+try {
+  await TrezorConnect.init({
+    manifest: {
+      appName: 'My App',
+      appUrl: 'https://myapp.com',
+      email: 'dev@myapp.com',
+    },
+  });
+} catch (error) {
+  if (error.code === 'Init_ManifestMissing') {
+    console.error('Manifest is required for initialization');
+  } else if (error.code === 'Init_AlreadyInitialized') {
+    console.warn('Trezor Connect is already initialized');
+  } else {
+    console.error('Initialization failed:', error);
+  }
+}
+```
+
+<Warning>
+  Calling `init()` multiple times will throw an `Init_AlreadyInitialized` error. Initialize only once in your application lifecycle.
+</Warning>
+
+## Cleanup
+
+Properly dispose of Trezor Connect when your application unmounts:
+
+```typescript
+// Clean up resources
+TrezorConnect.dispose();
+```
+
+<Tip>
+  Call `dispose()` when:
+  - Your application is shutting down
+  - You need to reinitialize with different settings
+  - You want to clean up all event listeners and connections
+</Tip>
+
+## Complete Working Example
+
+Here's a complete Node.js example that you can run:
+
+```typescript example.ts
+import TrezorConnect, { DEVICE_EVENT, TRANSPORT_EVENT } from '@trezor/connect';
+
+/**
+ * Complete example of Trezor Connect initialization
+ * 
+ * Prerequisites:
+ * - Trezor Bridge running
+ * - Device connected via USB
+ */
+const main = async () => {
+  try {
+    // Initialize with manifest
+    await TrezorConnect.init({
+      manifest: {
+        appName: 'Trezor Connect Example',
+        appUrl: 'http://localhost:3000',
+        email: 'developer@example.com',
+      },
+      debug: true,
+    });
+
+    console.log('✓ Trezor Connect initialized');
+
+    // Set up event listeners
+    TrezorConnect.on(TRANSPORT_EVENT, event => {
+      console.log('Transport:', event.type);
+    });
+
+    TrezorConnect.on(DEVICE_EVENT, event => {
+      console.log('Device:', event.type);
+    });
+
+    // Get device features
+    const features = await TrezorConnect.getFeatures();
+    
+    if (features.success) {
+      console.log('Device model:', features.payload.model);
+      console.log('Firmware version:', features.payload.fw_version);
+      console.log('Device ID:', features.payload.device_id);
+    } else {
+      console.error('Failed to get features:', features.error);
+    }
+
+  } catch (error) {
+    console.error('Error:', error);
+    process.exit(1);
+  }
+};
+
+main();
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="API Methods" icon="code" href="/api-reference">
+    Explore available API methods for blockchain operations
+  </Card>
+  <Card title="Supported Coins" icon="coins" href="/connect/supported-coins">
+    View all supported cryptocurrencies and networks
+  </Card>
+  <Card title="Examples" icon="github" href="https://github.com/trezor/trezor-suite/tree/develop/packages/connect-examples">
+    Browse complete example implementations
+  </Card>
+  <Card title="Events" icon="bolt" href="https://github.com/trezor/trezor-suite/blob/develop/docs/packages/connect/events.md">
+    Learn more about event handling
+  </Card>
+</CardGroup>

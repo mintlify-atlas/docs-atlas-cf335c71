@@ -1,0 +1,730 @@
+---
+title: Suite Desktop Architecture
+description: Technical architecture of the Trezor Suite desktop application built with Electron, including IPC communication, native integrations, and offline capabilities.
+---
+
+# Suite Desktop Architecture
+
+Trezor Suite Desktop is an Electron-based application that provides a full-featured, offline-capable interface for managing Trezor hardware wallets. It combines the power of Node.js with a modern React frontend.
+
+<img
+  src="https://repository-images.githubusercontent.com/148657224/439f6100-765f-11e9-9bff-b725eef3c4a6"
+  alt="Trezor Suite Desktop"
+/>
+
+## Overview
+
+Suite Desktop is built using:
+
+<CardGroup cols={2}>
+  <Card title="Electron 40.1.0" icon="atom">
+    Cross-platform desktop framework
+  </Card>
+  <Card title="React 19.1.0" icon="react">
+    UI rendering and component architecture
+  </Card>
+  <Card title="Redux Toolkit" icon="database">
+    State management and data flow
+  </Card>
+  <Card title="Node.js 24" icon="node-js">
+    Backend runtime for native features
+  </Card>
+</CardGroup>
+
+---
+
+## Architecture Layers
+
+```text
+┌────────────────────────────────────────┐
+│         Renderer Process (UI)            │
+│  ┌──────────────────────────────────┐  │
+│  │  React Components (@trezor/suite)  │  │
+│  │  Redux Store & Middleware          │  │
+│  │  @trezor/ipc-proxy                 │  │
+│  └──────────────────────────────────┘  │
+└──────────────────┬─────────────────────┘
+                 │ IPC Communication
+┌──────────────────┴─────────────────────┐
+│        Main Process (Node.js)           │
+│  ┌──────────────────────────────────┐  │
+│  │  @trezor/suite-desktop-core        │  │
+│  │  - Window Management               │  │
+│  │  - Auto Updates                    │  │
+│  │  - File System Access              │  │
+│  │  - Native Modules                  │  │
+│  │  @trezor/connect (Node)            │  │
+│  └──────────────────────────────────┘  │
+└──────────────────┬─────────────────────┘
+                 │
+┌──────────────────┴─────────────────────┐
+│         Native Layer                    │
+│  - Trezor Bridge (USB/HID)             │
+│  - Tor (Privacy)                       │
+│  - File System                         │
+│  - OS Integration                      │
+└────────────────────────────────────────┘
+```
+
+---
+
+## Key Components
+
+### 1. Renderer Process
+
+The renderer process runs the React-based UI in a Chromium browser context.
+
+<Tabs>
+  <Tab title="UI Layer">
+    **@trezor/suite Package**
+    
+    The main Suite UI package provides:
+    - React components for all screens
+    - Redux store for state management
+    - Routing and navigation
+    - Business logic
+    
+    ```typescript
+    // Renderer entry point
+    import { App } from '@trezor/suite';
+    import { render } from 'react-dom';
+    
+    render(<App />, document.getElementById('root'));
+    ```
+  </Tab>
+
+  <Tab title="IPC Proxy">
+    **@trezor/ipc-proxy**
+    
+    Proxies Connect API calls from renderer to main process:
+    
+    ```typescript
+    // In renderer process
+    import TrezorConnect from '@trezor/connect';
+    
+    // This actually calls main process via IPC
+    const result = await TrezorConnect.getAddress({
+      path: "m/49'/0'/0'/0/0",
+      coin: 'btc',
+    });
+    ```
+    
+    <Info>
+      All `@trezor/connect` methods are transparently replaced by IPC proxy calls.
+    </Info>
+  </Tab>
+
+  <Tab title="Security">
+    **Context Isolation**
+    
+    The renderer runs with:
+    - Context isolation enabled
+    - Node integration disabled
+    - Sandboxing enabled
+    
+    ```javascript
+    // Electron configuration
+    const window = new BrowserWindow({
+      webPreferences: {
+        contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: true,
+        preload: path.join(__dirname, 'preload.js'),
+      },
+    });
+    ```
+  </Tab>
+</Tabs>
+
+### 2. Main Process
+
+The main process handles all Node.js operations and system integrations.
+
+<AccordionGroup>
+  <Accordion title="@trezor/suite-desktop-core" icon="gear">
+    Core functionality for the Electron main process:
+    
+    **Window Management**
+    - Create and manage application windows
+    - Handle window state (minimize, maximize, close)
+    - Multi-window support
+    
+    **Auto-Updates**
+    - Check for application updates
+    - Download and install updates
+    - Notify user of available updates
+    
+    **File System**
+    - Read/write application data
+    - Manage logs
+    - Export/import wallet data
+    
+    **IPC Handlers**
+    - Process messages from renderer
+    - Invoke native APIs
+    - Return results to renderer
+  </Accordion>
+
+  <Accordion title="Trezor Connect in Main Process" icon="plug">
+    Connect runs in Node.js context in main process:
+    
+    ```javascript
+    // Main process
+    import TrezorConnect from '@trezor/connect';
+    
+    TrezorConnect.init({
+      manifest: {
+        email: 'info@trezor.io',
+        appUrl: 'https://suite.trezor.io',
+      },
+    });
+    
+    // Handle IPC requests from renderer
+    ipcMain.handle('trezor-connect', async (event, method, params) => {
+      return await TrezorConnect[method](params);
+    });
+    ```
+    
+    **Benefits**:
+    - Direct USB/HID access
+    - No WebUSB limitations
+    - Better performance
+    - Offline capabilities
+  </Accordion>
+
+  <Accordion title="Native Modules" icon="puzzle-piece">
+    Integration with native system features:
+    
+    **Trezor Bridge**
+    - USB/HID device communication
+    - Device detection and monitoring
+    - Low-level protocol handling
+    
+    **Tor**
+    - Bundled Tor binary
+    - SOCKS5 proxy configuration
+    - Privacy-enhanced connections
+    
+    **Coinjoin Backend**
+    - Bitcoin privacy features
+    - Coordinator communication
+    - Transaction mixing
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Key Differences: Desktop vs Web
+
+<Tabs>
+  <Tab title="Trezor Connect">
+    ### Desktop
+    - Connect runs in **Node.js** (main process)
+    - Imported as regular node_module
+    - No Connect files on renderer
+    - IPC proxy in renderer
+    
+    ```typescript
+    // Renderer: @trezor/ipc-proxy
+    TrezorConnect.getAddress(...) → IPC → Main Process
+    ```
+    
+    ### Web
+    - Connect is part of **JavaScript bundle**
+    - Uses `@trezor/connect-web`
+    - Runs in browser context
+    - WebUSB for device communication
+    
+    ```typescript
+    // Browser: @trezor/connect-web
+    TrezorConnect.getAddress(...) → WebUSB
+    ```
+    
+    <Note>
+      See [webpack config](https://github.com/trezor/trezor-suite/blob/develop/packages/suite-build/configs/web.webpack.config.ts) for web replacement logic.
+    </Note>
+  </Tab>
+
+  <Tab title="Firmware Binaries">
+    ### Desktop
+    - Firmware **bundled** as application resources
+    - Located in `bin/` directory (same level as `app.asar`)
+    - Read using `fs.readFile` API
+    - Works **offline**
+    
+    ```
+    Trezor Suite.app/
+    ├── Contents/
+    │   ├── Resources/
+    │   │   ├── app.asar
+    │   │   └── bin/
+    │   │       └── firmware/
+    ```
+    
+    ### Web
+    - Firmware **hosted** on CDN
+    - URL: `[suite-url]/build/static/connect/data/firmware`
+    - Downloaded using `fetch` API
+    - Requires **internet connection**
+  </Tab>
+
+  <Tab title="Device Communication">
+    ### Desktop
+    - **Trezor Bridge**: Direct USB/HID access via Node.js
+    - **Better compatibility**: Works with all Trezor models
+    - **More stable**: Fewer browser limitations
+    
+    ### Web
+    - **WebUSB**: Browser-based USB access
+    - **Limited support**: Chrome/Brave/Edge only
+    - **Browser permissions**: User must grant access
+  </Tab>
+
+  <Tab title="Privacy Features">
+    ### Desktop
+    - **Tor**: Bundled Tor binary for anonymous connections
+    - **Bluetooth**: Support for BLE devices
+    - **Offline mode**: Full functionality without internet
+    - **Local storage**: All data on device
+    
+    ### Web
+    - **No Tor**: Browser limitations
+    - **No Bluetooth**: WebBluetooth not implemented
+    - **Online only**: Requires internet
+    - **Browser storage**: IndexedDB for data
+  </Tab>
+</Tabs>
+
+---
+
+## Application Structure
+
+### Package Organization
+
+```text
+packages/
+├── suite-desktop/              # Build target & bundler
+│   ├── build-electron/         # Output directory
+│   ├── dist/                   # Compiled main process
+│   └── package.json            # Electron app dependencies
+├── suite-desktop-core/         # Main process logic
+│   ├── src/
+│   │   ├── main.ts             # Entry point
+│   │   ├── modules/
+│   │   │   ├── auto-updater.ts
+│   │   │   ├── window-manager.ts
+│   │   │   ├── tor.ts
+│   │   │   └── trezor-connect.ts
+│   │   └── ipc-handlers.ts
+│   └── scripts/build.ts
+├── suite-desktop-ui/           # Renderer-specific UI
+├── suite-desktop-api/          # IPC API definitions
+└── suite-desktop-native/       # Native module bindings
+```
+
+<Warning>
+  **Important**: `@trezor/suite-desktop` is a container for bundled code. Do not add custom code or dependencies here. Use `@trezor/suite-desktop-core` instead.
+</Warning>
+
+### Build Process
+
+<Steps>
+  <Step title="Compile TypeScript">
+    ```bash
+    # Compile main process
+    yarn workspace @trezor/suite-desktop-core build
+    ```
+  </Step>
+
+  <Step title="Bundle Renderer">
+    ```bash
+    # Build renderer (Suite UI)
+    yarn workspace @trezor/suite build
+    ```
+  </Step>
+
+  <Step title="Package with Electron Builder">
+    ```bash
+    # Build for specific platform
+    yarn workspace @trezor/suite-desktop build:mac
+    yarn workspace @trezor/suite-desktop build:win
+    yarn workspace @trezor/suite-desktop build:linux
+    ```
+  </Step>
+
+  <Step title="Output">
+    Packaged apps in `packages/suite-desktop/build-electron/`:
+    - macOS: `.dmg` and `.app`
+    - Windows: `.exe` installer
+    - Linux: `.AppImage`
+  </Step>
+</Steps>
+
+---
+
+## Environment Configurations
+
+Suite Desktop runs in different modes with separate data directories:
+
+| Environment | App ID | Name | Data Dir | Use Case |
+|-------------|--------|------|----------|----------|
+| **Production** | `com.trezor.suite` | Trezor Suite | `@trezor/suite-desktop` | Released builds |
+| **Development** | `com.trezor.suite.dev` | Trezor Suite Dev | `@trezor/suite-desktop-dev` | Built dev versions |
+| **Local Dev** | `com.github.Electron` | Trezor Suite Local | `@trezor/suite-desktop-local` | `yarn suite:dev:desktop` |
+
+<Accordion title="Data Directory Locations by OS">
+  **macOS**
+  ```
+  ~/Library/Application Support/@trezor/suite-desktop/
+  ├── IndexedDB/          # Database
+  ├── Cache/              # Cached resources
+  ├── logs/               # Application logs
+  └── User Data/          # Settings
+  ```
+  
+  **Windows**
+  ```
+  C:\Users\[user]\AppData\Roaming\@trezor\suite-desktop\
+  ```
+  
+  **Linux**
+  ```
+  /home/[user]/.config/@trezor/suite-desktop/
+  ```
+</Accordion>
+
+<Tip>
+  You can access your data directory from Suite: **Settings → Debug → Wipe app data** (link in description).
+</Tip>
+
+---
+
+## Development
+
+### Running Dev Server
+
+```bash
+yarn suite:dev:desktop
+```
+
+This command:
+1. Starts Webpack dev server for renderer
+2. Compiles main process with watch mode
+3. Launches Electron with hot reload
+
+<Info>
+  React DevTools are available. To use them, reload the renderer process (Ctrl+R / Cmd+R) while DevTools are open.
+</Info>
+
+### Keyboard Shortcuts
+
+| Action | Shortcut (macOS) | Shortcut (Windows/Linux) |
+|--------|------------------|-------------------------|
+| Reload | Cmd+R / F5 | Ctrl+R / F5 |
+| Hard Reload | Shift+Cmd+R | Shift+Ctrl+R |
+| Restart | Option+F5 | Alt+F5 |
+| DevTools | Cmd+Shift+I | Ctrl+Shift+I / F12 |
+
+### Debugging
+
+<Tabs>
+  <Tab title="Renderer Process">
+    **Chrome DevTools**
+    
+    Press `F12` or `Cmd+Shift+I` to open DevTools.
+    
+    Features:
+    - React component inspection
+    - Network monitoring
+    - Console logs
+    - Redux DevTools (if enabled)
+    
+    ```javascript
+    // Enable Redux DevTools
+    // .env.local
+    TANSTACK_REACT_QUERY_DEV_TOOLS=true
+    ```
+  </Tab>
+
+  <Tab title="Main Process">
+    **VSCode Debugging**
+    
+    1. Create `.vscode/launch.json`:
+    ```json
+    {
+      "version": "0.2.0",
+      "configurations": [
+        {
+          "name": "Debug Main Process",
+          "type": "node",
+          "request": "launch",
+          "cwd": "${workspaceFolder}",
+          "runtimeExecutable": "yarn",
+          "args": ["suite:dev:desktop"],
+          "outputCapture": "std"
+        }
+      ]
+    }
+    ```
+    
+    2. Set breakpoints in main process code
+    3. Press F5 to start debugging
+    
+    See [debugging docs](https://github.com/trezor/trezor-suite/blob/develop/docs/packages/suite-desktop/debugging.md) for details.
+  </Tab>
+
+  <Tab title="Logging">
+    **Enable Logging**
+    
+    Run Suite with log level flag:
+    ```bash
+    # macOS/Linux
+    ./Trezor\ Suite.app --log-level=debug
+    
+    # Windows
+    "Trezor Suite.exe" --log-level=debug
+    ```
+    
+    Log levels: `error`, `warn`, `info`, `debug`
+    
+    **Log Location**:
+    - macOS: `~/Library/Logs/Trezor Suite/`
+    - Windows: `%USERPROFILE%\AppData\Roaming\Trezor Suite\logs\`
+    - Linux: `~/.config/Trezor Suite/logs/`
+    
+    See [runtime flags](https://github.com/trezor/trezor-suite/blob/develop/docs/packages/suite-desktop/runtime-flags.md) for more options.
+  </Tab>
+</Tabs>
+
+---
+
+## Build & Distribution
+
+### Building for Release
+
+<Tabs>
+  <Tab title="macOS">
+    ```bash
+    yarn workspace @trezor/suite-desktop build:mac
+    ```
+    
+    **Output**: `packages/suite-desktop/build-electron/`
+    - `Trezor Suite-[version]-arm64.dmg` (Apple Silicon)
+    - `Trezor Suite-[version]-x64.dmg` (Intel)
+    - `mac-arm64/Trezor Suite.app`
+    - `mac-x64/Trezor Suite.app`
+    
+    **Signing**: Requires Apple Developer certificate
+    
+    **Notarization**: Automatic if credentials configured
+  </Tab>
+
+  <Tab title="Windows">
+    ```bash
+    yarn workspace @trezor/suite-desktop build:win
+    ```
+    
+    **Output**: `packages/suite-desktop/build-electron/`
+    - `Trezor Suite Setup [version].exe` (installer)
+    - `Trezor Suite [version].exe` (portable)
+    
+    **Signing**: Requires code signing certificate
+    
+    See [signing docs](https://github.com/trezor/trezor-suite/blob/develop/docs/releases/signing-binaries-win.md)
+  </Tab>
+
+  <Tab title="Linux">
+    ```bash
+    yarn workspace @trezor/suite-desktop build:linux
+    ```
+    
+    **Output**: `packages/suite-desktop/build-electron/`
+    - `Trezor Suite-[version].AppImage`
+    - `Trezor Suite-[version].deb` (optional)
+    
+    **Running**:
+    ```bash
+    chmod +x Trezor-Suite-*.AppImage
+    ./Trezor-Suite-*.AppImage
+    ```
+    
+    **NixOS**:
+    ```bash
+    appimage-run ./Trezor-Suite-*.AppImage
+    ```
+  </Tab>
+</Tabs>
+
+### Auto-Updates
+
+Suite Desktop includes built-in auto-update functionality:
+
+<Steps>
+  <Step title="Check for Updates">
+    App checks for updates on startup and periodically.
+  </Step>
+
+  <Step title="Download in Background">
+    Updates download automatically in the background.
+  </Step>
+
+  <Step title="Notify User">
+    User is notified when update is ready to install.
+  </Step>
+
+  <Step title="Install on Restart">
+    Update installs when user restarts the application.
+  </Step>
+</Steps>
+
+<Info>
+  Auto-updates use [electron-updater](https://www.electron.build/auto-update) with delta updates for efficiency.
+</Info>
+
+---
+
+## Advanced Features
+
+### Tor Integration
+
+<AccordionGroup>
+  <Accordion title="How It Works" icon="shield">
+    - Bundled Tor binary included with app
+    - Automatically started when Tor mode enabled
+    - SOCKS5 proxy on `localhost:9050`
+    - All network traffic routed through Tor
+    
+    ```typescript
+    // Enable Tor in settings
+    dispatch(toggleTor(true));
+    ```
+  </Accordion>
+
+  <Accordion title="Configuration" icon="gear">
+    Tor settings in Suite:
+    - Settings → Application → Tor
+    - Enable/disable Tor
+    - Snowflake bridges for censored networks
+    - Custom bridges
+  </Accordion>
+
+  <Accordion title="Technical Details" icon="code">
+    Location: `@trezor/suite-desktop-core/src/modules/tor.ts`
+    
+    Features:
+    - Automatic Tor binary management
+    - Bootstrap progress tracking
+    - Circuit building
+    - Bridge configuration
+  </Accordion>
+</AccordionGroup>
+
+### Anonymous Mode
+
+Run Suite with fresh data on every start (like incognito mode):
+
+See [anon-mode docs](https://github.com/trezor/trezor-suite/blob/develop/docs/packages/suite-desktop/anon-mode.md)
+
+---
+
+## Extracting Application
+
+For debugging or inspection, you can extract the packaged app:
+
+<Tabs>
+  <Tab title="macOS">
+    ```bash
+    npx @electron/asar extract \
+      ./Trezor\ Suite.app/Contents/Resources/app.asar \
+      ./decompiled
+    ```
+  </Tab>
+
+  <Tab title="Linux">
+    ```bash
+    # First, run the AppImage to get mount ID
+    ./Trezor-Suite.AppImage
+    # Note the mount-id from output
+    
+    # Extract
+    npx @electron/asar extract \
+      ~/.cache/appimage-run/[mount-id]/resources/app.asar \
+      ./decompiled
+    ```
+  </Tab>
+
+  <Tab title="Windows">
+    ```powershell
+    npx @electron/asar extract ^
+      "C:\Program Files\Trezor Suite\resources\app.asar" ^
+      .\decompiled
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Performance Optimization
+
+<CardGroup cols={2}>
+  <Card title="Code Splitting" icon="scissors">
+    Lazy load routes and heavy components
+  </Card>
+  <Card title="IPC Batching" icon="layer-group">
+    Batch multiple IPC calls when possible
+  </Card>
+  <Card title="Asset Optimization" icon="image">
+    Compress images and bundle only needed resources
+  </Card>
+  <Card title="Memory Management" icon="memory">
+    Proper cleanup of listeners and subscriptions
+  </Card>
+</CardGroup>
+
+---
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Build fails" icon="triangle-exclamation">
+    ```bash
+    # Clean build
+    yarn workspace @trezor/suite-desktop-core clean
+    yarn workspace @trezor/suite clean
+    yarn build:essential
+    ```
+  </Accordion>
+
+  <Accordion title="App won't start" icon="circle-exclamation">
+    Check logs:
+    - macOS: `~/Library/Logs/Trezor Suite/`
+    - Windows: `%APPDATA%\Trezor Suite\logs\`
+    - Linux: `~/.config/Trezor Suite/logs/`
+  </Accordion>
+
+  <Accordion title="Device not detected" icon="usb">
+    1. Install/restart Trezor Bridge
+    2. Try different USB cable
+    3. Check USB permissions (Linux)
+    4. Restart Suite
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Suite Web Architecture" icon="globe" href="/architecture/suite-web">
+    Compare with web version architecture
+  </Card>
+  <Card title="Debugging Guide" icon="bug" href="https://github.com/trezor/trezor-suite/blob/develop/docs/packages/suite-desktop/debugging.md">
+    Advanced debugging techniques
+  </Card>
+  <Card title="Runtime Flags" icon="flag" href="https://github.com/trezor/trezor-suite/blob/develop/docs/packages/suite-desktop/runtime-flags.md">
+    Command-line options
+  </Card>
+  <Card title="Desktop Updates" icon="arrow-up" href="https://github.com/trezor/trezor-suite/blob/develop/docs/releases/desktop_updates.md">
+    Update mechanism details
+  </Card>
+</CardGroup>

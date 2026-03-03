@@ -1,0 +1,555 @@
+---
+title: Analytics Implementation
+description: Privacy-respecting analytics for understanding user behavior and improving Suite
+---
+
+# Analytics Implementation
+
+Trezor Suite implements privacy-respecting analytics to understand how users interact with the application and identify areas for improvement.
+
+## Overview
+
+Analytics in Suite:
+
+<CardGroup cols={2}>
+  <Card title="Opt-In Only" icon="hand">
+    User must explicitly consent
+  </Card>
+  <Card title="No Sensitive Data" icon="shield">
+    Never track private keys, balances, or transactions
+  </Card>
+  <Card title="Anonymous" icon="mask">
+    No personally identifiable information
+  </Card>
+  <Card title="Transparent" icon="eye">
+    Clear about what's tracked
+  </Card>
+</CardGroup>
+
+## Data Collection
+
+What gets tracked (with consent):
+
+### User Interactions
+
+```typescript
+// Button clicks
+analytics.report({
+  type: 'dashboard/banner/clicked',
+  payload: {
+    action: 'cta',
+    bannerType: 'firmware-update',
+  },
+});
+
+// Page navigation (automatic)
+// Tracked via router/location-change
+
+// Feature usage
+analytics.report({
+  type: 'coinjoin/session/started',
+  payload: {
+    targetAnonymity: 50,
+  },
+});
+```
+
+### Application Events
+
+```typescript
+// App lifecycle
+analytics.report({
+  type: 'app/launched',
+  payload: {
+    duration: startupTime,
+    environment: 'desktop',
+  },
+});
+
+// Error events
+analytics.report({
+  type: 'error/occurred',
+  payload: {
+    errorType: 'network-timeout',
+    component: 'blockchain-sync',
+  },
+});
+```
+
+### System Information
+
+```typescript
+interface AnalyticsContext {
+  // Suite version
+  version: string;
+  
+  // Platform
+  environment: 'desktop' | 'web' | 'mobile';
+  
+  // OS (anonymized)
+  os: 'windows' | 'macos' | 'linux' | 'android' | 'ios';
+  
+  // Browser (web only)
+  browser?: 'chrome' | 'firefox' | 'safari';
+  
+  // Session info
+  sessionId: string;
+  instanceId: string;
+}
+```
+
+### What's NOT Tracked
+
+<Warning>
+Never tracked:
+- Private keys or seeds
+- Wallet balances
+- Transaction amounts
+- Addresses
+- XPUBs or account details
+- Personal information
+- IP addresses (removed by Trezor)
+</Warning>
+
+## Analytics Architecture
+
+### Package Structure
+
+<Tabs>
+  <Tab title="suite-common/analytics">
+    **Shared analytics definitions**
+    
+    ```typescript
+    // Event definitions used across platforms
+    suite-common/analytics/
+      src/
+        events/
+          account.ts        // Account events
+          transaction.ts    // Transaction events
+          device.ts         // Device events
+        constants.ts        // Event type enum
+        types.ts           // TypeScript types
+    ```
+  </Tab>
+  
+  <Tab title="suite/analytics">
+    **Desktop/Web analytics**
+    
+    ```typescript
+    // Desktop and web specific events
+    suite/analytics/
+      src/
+        events/
+          dashboard.ts
+          settings.ts
+          firmware.ts
+        analytics.ts       // Analytics service
+    ```
+  </Tab>
+  
+  <Tab title="suite-native/analytics">
+    **Mobile analytics**
+    
+    ```typescript
+    // Mobile-specific events
+    suite-native/analytics/
+      src/
+        events/
+          mobile.ts
+          navigation.ts
+    ```
+  </Tab>
+</Tabs>
+
+### Event Definition
+
+Standardized event structure:
+
+```typescript
+import type { AttributeDef, EventDef } from '@suite-common/analytics';
+import { EventType } from '../constants';
+
+type Attributes = {
+  // Required attribute
+  action: AttributeDef<'cta' | 'close'>;
+  
+  // Optional attribute
+  bannerType?: AttributeDef<string | null>;
+};
+
+export const promoDashboardBannerEvent: EventDef<
+  Attributes,
+  EventType.PromoDashboardBanner
+> = {
+  name: EventType.PromoDashboardBanner,
+  descriptionTrigger: 'User clicks the dashboard promo banner',
+  changelog: [
+    { version: '25.8.0', notes: 'added' },
+  ],
+  
+  attributes: {
+    action: {
+      changelog: [{ version: '25.8.0', notes: 'added' }],
+    },
+    bannerType: {
+      description: 'Type of banner shown',
+      changelog: [{ version: '25.8.0', notes: 'added' }],
+    },
+  },
+};
+```
+
+### Event Type Enum
+
+Centralized event types:
+
+```typescript
+// suite-common/analytics/src/constants.ts
+
+export enum EventType {
+  // Dashboard events
+  DashboardViewed = 'dashboard/viewed',
+  PromoDashboardBanner = 'dashboard/promo-banner',
+  
+  // Transaction events
+  TransactionCreated = 'transaction/created',
+  TransactionSigned = 'transaction/signed',
+  
+  // Device events
+  DeviceConnected = 'device/connected',
+  DeviceDisconnected = 'device/disconnected',
+  
+  // ... more events
+}
+```
+
+## Reporting Events
+
+### useAnalytics Hook
+
+```typescript
+import { useAnalytics } from '@suite/hooks';
+import { events } from '@suite/analytics';
+
+const MyComponent = () => {
+  const analytics = useAnalytics();
+  
+  const handleClick = () => {
+    analytics.report({
+      type: events.promoDashboardBannerEvent.name,
+      payload: {
+        action: 'cta',
+        bannerType: 'firmware',
+      },
+    });
+  };
+  
+  return <button onClick={handleClick}>Update</button>;
+};
+```
+
+### In Redux Thunks
+
+Access via extra argument:
+
+```typescript
+import { createThunk } from '@suite-common/redux-utils';
+import { events } from '@suite/analytics';
+
+export const submitTransaction = createThunk(
+  'wallet/submitTransaction',
+  async (transaction, { extra }) => {
+    // Report event
+    extra.services.analytics.report({
+      type: events.transactionCreatedEvent.name,
+      payload: {
+        symbol: transaction.symbol,
+        outputsCount: transaction.outputs.length,
+      },
+    });
+    
+    // ... transaction logic
+  }
+);
+```
+
+### Automatic Events
+
+Some events tracked automatically:
+
+```typescript
+// Page navigation (via router middleware)
+router/location-change → Auto-tracked
+
+// App lifecycle
+app/launched → Auto-tracked
+app/backgrounded → Auto-tracked (mobile)
+
+// Errors (via error boundary)
+error/uncaught → Auto-tracked
+```
+
+## Data Destinations
+
+### AWS S3 Logging
+
+Primary analytics backend:
+
+```typescript
+// Production endpoints
+const ANALYTICS_URLS = {
+  desktop: 'https://data.trezor.io/suite/log/desktop/stable.log',
+  web: 'https://data.trezor.io/suite/log/web/stable.log',
+  mobile: 'https://data.trezor.io/suite/log/mobile/stable.log',
+};
+
+// Development endpoints
+const DEV_ANALYTICS_URLS = {
+  desktop: 'https://data.trezor.io/suite/log/desktop/develop.log',
+  web: 'https://data.trezor.io/suite/log/web/develop.log',
+  mobile: 'https://data.trezor.io/suite/log/mobile/develop.log',
+};
+```
+
+### Request Format
+
+HTTPS POST with query params:
+
+```typescript
+const logEvent = async (event: AnalyticsEvent) => {
+  const params = new URLSearchParams({
+    c_v: context.version,
+    c_type: event.type,
+    c_instance_id: context.instanceId,
+    c_session_id: context.sessionId,
+    c_timestamp: Date.now().toString(),
+    ...event.payload,
+  });
+  
+  await fetch(`${ANALYTICS_URL}?${params}`, {
+    method: 'POST',
+  });
+};
+```
+
+## Privacy Protection
+
+### IP Address Handling
+
+<Info>
+AWS can see IP addresses in logs, but:
+- Trezor does NOT track or store IPs
+- IPs automatically removed from logs
+- Enable Tor to mask IP from third parties
+</Info>
+
+### Anonymization
+
+Data anonymized before sending:
+
+```typescript
+const anonymizeData = (data: any): any => {
+  // Remove identifying information
+  const { address, xpub, deviceId, ...safe } = data;
+  
+  // Hash any remaining IDs
+  if (safe.accountKey) {
+    safe.accountKey = hash(safe.accountKey);
+  }
+  
+  return safe;
+};
+```
+
+### Consent Management
+
+Strict opt-in:
+
+```typescript
+interface AnalyticsConsent {
+  // User explicitly enabled
+  enabled: boolean;
+  
+  // Consent timestamp
+  consentedAt: number | null;
+  
+  // Can revoke anytime
+  revocable: true;
+}
+
+// Nothing sent unless enabled
+if (!consent.enabled) {
+  return; // Skip analytics
+}
+```
+
+## Initialization
+
+Analytics setup:
+
+```typescript
+import { useAnalytics } from '@suite/hooks';
+
+const analytics = useAnalytics();
+
+analytics.init(enabled, {
+  instanceId: generateInstanceId(),
+  sessionId: generateSessionId(),
+  environment: 'desktop',
+  commitId: GIT_COMMIT,
+  isDev: process.env.NODE_ENV === 'development',
+  
+  callbacks: {
+    onEnable: () => {
+      console.log('Analytics enabled');
+    },
+    onDisable: () => {
+      console.log('Analytics disabled');
+    },
+  },
+});
+```
+
+### Instance ID
+
+Persistent anonymous identifier:
+
+```typescript
+// Generated once, stored in app
+const instanceId = uuid();
+
+// Used for:
+// - Unique user counting
+// - A/B test assignment
+// - Session correlation
+
+// NOT used for:
+// - Personal identification
+// - Cross-device tracking
+```
+
+### Session ID
+
+Temporary session identifier:
+
+```typescript
+// New session on app launch
+const sessionId = uuid();
+
+// Correlates events within session
+// Reset on app restart
+```
+
+## Verification
+
+### DevTools Network Tab
+
+Inspect analytics requests:
+
+1. Open DevTools → Network tab
+2. Filter by `.log`
+3. Click request
+4. View Query String Parameters
+
+### Console Logging
+
+Enable in Debug Settings:
+
+```typescript
+// Settings → Debug → Console Logging
+
+// Events logged to console:
+console.log('[Analytics]', {
+  type: 'dashboard/viewed',
+  payload: { ... },
+  context: { ... },
+});
+```
+
+### Custom URL
+
+Point to your own server:
+
+```typescript
+// Settings → Debug → Custom Analytics URL
+const customUrl = 'http://localhost:3000/analytics';
+
+// All events sent to your server for testing
+```
+
+## Data Retention
+
+<AccordionGroup>
+  <Accordion title="Error Data">
+    **90 days**
+    
+    Error-related analytics kept for 90 days to identify and fix issues.
+  </Accordion>
+  
+  <Accordion title="Performance Data">
+    **Longer retention**
+    
+    Performance metrics may be stored longer for trend analysis.
+  </Accordion>
+  
+  <Accordion title="Deletion">
+    **Automatic**
+    
+    Data automatically deleted after retention period. No archiving.
+  </Accordion>
+</AccordionGroup>
+
+## Access Control
+
+Limited data access:
+
+- Development team
+- Security team
+- IT team
+
+All access:
+- Need-to-know basis
+- Regular access reviews
+- Two-factor authentication
+- Strong passwords
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="For Users" icon="user">
+    - Review what's tracked in Settings
+    - Enable/disable anytime
+    - Use Tor for extra privacy
+    - Submit feedback on privacy concerns
+  </Card>
+  <Card title="For Developers" icon="code">
+    - Check consent before tracking
+    - Never log sensitive data
+    - Anonymize all identifiers
+    - Add changelog entries
+    - Test with console logging
+  </Card>
+</CardGroup>
+
+## Implementation Files
+
+```typescript
+// Analytics packages
+suite-common/analytics/          // Shared definitions
+suite/analytics/                 // Desktop/Web
+suite-native/analytics/          // Mobile
+
+// Integration
+packages/suite/src/
+  middlewares/suite/analyticsMiddleware.ts
+  actions/suite/analyticsActions.ts
+  hooks/suite/useAnalytics.ts
+  support/useAnalytics.ts
+```
+
+## Related Resources
+
+- [Analytics Documentation](https://github.com/trezor/trezor-suite/blob/develop/docs/analytics/index.md)
+- [AWS Analytics](https://github.com/trezor/trezor-suite/blob/develop/docs/analytics/aws.md)
+- [Sentry Integration](/features/error-reporting)
+- [Privacy Policy](https://trezor.io/privacy)

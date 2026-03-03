@@ -1,0 +1,204 @@
+---
+title: Package Overview
+description: Overview of the 64+ packages in the Trezor Suite monorepo
+---
+
+Trezor Suite is organized as a monorepo containing 64+ packages, each serving specific functionality. The packages are organized by scope to maintain clear dependency boundaries and prevent circular dependencies.
+
+## Package Scopes
+
+Packages are organized into four main scopes:
+
+| Scope | Folder | Description | Can Import From |
+| --- | --- | --- | --- |
+| `@trezor/*` | `/packages` | Public packages used by Suite & third parties | No other scope |
+| `@suite-common` | `/suite-common` | Code shared between web/desktop and mobile Suite | `@trezor` only |
+| `@suite-native` | `/suite-native` | Mobile Suite packages | `@trezor`, `@suite-common` |
+| `@suite` | `/suite` | Desktop & web Suite packages | `@trezor`, `@suite-common` |
+
+<Note>
+The `@trezor` scope was originally the only scope in the monorepo. Some packages (including the desktop entry point) should technically be in the `@suite` scope but remain in `@trezor` for historical reasons.
+</Note>
+
+## Core Package Categories
+
+<CardGroup cols={2}>
+  <Card title="Blockchain & Network" icon="link">
+    Packages for blockchain connectivity and network interactions
+    - `@trezor/blockchain-link`
+    - `@trezor/blockchain-link-types`
+    - `@trezor/blockchain-link-utils`
+  </Card>
+
+  <Card title="Connect & Communication" icon="plug">
+    Trezor Connect and device communication
+    - `@trezor/connect`
+    - `@trezor/connect-web`
+    - `@trezor/connect-webextension`
+    - `@trezor/connect-mobile`
+  </Card>
+
+  <Card title="Transport Layers" icon="usb">
+    Device transport protocols
+    - `@trezor/transport`
+    - `@trezor/transport-bridge`
+    - `@trezor/transport-bluetooth`
+    - `@trezor/transport-native-usb`
+  </Card>
+
+  <Card title="Utilities" icon="toolbox">
+    Common utility packages
+    - `@trezor/utils`
+    - `@trezor/crypto-utils`
+    - `@trezor/device-utils`
+    - See [Utilities](/development/packages/utilities) for full list
+  </Card>
+</CardGroup>
+
+## Public Packages (@trezor/*)
+
+These packages are published to npm and can be used by external projects:
+
+<AccordionGroup>
+  <Accordion title="Blockchain & Network (4)">
+    - **@trezor/blockchain-link** - Unified interface for blockchain backends
+    - **@trezor/blockchain-link-types** - TypeScript types for blockchain-link
+    - **@trezor/blockchain-link-utils** - Utilities for blockchain operations
+    - **@trezor/websocket-client** - WebSocket client implementation
+  </Accordion>
+
+  <Accordion title="Connect (10)">
+    - **@trezor/connect** - High-level JavaScript interface for Trezor hardware wallets
+    - **@trezor/connect-web** - Web-specific Connect implementation
+    - **@trezor/connect-webextension** - Browser extension Connect implementation
+    - **@trezor/connect-mobile** - Mobile Connect implementation
+    - **@trezor/connect-common** - Shared Connect utilities
+    - **@trezor/connect-data** - Connect data management
+    - **@trezor/connect-cli** - CLI tools for Connect
+    - **@trezor/connect-explorer** - Connect API explorer
+    - **@trezor/connect-plugin-ethereum** - Ethereum-specific Connect plugin
+    - **@trezor/connect-plugin-stellar** - Stellar-specific Connect plugin
+  </Accordion>
+
+  <Accordion title="Transport (6)">
+    - **@trezor/transport** - Base transport layer
+    - **@trezor/transport-bridge** - Trezor Bridge transport
+    - **@trezor/transport-bluetooth** - Bluetooth transport for Trezor T
+    - **@trezor/transport-native-bluetooth** - Native Bluetooth implementation
+    - **@trezor/transport-native-usb** - Native USB implementation
+    - **@trezor/transport-test** - Transport testing utilities
+  </Accordion>
+
+  <Accordion title="Protocol & Device (5)">
+    - **@trezor/protobuf** - Protocol buffer definitions
+    - **@trezor/protocol** - Trezor communication protocol
+    - **@trezor/device-utils** - Device-related utilities
+    - **@trezor/device-authenticity** - Device authenticity verification
+    - **@trezor/react-native-usb** - React Native USB interface
+  </Accordion>
+
+  <Accordion title="UI Components (4)">
+    - **@trezor/components** - Reusable UI components
+    - **@trezor/product-components** - Product-specific components
+    - **@trezor/theme** - Theme definitions
+    - **@trezor/styles** - Shared styles
+  </Accordion>
+
+  <Accordion title="Utilities (12)">
+    - **@trezor/utils** - General TypeScript utilities
+    - **@trezor/crypto-utils** - Cryptographic utilities
+    - **@trezor/asset-utils** - Asset handling utilities
+    - **@trezor/device-utils** - Device utilities
+    - **@trezor/dom-utils** - DOM manipulation utilities
+    - **@trezor/e2e-utils** - End-to-end testing utilities
+    - **@trezor/env-utils** - Environment detection utilities
+    - **@trezor/node-utils** - Node.js utilities
+    - **@trezor/react-utils** - React utilities
+    - **@trezor/schema-utils** - Schema validation utilities
+    - **@trezor/type-utils** - TypeScript type utilities
+    - **@trezor/urls** - URL management
+  </Accordion>
+
+  <Accordion title="Specialized Features (11)">
+    - **@trezor/utxo-lib** - Bitcoin UTXO library
+    - **@trezor/address-validator** - Cryptocurrency address validation
+    - **@trezor/coinjoin** - CoinJoin privacy implementation
+    - **@trezor/request-manager** - Request management
+    - **@trezor/auth-server** - Authentication server
+    - **@trezor/analytics-docs** - Analytics documentation
+    - **@trezor/analytics-uploader** - Analytics data uploader
+    - **@trezor/bundler-security** - Build security tools
+    - **@trezor/ipc-proxy** - Inter-process communication proxy
+    - **@trezor/trezor-user-env-link** - Test environment integration
+    - **@trezor/requirements** - System requirements checker
+  </Accordion>
+
+  <Accordion title="Suite Applications (7)">
+    - **@trezor/suite** - Main Suite web/desktop application
+    - **@trezor/suite-web** - Web-specific Suite implementation
+    - **@trezor/suite-desktop** - Desktop-specific Suite implementation
+    - **@trezor/suite-desktop-core** - Desktop core functionality
+    - **@trezor/suite-desktop-api** - Desktop API
+    - **@trezor/suite-desktop-ui** - Desktop UI components
+    - **@trezor/suite-desktop-native** - Desktop native bindings
+  </Accordion>
+
+  <Accordion title="Build & Development (4)">
+    - **@trezor/suite-build** - Build tools and scripts
+    - **@trezor/suite-data** - Static data management
+    - **@trezor/suite-storage** - Storage abstractions
+    - **@trezor/eslint** - ESLint configuration
+  </Accordion>
+</AccordionGroup>
+
+## Suite Common Packages (@suite-common)
+
+Shared code between web/desktop and mobile Suite (imports only from `@trezor/*`).
+
+## Suite Native Packages (@suite-native)
+
+Mobile-specific packages for React Native implementation.
+
+## Suite Packages (@suite)
+
+Web and desktop-specific Suite packages.
+
+## Package Design Philosophy
+
+<CardGroup cols={2}>
+  <Card title="Smaller is Better" icon="cube">
+    Creating smaller, focused packages from the start helps avoid cyclic dependencies and provides better control over imports.
+  </Card>
+
+  <Card title="Clear Boundaries" icon="shield">
+    Scope-based organization ensures packages only import from allowed scopes, maintaining architectural integrity.
+  </Card>
+
+  <Card title="Faster Builds" icon="rocket">
+    Smaller packages enable running focused subsets of tests and lints, improving development speed.
+  </Card>
+
+  <Card title="Better Reusability" icon="arrows-rotate">
+    Well-scoped packages can be more easily reused across different parts of the Suite ecosystem.
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Create a Package" href="/development/packages/creating-packages" icon="plus">
+    Learn how to create a new package in the monorepo
+  </Card>
+
+  <Card title="Blockchain Link" href="/development/packages/blockchain-link" icon="link">
+    Deep dive into the blockchain-link package architecture
+  </Card>
+
+  <Card title="Utilities" href="/development/packages/utilities" icon="toolbox">
+    Explore the common utility packages
+  </Card>
+
+  <Card title="Project Structure" href="/development/project-structure" icon="folder-tree">
+    Understand the overall monorepo organization
+  </Card>
+</CardGroup>

@@ -1,0 +1,1198 @@
+---
+title: Suite Mobile Architecture
+description: Technical architecture of the Trezor Suite mobile application built with React Native and Expo, including native modules, Bluetooth connectivity, and cross-platform development.
+---
+
+# Suite Mobile Architecture
+
+Trezor Suite Mobile is a React Native application that brings Trezor wallet management to iOS and Android devices. Built with Expo SDK, it provides portfolio tracking, device connectivity, and cryptocurrency management on the go.
+
+## Overview
+
+Suite Mobile combines native performance with cross-platform code sharing.
+
+<CardGroup cols={2}>
+  <Card title="React Native 0.81.5" icon="react">
+    Cross-platform mobile framework
+  </Card>
+  <Card title="Expo SDK 54" icon="atom">
+    Development tools and native modules
+  </Card>
+  <Card title="Redux Toolkit" icon="database">
+    Centralized state management
+  </Card>
+  <Card title="Jotai" icon="atom">
+    Atomic state for UI components
+  </Card>
+</CardGroup>
+
+**Current Version**: 26.3.1
+
+---
+
+## Architecture Overview
+
+```text
+┌────────────────────────────────────────┐
+│       React Native Layer               │
+│  ┌──────────────────────────────────┐  │
+│  │  @suite-native/app               │  │
+│  │  - Navigation (React Navigation) │  │
+│  │  - Redux Store                   │  │
+│  │  - Feature Modules               │  │
+│  └──────────────────────────────────┘  │
+│  ┌──────────────────────────────────┐  │
+│  │  Shared Code                     │  │
+│  │  - @suite-common/*               │  │
+│  │  - @trezor/connect-mobile        │  │
+│  └──────────────────────────────────┘  │
+└────────────────┬───────────────────────┘
+                 │ React Native Bridge
+┌────────────────┴───────────────────────┐
+│       Native Layer                     │
+│  ┌──────────────────────────────────┐  │
+│  │  iOS (Swift/Objective-C)         │  │
+│  │  - USB/Bluetooth                 │  │
+│  │  - Biometrics                    │  │
+│  │  - Secure Storage                │  │
+│  │  - Native UI Components          │  │
+│  └──────────────────────────────────┘  │
+│  ┌──────────────────────────────────┐  │
+│  │  Android (Kotlin/Java)           │  │
+│  │  - USB/Bluetooth                 │  │
+│  │  - Biometrics                    │  │
+│  │  - Secure Storage                │  │
+│  │  - Native UI Components          │  │
+│  └──────────────────────────────────┘  │
+└────────────────────────────────────────┘
+```
+
+---
+
+## Project Structure
+
+### Monorepo Organization
+
+The mobile app is located in `suite-native/` with a modular architecture:
+
+```text
+suite-native/
+├── app/                          # 👑 Main application
+│   ├── src/
+│   │   ├── navigation/
+│   │   ├── store/
+│   │   └── App.tsx
+│   ├── android/                  # Android native code
+│   ├── ios/                      # iOS native code
+│   ├── e2e/                      # E2E tests (Detox)
+│   └── package.json
+├── accounts/                     # Account management
+├── alerts/                       # Alert system
+├── analytics/                    # Mobile analytics
+├── atoms/                        # UI primitives
+├── biometrics/                   # Biometric auth
+├── bluetooth/                    # BLE connectivity
+├── device/                       # Device management
+├── formatters/                   # Data formatting
+├── icons/                        # Icon library
+├── navigation/                   # Navigation setup
+├── module-*/                     # Feature modules
+├── receive/                      # Receive flows
+├── send/                         # Send flows
+├── state/                        # Redux configuration
+└── theme/                        # Theming system
+```
+
+<Info>
+  Total packages in `suite-native/`: **90+** modular packages
+</Info>
+
+### Feature Modules
+
+Features are organized as self-contained modules:
+
+<Accordion title="Module Examples">
+  - **module-home**: Dashboard and portfolio overview
+  - **module-accounts-management**: Account list and management
+  - **module-add-accounts**: Add new cryptocurrency accounts
+  - **module-send**: Send cryptocurrency flows
+  - **module-settings**: App settings and configuration
+  - **module-device-onboarding**: Device setup wizards
+  - **module-authorize-device**: Device authorization
+  - **module-trading**: Exchange integrations
+  - **module-earn**: Staking features
+
+  Each module contains:
+  - React components
+  - Navigation screens
+  - Business logic
+  - Tests
+  - Assets
+</Accordion>
+
+---
+
+## Key Technologies
+
+### React Native Stack
+
+<Tabs>
+  <Tab title="Core Framework">
+    **React Native 0.81.5**
+    
+    - JavaScript runtime with native bridge
+    - Platform-specific components
+    - Native module integration
+    - Fast Refresh for development
+    
+    ```typescript
+    // Platform-specific code
+    import { Platform } from 'react-native';
+    
+    const component = Platform.select({
+      ios: () => require('./Component.ios'),
+      android: () => require('./Component.android'),
+    })();
+    ```
+  </Tab>
+
+  <Tab title="Expo SDK">
+    **Expo SDK 54**
+    
+    Provides managed native modules:
+    - **expo-camera**: QR code scanning
+    - **expo-clipboard**: Clipboard access
+    - **expo-secure-store**: Encrypted storage
+    - **expo-haptics**: Haptic feedback
+    - **expo-image**: Optimized images
+    - **expo-file-system**: File operations
+    - **expo-updates**: Over-the-air updates
+    
+    ```typescript
+    import * as SecureStore from 'expo-secure-store';
+    
+    await SecureStore.setItemAsync('key', 'value');
+    ```
+  </Tab>
+
+  <Tab title="Navigation">
+    **React Navigation 7**
+    
+    Native navigation with:
+    - Stack navigator
+    - Bottom tabs
+    - Modal screens
+    - Deep linking
+    
+    ```typescript
+    // Navigation structure
+    <NavigationContainer>
+      <Stack.Navigator>
+        <Stack.Screen name="Home" component={HomeScreen} />
+        <Stack.Screen name="Accounts" component={AccountsScreen} />
+      </Stack.Navigator>
+    </NavigationContainer>
+    ```
+  </Tab>
+
+  <Tab title="State Management">
+    **Dual State System**
+    
+    **Redux Toolkit 2.11.2**: Global state
+    - Wallet data
+    - Device state
+    - Transaction history
+    - Settings
+    
+    **Jotai 2.15.0**: Component state
+    - UI state (modals, sheets)
+    - Form state
+    - Temporary data
+    
+    ```typescript
+    // Redux for persistent state
+    const accounts = useSelector(selectAccounts);
+    
+    // Jotai for UI state
+    const [isModalOpen] = useAtom(modalOpenAtom);
+    ```
+  </Tab>
+</Tabs>
+
+### Native Modules
+
+<AccordionGroup>
+  <Accordion title="USB Communication" icon="usb">
+    **@trezor/react-native-usb**
+    
+    Native USB/HID transport:
+    - Android: USB Host API
+    - iOS: Not supported (cable limitations)
+    
+    ```typescript
+    import { TrezorUSB } from '@trezor/react-native-usb';
+    
+    // Android only
+    const devices = await TrezorUSB.enumerate();
+    const session = await TrezorUSB.acquire(device);
+    ```
+  </Accordion>
+
+  <Accordion title="Bluetooth Connectivity" icon="bluetooth">
+    **react-native-ble-plx 3.5.0**
+    
+    BLE support for Trezor Safe 3+:
+    - Device scanning
+    - Pairing
+    - Encrypted communication
+    - Connection management
+    
+    ```typescript
+    import { BleManager } from 'react-native-ble-plx';
+    
+    const manager = new BleManager();
+    manager.startDeviceScan(null, null, (error, device) => {
+      if (device?.name?.includes('Trezor')) {
+        // Connect to device
+      }
+    });
+    ```
+    
+    <Info>
+      Bluetooth support available on both iOS and Android for compatible Trezor models.
+    </Info>
+  </Accordion>
+
+  <Accordion title="Biometric Authentication" icon="fingerprint">
+    **expo-local-authentication**
+    
+    Biometric security:
+    - Touch ID / Face ID (iOS)
+    - Fingerprint / Face unlock (Android)
+    - Fallback to PIN
+    
+    ```typescript
+    import * as LocalAuthentication from 'expo-local-authentication';
+    
+    const result = await LocalAuthentication.authenticateAsync({
+      promptMessage: 'Authenticate to access wallet',
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="Secure Storage" icon="lock">
+    **expo-secure-store**
+    
+    Platform-specific secure storage:
+    - iOS: Keychain
+    - Android: EncryptedSharedPreferences
+    
+    ```typescript
+    import * as SecureStore from 'expo-secure-store';
+    
+    // Store sensitive data
+    await SecureStore.setItemAsync('seed', encryptedSeed, {
+      keychainAccessible: SecureStore.WHEN_UNLOCKED,
+    });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Development Setup
+
+### Prerequisites
+
+<Steps>
+  <Step title="Install Node and Yarn">
+    ```bash
+    # Using NVM
+    nvm install
+    
+    # Enable Yarn
+    corepack enable
+    ```
+  </Step>
+
+  <Step title="Install Platform Tools">
+    <Tabs>
+      <Tab title="Android">
+        Follow [React Native Android setup](https://reactnative.dev/docs/set-up-your-environment?os=macos&platform=android):
+        
+        1. Install Android Studio
+        2. Install Android SDK (API 34+)
+        3. Configure `ANDROID_HOME` environment variable
+        4. Install Java Development Kit (JDK 17)
+        
+        **Linux**: Install `watchman`
+        ```bash
+        # Ubuntu/Debian
+        sudo apt-get install watchman
+        ```
+      </Tab>
+
+      <Tab title="iOS">
+        **macOS only**
+        
+        Follow [React Native iOS setup](https://reactnative.dev/docs/set-up-your-environment?os=macos&platform=ios):
+        
+        1. Install Xcode (latest version)
+        2. Install Xcode Command Line Tools:
+           ```bash
+           xcode-select --install
+           ```
+        3. Install CocoaPods:
+           ```bash
+           sudo gem install cocoapods
+           ```
+      </Tab>
+    </Tabs>
+  </Step>
+
+  <Step title="Clone and Setup">
+    ```bash
+    git clone git@github.com:trezor/trezor-suite.git
+    cd trezor-suite
+    
+    # Initialize submodules
+    git submodule update --init --recursive
+    git lfs install && git lfs pull
+    
+    # Install dependencies
+    yarn
+    yarn build:essential
+    ```
+  </Step>
+
+  <Step title="Prebuild Native Code">
+    ```bash
+    # Clean prebuild (first time or after native changes)
+    yarn native:prebuild:clean
+    
+    # Or for specific platform
+    yarn native:prebuild:clean --platform android
+    yarn native:prebuild:clean --platform ios
+    ```
+    
+    <Note>
+      Run `yarn native:prebuild` (or `yarn p`) after pulling/rebasing if native code changed.
+    </Note>
+  </Step>
+</Steps>
+
+### Running the App
+
+<Tabs>
+  <Tab title="Android">
+    <Steps>
+      <Step title="Start Metro Bundler">
+        ```bash
+        yarn native:start
+        # or shortcut
+        yarn s
+        ```
+        
+        Keep this running in a separate terminal.
+      </Step>
+
+      <Step title="Connect Device or Start Emulator">
+        **Physical Device:**
+        - Enable Developer Options
+        - Enable USB Debugging
+        - Connect via USB
+        - Recommended: [ADB over WiFi](https://developer.android.com/studio/command-line/adb#connect-to-a-device-over-wi-fi-android-11+)
+        
+        **Emulator:**
+        - Start from Android Studio
+        - Or via command line:
+          ```bash
+          emulator -avd Pixel_5_API_34
+          ```
+      </Step>
+
+      <Step title="Build and Run">
+        ```bash
+        yarn native:android
+        # or shortcut
+        yarn a
+        ```
+        
+        First build takes ~10 minutes.
+      </Step>
+
+      <Step title="Reverse Ports">
+        Enable communication with localhost services:
+        ```bash
+        yarn native:reverse-ports
+        # or shortcut
+        yarn ports
+        ```
+        
+        Reverses:
+        - 8081: Metro bundler
+        - 21328: Trezor Bridge
+        - 19121: Debug server
+      </Step>
+    </Steps>
+
+    <Tip>
+      Use ADB over WiFi to free USB port for connecting Trezor device.
+    </Tip>
+  </Tab>
+
+  <Tab title="iOS">
+    <Steps>
+      <Step title="Start Metro Bundler">
+        ```bash
+        yarn native:start
+        # or shortcut
+        yarn s
+        ```
+      </Step>
+
+      <Step title="Build and Run">
+        **Via CLI:**
+        ```bash
+        yarn native:ios
+        # or shortcut
+        yarn ios
+        ```
+        
+        **Via Xcode** (for debugging native errors):
+        ```bash
+        # Open workspace
+        xed suite-native/app/ios
+        
+        # Or
+        open suite-native/app/ios/TrezorSuite.xcworkspace
+        ```
+        
+        Then hit ▶️ Run button in Xcode.
+      </Step>
+    </Steps>
+
+    <Note>
+      **iOS Device Connection**: Trezor can't connect via USB on iOS due to cable limitations. Use portfolio tracker mode or connect via Desktop Suite as bridge (experimental).
+    </Note>
+  </Tab>
+</Tabs>
+
+### Development Shortcuts
+
+Quick commands available from repository root:
+
+| Shortcut | Command | Description |
+|----------|---------|-------------|
+| `yarn s` | `yarn native:start` | Start Metro bundler |
+| `yarn p` | `yarn native:prebuild` | Rebuild native code |
+| `yarn a` | `yarn native:android` | Run on Android |
+| `yarn ios` | `yarn native:ios` | Run on iOS |
+| `yarn ports` | `yarn native:reverse-ports` | Reverse Android ports |
+
+---
+
+## Architecture Patterns
+
+### Component Structure
+
+<Tabs>
+  <Tab title="Atomic Design">
+    UI components organized by complexity:
+    
+    **Atoms** (`@suite-native/atoms`):
+    - Button, Text, Input
+    - Icons, Badges
+    - Basic UI primitives
+    
+    **Molecules**:
+    - Card, ListItem
+    - Form fields
+    - Combined atoms
+    
+    **Organisms**:
+    - Navigation bars
+    - Bottom sheets
+    - Complex components
+    
+    **Screens**:
+    - Full-page layouts
+    - Feature screens
+    - In feature modules
+    
+    ```typescript
+    import { Button, Text } from '@suite-native/atoms';
+    
+    <Button onPress={handlePress}>
+      <Text>Send Bitcoin</Text>
+    </Button>
+    ```
+  </Tab>
+
+  <Tab title="Theme System">
+    **@suite-native/theme**
+    
+    Unified theming with:
+    - Color tokens
+    - Typography scale
+    - Spacing system
+    - Component variants
+    
+    ```typescript
+    import { useTheme } from '@suite-native/theme';
+    
+    const Component = () => {
+      const { colors, spacing } = useTheme();
+      
+      return (
+        <View style={{ 
+          backgroundColor: colors.backgroundPrimary,
+          padding: spacing.large 
+        }}>
+          {/* content */}
+        </View>
+      );
+    };
+    ```
+  </Tab>
+
+  <Tab title="Navigation">
+    **@suite-native/navigation**
+    
+    Type-safe navigation:
+    
+    ```typescript
+    // Define routes
+    type RootStackParamList = {
+      Home: undefined;
+      AccountDetail: { accountKey: string };
+      Send: { accountKey: string; address?: string };
+    };
+    
+    // Use navigation
+    import { useNavigation } from '@react-navigation/native';
+    
+    const navigation = useNavigation<RootStackNavigationProp>();
+    navigation.navigate('AccountDetail', { accountKey: 'btc-0' });
+    ```
+  </Tab>
+
+  <Tab title="Forms">
+    **@suite-native/forms**
+    
+    Form handling with validation:
+    
+    ```typescript
+    import { useForm } from '@suite-native/forms';
+    
+    const { values, errors, handleSubmit } = useForm({
+      initialValues: { address: '', amount: '' },
+      validate: (values) => {
+        // Validation logic
+      },
+      onSubmit: (values) => {
+        // Send transaction
+      },
+    });
+    ```
+  </Tab>
+</Tabs>
+
+### State Management
+
+<Tabs>
+  <Tab title="Redux Store">
+    **Global Application State**
+    
+    Located in `@suite-native/state`:
+    
+    ```typescript
+    // Store structure
+    {
+      wallet: {
+        accounts: [ ... ],
+        transactions: { ... },
+        blockchain: { ... },
+      },
+      device: {
+        devices: [ ... ],
+        selectedDevice: { ... },
+      },
+      analytics: { ... },
+      settings: { ... },
+      // ... more slices
+    }
+    ```
+    
+    **Shared with Suite Desktop/Web**: Many slices from `@suite-common/wallet-core`
+  </Tab>
+
+  <Tab title="Jotai Atoms">
+    **Component-Level State**
+    
+    Used for:
+    - UI state (modals, sheets)
+    - Form state
+    - Temporary data
+    - Local preferences
+    
+    ```typescript
+    import { atom, useAtom } from 'jotai';
+    
+    const bottomSheetOpenAtom = atom(false);
+    
+    const Component = () => {
+      const [isOpen, setIsOpen] = useAtom(bottomSheetOpenAtom);
+      // ...
+    };
+    ```
+  </Tab>
+
+  <Tab title="Persistence">
+    **Redux Persist**
+    
+    State persisted to:
+    - **MMKV**: Fast native storage (react-native-mmkv)
+    - **Secure Store**: Sensitive data (expo-secure-store)
+    
+    ```typescript
+    import { persistStore } from 'redux-persist';
+    import { MMKV } from 'react-native-mmkv';
+    
+    const storage = new MMKV();
+    
+    const persistConfig = {
+      key: 'root',
+      storage: {
+        setItem: (key, value) => storage.set(key, value),
+        getItem: (key) => storage.getString(key),
+        removeItem: (key) => storage.delete(key),
+      },
+    };
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Key Features
+
+### Device Connectivity
+
+<AccordionGroup>
+  <Accordion title="USB Connection (Android Only)" icon="usb">
+    Native USB support using `@trezor/react-native-usb`:
+    
+    1. User connects Trezor via USB OTG adapter
+    2. Android prompts for USB permission
+    3. App establishes HID connection
+    4. Communication via USB protocol
+    
+    ```typescript
+    import { TrezorUSB } from '@trezor/react-native-usb';
+    
+    // Request USB permission
+    const hasPermission = await TrezorUSB.requestPermission(device);
+    
+    // Acquire session
+    const session = await TrezorUSB.acquire(device.path);
+    ```
+  </Accordion>
+
+  <Accordion title="Bluetooth Connection" icon="bluetooth">
+    BLE support for Trezor Safe 3 and later:
+    
+    **Features**:
+    - Device scanning
+    - Automatic pairing
+    - Encrypted communication
+    - Connection persistence
+    
+    **Flow**:
+    1. Enable Bluetooth on phone
+    2. Scan for Trezor devices
+    3. Select device from list
+    4. Pair and connect
+    5. Maintain connection for operations
+    
+    ```typescript
+    import { useBluetooth } from '@suite-native/bluetooth';
+    
+    const { devices, connect, isConnected } = useBluetooth();
+    
+    // Scan for devices
+    const trezorDevices = devices.filter(d => 
+      d.name?.includes('Trezor')
+    );
+    
+    // Connect
+    await connect(trezorDevices[0]);
+    ```
+    
+    <Info>
+      Bluetooth works on both iOS and Android for compatible Trezor models.
+    </Info>
+  </Accordion>
+
+  <Accordion title="Portfolio Tracker Mode" icon="chart-line">
+    Watch-only mode without device:
+    
+    **Features**:
+    - Import accounts via XPUBs
+    - View balances and transactions
+    - Track portfolio value
+    - No sending capability
+    
+    **Use cases**:
+    - iOS users (no USB support)
+    - Portfolio monitoring
+    - Public account tracking
+    
+    ```typescript
+    import { addWatchOnlyAccount } from '@suite-native/accounts';
+    
+    // Add account by XPUB
+    dispatch(addWatchOnlyAccount({
+      coin: 'btc',
+      xpub: 'xpub6...',
+    }));
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Platform-Specific Features
+
+<Tabs>
+  <Tab title="Android">
+    **Unique Android Features**:
+    
+    - **USB Device Connection**: Direct USB-C or OTG
+    - **Background Services**: Transaction monitoring
+    - **Widgets**: Portfolio at-a-glance (future)
+    - **Deep Links**: QR code / link handling
+    
+    **Configuration**: `android/app/src/main/AndroidManifest.xml`
+  </Tab>
+
+  <Tab title="iOS">
+    **Unique iOS Features**:
+    
+    - **Face ID / Touch ID**: Native biometric auth
+    - **Haptic Engine**: Premium haptic feedback
+    - **Siri Shortcuts**: Voice commands (future)
+    - **iCloud Sync**: Settings backup (future)
+    
+    **Configuration**: `ios/TrezorSuite/Info.plist`
+  </Tab>
+</Tabs>
+
+---
+
+## Build & Release
+
+### Development Builds
+
+<Tabs>
+  <Tab title="Local Development Build">
+    **Ad-hoc builds for testing**:
+    
+    ```bash
+    # Build development client
+    yarn workspace @suite-native/app prebuild:clean
+    yarn workspace @suite-native/app android
+    # or
+    yarn workspace @suite-native/app ios
+    ```
+    
+    Includes:
+    - Dev menu (shake gesture)
+    - Fast Refresh
+    - Debug logging
+    - Expo DevTools
+  </Tab>
+
+  <Tab title="EAS Build">
+    **Cloud builds via Expo Application Services**:
+    
+    ```bash
+    # Build for testing
+    yarn native:adhoc
+    
+    # Or with EAS directly
+    npx eas-cli build --profile adhoc --platform android
+    npx eas-cli build --profile adhoc --platform ios
+    ```
+    
+    Profiles in `eas.json`:
+    - `development`: Dev client
+    - `adhoc`: Internal testing
+    - `preview`: Pre-release testing
+    - `production`: App store builds
+  </Tab>
+</Tabs>
+
+### Environment Variables
+
+Configure via `.env` files:
+
+```bash
+# .env.development.local
+EXPO_PUBLIC_IS_SENTRY_ON_DEBUG_BUILD_ENABLED=true
+EXPO_PUBLIC_IS_NATIVE_USB_LOGGER_ENABLED=true
+EXPO_PUBLIC_IS_NATIVE_BLUETOOTH_LOGGER_ENABLED=true
+
+# Feature flags
+EXPO_PUBLIC_FF_TRADING_ENABLED=true
+EXPO_PUBLIC_FF_STAKING_ENABLED=false
+```
+
+See [Environment variables in Expo](https://docs.expo.dev/guides/environment-variables/) for details.
+
+### Runtime Version
+
+When changing native code, bump `runtimeVersion` in `app.config.ts`:
+
+```typescript
+export default {
+  // ...
+  runtimeVersion: '1.2.0', // Increment this
+}
+```
+
+<Note>
+  Expo uses runtime version to determine if OTA updates are compatible with installed app.
+</Note>
+
+### Production Release
+
+<Steps>
+  <Step title="Prepare Release">
+    ```bash
+    # Update version
+    cd suite-native/app
+    npm version patch # or minor/major
+    
+    # Run release script
+    cd ../..
+    ./scripts/prepare-mobile-release.sh
+    ```
+  </Step>
+
+  <Step title="Build for Stores">
+    ```bash
+    # iOS App Store
+    npx eas-cli build --profile production --platform ios
+    
+    # Google Play Store
+    npx eas-cli build --profile production --platform android
+    ```
+  </Step>
+
+  <Step title="Submit to Stores">
+    ```bash
+    # iOS
+    npx eas-cli submit --platform ios
+    
+    # Android
+    npx eas-cli submit --platform android
+    ```
+  </Step>
+
+  <Step title="Deploy OTA Update (Optional)">
+    ```bash
+    # Push update to existing builds
+    npx eas-cli update --branch production
+    ```
+  </Step>
+</Steps>
+
+---
+
+## Testing
+
+### Unit Tests
+
+```bash
+# Run all unit tests
+yarn workspace @suite-native/app test:unit
+
+# Watch mode
+yarn workspace @suite-native/app test:unit --watch
+
+# Coverage
+yarn workspace @suite-native/app test:unit --coverage
+```
+
+### E2E Tests (Detox)
+
+```bash
+# Build test app
+yarn workspace @suite-native/app build:e2e android.debug
+
+# Run tests
+yarn workspace @suite-native/app test:e2e:android
+# or
+yarn workspace @suite-native/app test:e2e:ios
+```
+
+See [suite-native E2E docs](https://github.com/trezor/trezor-suite/tree/develop/suite-native/app/e2e) for details.
+
+---
+
+## Debugging
+
+### Debug Menu
+
+Shake device or press:
+- **Android**: Ctrl+M (emulator) or shake
+- **iOS**: Cmd+D (simulator) or shake
+
+**Options**:
+- Reload
+- Debug with Chrome
+- Toggle Performance Monitor
+- Show Inspector
+- Enable Fast Refresh
+
+### React Native Debugger
+
+<Steps>
+  <Step title="Install">
+    ```bash
+    brew install react-native-debugger
+    # or download from GitHub releases
+    ```
+  </Step>
+
+  <Step title="Launch">
+    ```bash
+    open -a "React Native Debugger"
+    ```
+  </Step>
+
+  <Step title="Connect">
+    In debug menu, select "Debug"
+  </Step>
+</Steps>
+
+### Logging
+
+```typescript
+import { logger } from '@suite-native/utils';
+
+logger.debug('Debug message');
+logger.info('Info message');
+logger.warn('Warning message');
+logger.error('Error message');
+```
+
+**Environment flags**:
+```bash
+# Enable USB transport logging
+EXPO_PUBLIC_IS_NATIVE_USB_LOGGER_ENABLED=true
+
+# Enable Bluetooth logging
+EXPO_PUBLIC_IS_NATIVE_BLUETOOTH_LOGGER_ENABLED=true
+```
+
+---
+
+## Performance Optimization
+
+<CardGroup cols={2}>
+  <Card title="Hermes Engine" icon="rocket">
+    JavaScript engine optimized for React Native
+  </Card>
+  <Card title="Flash List" icon="list">
+    High-performance list component (@shopify/flash-list)
+  </Card>
+  <Card title="Reanimated 3" icon="wand-magic-sparkles">
+    Smooth animations running on UI thread
+  </Card>
+  <Card title="MMKV Storage" icon="database">
+    Fast native key-value storage
+  </Card>
+</CardGroup>
+
+### Optimization Techniques
+
+<Tabs>
+  <Tab title="List Rendering">
+    ```typescript
+    import { FlashList } from '@shopify/flash-list';
+    
+    <FlashList
+      data={transactions}
+      renderItem={({ item }) => <TransactionItem item={item} />}
+      estimatedItemSize={80}
+      // Optimized for performance
+    />
+    ```
+  </Tab>
+
+  <Tab title="Animations">
+    ```typescript
+    import Animated, { useSharedValue, withSpring } from 'react-native-reanimated';
+    
+    const AnimatedComponent = () => {
+      const offset = useSharedValue(0);
+      
+      const animatedStyle = useAnimatedStyle(() => ({
+        transform: [{ translateY: withSpring(offset.value) }],
+      }));
+      
+      return <Animated.View style={animatedStyle} />;
+    };
+    ```
+  </Tab>
+
+  <Tab title="Memoization">
+    ```typescript
+    import { memo, useMemo } from 'react';
+    
+    const ExpensiveComponent = memo(({ data }) => {
+      const processedData = useMemo(
+        () => heavyComputation(data),
+        [data]
+      );
+      
+      return <View>{/* render */}</View>;
+    });
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Build Fails" icon="triangle-exclamation">
+    ```bash
+    # Clean everything
+    yarn native:prebuild:clean
+    
+    # Clear Metro cache
+    yarn native:start --reset-cache
+    
+    # Clear Gradle cache (Android)
+    cd suite-native/app/android
+    ./gradlew clean
+    
+    # Clear Pods (iOS)
+    cd suite-native/app/ios
+    pod deintegrate
+    pod install
+    ```
+  </Accordion>
+
+  <Accordion title="Metro Crashes" icon="circle-exclamation">
+    ```bash
+    # Clear watchman
+    watchman watch-del-all
+    
+    # Restart Metro
+    yarn native:start --reset-cache
+    ```
+  </Accordion>
+
+  <Accordion title="Device Not Detected" icon="mobile">
+    **Android**:
+    - Check USB debugging enabled
+    - Run `adb devices` to verify connection
+    - Try different USB cable
+    
+    **iOS**:
+    - Trust computer on device
+    - Check Developer Mode enabled (iOS 16+)
+    - Rebuild with Xcode
+  </Accordion>
+
+  <Accordion title="Native Module Errors" icon="puzzle-piece">
+    ```bash
+    # Rebuild native code
+    yarn native:prebuild:clean
+    
+    # Android
+    yarn native:android
+    
+    # iOS - reinstall pods
+    cd suite-native/app/ios
+    pod install
+    cd ../../..
+    yarn native:ios
+    ```
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## DEV Utils
+
+Access developer menu in production builds (for development purposes only):
+
+1. Go to **Settings → About**
+2. Tap commit hash **7+ times**
+3. DEV utils menu appears
+
+**Features**:
+- Feature flags toggle
+- Backend URL override
+- Connect device emulator
+- Debug overlays
+- Test notifications
+
+<Warning>
+  DEV utils are for development only. Do not use with real wallets!
+</Warning>
+
+---
+
+## Key Differences: Mobile vs Desktop/Web
+
+| Feature | Mobile | Desktop | Web |
+|---------|--------|---------|-----|
+| **Platform** | iOS/Android | Windows/macOS/Linux | Browser |
+| **Framework** | React Native | Electron | React |
+| **Device Connection** | USB (Android), BT | USB/HID | WebUSB |
+| **Offline Support** | Partial | Full | No |
+| **Biometrics** | Yes | No | No |
+| **Notifications** | Yes | No | No |
+| **Camera** | Yes | No | No |
+| **File System** | Limited | Full | Very limited |
+
+---
+
+## Resources
+
+<CardGroup cols={2}>
+  <Card title="React Native Docs" icon="react" href="https://reactnative.dev/docs/getting-started">
+    Official React Native documentation
+  </Card>
+  <Card title="Expo Docs" icon="book" href="https://docs.expo.dev/">
+    Expo SDK and EAS documentation
+  </Card>
+  <Card title="GitHub Repository" icon="github" href="https://github.com/trezor/trezor-suite/tree/develop/suite-native">
+    Suite Native source code
+  </Card>
+  <Card title="Contributing" icon="code-pull-request" href="https://github.com/trezor/trezor-suite/blob/develop/COMMITS.md">
+    Contribution guidelines
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Monorepo Structure" icon="folder-tree" href="/architecture/monorepo-structure">
+    Understand the overall structure
+  </Card>
+  <Card title="Suite Desktop" icon="desktop" href="/architecture/suite-desktop">
+    Compare with desktop architecture
+  </Card>
+  <Card title="Suite Web" icon="globe" href="/architecture/suite-web">
+    Compare with web architecture
+  </Card>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get started with development
+  </Card>
+</CardGroup>

@@ -1,0 +1,379 @@
+---
+title: Project Structure
+description: Understanding the Trezor Suite monorepo architecture
+---
+
+## Overview
+
+Trezor Suite is a **monorepo** containing three main projects:
+
+- **Connect** - Library for integrating Trezor functionality into third-party applications
+- **Trezor Suite** - Desktop and web application for managing Trezor hardware wallets
+- **Trezor Suite Mobile** - Mobile/tablet application for managing Trezor hardware wallets
+
+The repository uses **Yarn workspaces** to manage multiple packages and shared dependencies.
+
+## Repository Structure
+
+```
+trezor-suite/
+├── packages/          # Domain-agnostic libraries and tools
+├── suite/             # Web & Desktop-specific code
+├── suite-common/      # Shared domain-specific code
+├── suite-native/      # Mobile-specific code
+├── scripts/           # Build scripts and utilities
+├── docs/              # Technical documentation
+├── submodules/        # External dependencies
+└── skills/            # Development guidelines
+```
+
+## Top-Level Directories
+
+### `packages/` - Core Libraries
+
+Domain-agnostic packages including libraries, tools, and utilities that can be used across all projects.
+
+<CodeGroup>
+```bash Key Packages
+packages/
+├── connect/                 # Trezor Connect library
+├── suite/                   # Shared Suite application logic
+├── suite-desktop/           # Desktop application (Electron)
+├── blockchain-link/         # Blockchain communication
+├── components/              # Shared React components
+├── connect-web/             # Connect web integration
+├── transport/               # Transport layer for device communication
+└── ...
+```
+
+```bash Connect Ecosystem
+packages/
+├── connect/                 # Main Connect library
+├── connect-web/             # Web-specific Connect
+├── connect-webextension/    # Browser extension version
+├── connect-mobile/          # Mobile integration
+├── connect-common/          # Shared Connect utilities
+├── connect-explorer/        # Connect API explorer
+├── connect-plugin-ethereum/ # Ethereum plugin
+├── connect-plugin-stellar/  # Stellar plugin
+└── connect-examples/        # Integration examples
+```
+
+```bash Utilities & Tools
+packages/
+├── blockchain-link/         # Blockchain data fetching
+├── device-utils/            # Device-specific utilities
+├── address-validator/       # Address validation
+├── crypto-utils/            # Cryptographic utilities
+├── utils/                   # General utilities
+├── protobuf/                # Protocol buffer definitions
+└── transport-bridge/        # Device transport layer
+```
+</CodeGroup>
+
+### `suite/` - Web & Desktop Code
+
+Contains code specific to the **web and desktop applications**.
+
+```
+suite/
+├── analytics/               # Analytics implementation
+├── e2e/                     # End-to-end tests
+├── experimental/            # Experimental features
+├── intl/                    # Internationalization
+├── metadata/                # Metadata management
+├── sentry/                  # Error tracking
+└── suite-sync/              # Cross-device synchronization
+```
+
+<Note>
+  The desktop application is built with **Electron** and shares most code with the web version.
+</Note>
+
+### `suite-common/` - Shared Domain Logic
+
+Shared code that is **domain-specific** but can be used across all platforms (Web, Desktop, Mobile).
+
+```
+suite-common/
+├── analytics/               # Shared analytics logic
+├── wallet-core/             # Core wallet functionality
+├── wallet-types/            # TypeScript types for wallet
+├── icons/                   # Icon assets
+├── message-system/          # Messaging infrastructure
+├── formatters/              # Data formatters
+├── connect-init/            # Connect initialization
+├── device/                  # Device management
+└── fiat-services/           # Fiat currency services
+```
+
+### `suite-native/` - Mobile Code
+
+Contains code specific to the **mobile and tablet applications**.
+
+```
+suite-native/
+├── app/                     # Main mobile application
+├── atoms/                   # Design system atoms
+├── components/              # Mobile-specific components
+├── navigation/              # Navigation logic
+├── state/                   # State management
+└── ...
+```
+
+<Warning>
+  Mobile development requires [additional setup](https://github.com/trezor/trezor-suite/tree/develop/suite-native/app#prerequisites) for iOS/Android platforms.
+</Warning>
+
+## Workspace Configuration
+
+The monorepo uses **Yarn workspaces** defined in `package.json`:
+
+```json
+"workspaces": {
+  "packages": [
+    "packages/*",
+    "packages/connect-examples/*",
+    "suite-native/*",
+    "suite-common/*",
+    "suite/*",
+    "scripts"
+  ]
+}
+```
+
+This allows:
+- Shared dependencies across packages
+- Efficient installation and linking
+- Centralized dependency management
+
+## Key Packages
+
+### @trezor/connect
+
+The core library for device communication. Version 9 is actively developed in this monorepo.
+
+**Location:** `packages/connect/`
+
+**Documentation:** See the [Connect documentation](https://github.com/trezor/trezor-suite/blob/develop/docs/packages/connect/index.md)
+
+<Note>
+  The [historical Connect repository](https://github.com/trezor/connect) is now archived.
+</Note>
+
+### @trezor/suite-web
+
+The web application for Trezor Suite.
+
+**Location:** `packages/suite-web/`
+
+**Run dev server:**
+```bash
+yarn suite:dev
+```
+
+### @trezor/suite-desktop
+
+The Electron-based desktop application.
+
+**Location:** `packages/suite-desktop/`
+
+**Run dev server:**
+```bash
+yarn suite:dev:desktop
+```
+
+### @suite-native/app
+
+The React Native mobile application.
+
+**Location:** `suite-native/app/`
+
+**Run dev server:**
+```bash
+yarn native:start
+```
+
+## Supporting Directories
+
+### `scripts/`
+
+Build scripts, code generators, and maintenance utilities:
+
+- `update-submodules.sh` - Update Git submodules
+- `update-coins.sh` - Update cryptocurrency definitions
+- `update-protobuf.sh` - Update Protocol Buffer definitions
+- `check-workspace-resolutions.ts` - Verify dependency versions
+- `updateProjectReferences.ts` - Update TypeScript project references
+
+### `docs/`
+
+Technical documentation including:
+
+- Package-specific documentation
+- Feature implementation guides
+- Release process documentation
+- Testing guides
+
+### `skills/`
+
+Development guidelines and best practices:
+
+- Code style conventions
+- TypeScript patterns
+- React component structure
+- Testing strategies
+- Git commit guidelines
+
+<Note>
+  All skills are **mandatory reading** before contributing. See the [AGENTS.md](https://github.com/trezor/trezor-suite/blob/develop/AGENTS.md) for the complete list.
+</Note>
+
+### `submodules/`
+
+External dependencies managed as Git submodules:
+
+- Trezor firmware
+- Protocol definitions
+- Cryptocurrency data
+
+## Build System
+
+### Nx Integration
+
+The repository uses **Nx** for task orchestration and caching:
+
+```bash
+# Build affected packages only
+yarn nx:build:libs
+
+# Run tests on affected packages
+yarn nx:test-unit
+
+# Type-check affected packages
+yarn nx:type-check
+
+# Show affected projects
+yarn nx:show-affected
+```
+
+### Webpack Configuration
+
+Front-end builds are managed by Webpack configurations in the `suite-build` package:
+
+- `configs/base.webpack.config.ts` - Common base configuration
+- `configs/web.webpack.config.ts` - Web-specific configuration
+- `configs/desktop.webpack.config.ts` - Desktop-specific configuration
+
+## TypeScript Configuration
+
+### Project References
+
+The monorepo uses **TypeScript project references** for efficient type-checking:
+
+```bash
+# Update project references
+yarn update-project-references
+
+# Verify project references
+yarn verify-project-references
+```
+
+### Path Aliases
+
+Import aliases are defined in `tsconfig.json`:
+
+```typescript
+// Example usage
+import { features } from '@suite-utils/features';
+import { Button } from '@trezor/components';
+```
+
+Aliases are resolved at build time by Webpack and during type-checking by TypeScript.
+
+## Dependency Management
+
+### Version Resolutions
+
+Critical dependencies are pinned in `package.json` resolutions:
+
+```json
+"resolutions": {
+  "typescript": "5.8.3",
+  "react": "19.1.0",
+  "electron": "40.1.0",
+  "@types/node": "22.13.10"
+}
+```
+
+### Adding Dependencies
+
+```bash
+# Add to specific workspace
+yarn workspace @trezor/suite-web add package-name
+
+# Add to root (dev dependencies)
+yarn add -D package-name
+```
+
+## File Organization Patterns
+
+### Component Structure
+
+```
+ComponentName/
+├── index.tsx           # Component implementation
+├── ComponentName.tsx   # Alternative: named file
+├── types.ts            # TypeScript types
+├── hooks.ts            # Custom hooks
+├── utils.ts            # Utility functions
+└── __tests__/          # Tests
+    └── ComponentName.test.tsx
+```
+
+### Package Structure
+
+```
+package-name/
+├── src/                # Source code
+│   ├── index.ts        # Public API
+│   ├── types.ts        # Type definitions
+│   └── ...
+├── tests/              # Tests
+├── package.json        # Package configuration
+├── tsconfig.json       # TypeScript configuration
+└── README.md           # Documentation
+```
+
+## Navigation Tips
+
+### Finding Files
+
+```bash
+# Find packages by name
+find packages -name "*connect*" -type d
+
+# Search for specific functionality
+grep -r "function name" packages/
+```
+
+### Understanding Dependencies
+
+```bash
+# Check package dependencies
+yarn workspace @trezor/suite info
+
+# Find outdated dependencies
+yarn list-outdated
+
+# Check for unused dependencies
+yarn depcheck
+```
+
+## Next Steps
+
+Now that you understand the project structure:
+
+- Learn how to [Build the Project](/development/building)
+- Start [Running Development Servers](/development/running-apps)
+- Read the [Development Guidelines](https://github.com/trezor/trezor-suite/blob/develop/AGENTS.md)

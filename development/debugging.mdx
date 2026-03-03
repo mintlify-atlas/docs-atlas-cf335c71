@@ -1,0 +1,569 @@
+---
+title: 'Debugging Guide'
+description: 'Debugging techniques and tools for Trezor Suite applications'
+keywords: ['debugging', 'chrome devtools', 'electron', 'console', 'breakpoints']
+icon: 'bug'
+---
+
+Effective debugging is essential for maintaining and developing Trezor Suite. This guide covers debugging techniques for web, desktop, and native applications.
+
+## Development Tools
+
+<CardGroup cols={2}>
+  <Card title="Chrome DevTools" icon="chrome">
+    Built-in browser debugging tools
+  </Card>
+  <Card title="React DevTools" icon="react">
+    React component inspection
+  </Card>
+  <Card title="Redux DevTools" icon="layer-group">
+    Redux state debugging
+  </Card>
+  <Card title="VS Code Debugger" icon="code">
+    IDE-integrated debugging
+  </Card>
+</CardGroup>
+
+## Web Application Debugging
+
+### Chrome DevTools
+
+<Steps>
+  <Step title="Start development server">
+    ```bash
+    yarn suite:dev
+    ```
+    Access at http://localhost:8000
+  </Step>
+  
+  <Step title="Open DevTools">
+    - Press `F12` or `Cmd+Option+I` (Mac) / `Ctrl+Shift+I` (Windows/Linux)
+    - Or right-click → "Inspect"
+  </Step>
+  
+  <Step title="Use debugging features">
+    - **Console**: Log messages and errors
+    - **Sources**: Set breakpoints in code
+    - **Network**: Monitor API requests
+    - **Elements**: Inspect DOM and styles
+  </Step>
+</Steps>
+
+### Source Maps
+
+<Check>Source maps are enabled in development mode for easy debugging.</Check>
+
+In DevTools Sources tab:
+1. Navigate to `webpack://` folder
+2. Find your source file (e.g., `packages/suite/src/...`)
+3. Set breakpoints by clicking line numbers
+4. Refresh page or trigger action to hit breakpoint
+
+### Console Debugging
+
+<Tabs>
+  <Tab title="Basic logging">
+    ```tsx
+    console.log('Variable value:', myVariable);
+    console.error('Error occurred:', error);
+    console.warn('Warning message');
+    console.table(arrayOfObjects); // Nice table format
+    ```
+  </Tab>
+  <Tab title="Conditional logging">
+    ```tsx
+    if (process.env.NODE_ENV === 'development') {
+        console.log('Debug info:', data);
+    }
+
+    // Or use a debug flag
+    const DEBUG = true;
+    if (DEBUG) console.log('Debug:', state);
+    ```
+  </Tab>
+  <Tab title="Performance timing">
+    ```tsx
+    console.time('operation');
+    // ... code to measure
+    console.timeEnd('operation'); // Logs elapsed time
+    ```
+  </Tab>
+</Tabs>
+
+<Warning>
+Remove console.log statements before committing. Use a proper logging library for production.
+</Warning>
+
+## Desktop Application Debugging
+
+### Electron Main Process
+
+The main process runs Node.js code for the Electron app.
+
+<Steps>
+  <Step title="Enable debugging">
+    Modify `packages/suite-desktop/package.json`:
+    ```json
+    "dev:run": "electron --inspect=5858 ."
+    ```
+  </Step>
+  
+  <Step title="Open Chrome inspector">
+    1. Open Chrome and navigate to `chrome://inspect`
+    2. Click "Configure" in "Devices" tab
+    3. Ensure "Discover network targets" is enabled
+    4. Add `localhost:5858`
+    5. Your Electron app should appear in the list
+  </Step>
+  
+  <Step title="Start debugging">
+    ```bash
+    yarn suite:dev:desktop
+    ```
+    Click "inspect" under your app in Chrome inspector
+  </Step>
+</Steps>
+
+<Info>
+Source: [Electron Debugging Documentation](https://www.electronjs.org/docs/latest/tutorial/debugging-main-process)
+</Info>
+
+### Electron Renderer Process
+
+The renderer process runs the web UI:
+
+<Tabs>
+  <Tab title="Built-in DevTools">
+    In the Electron app window:
+    - `Cmd+Option+I` (Mac) or `Ctrl+Shift+I` (Windows/Linux)
+    - Same as Chrome DevTools
+  </Tab>
+  <Tab title="Remote debugging">
+    Access renderer DevTools in Chrome:
+    1. Start app with remote debugging enabled
+    2. Open `chrome://inspect` in Chrome
+    3. Find renderer process and click "inspect"
+  </Tab>
+</Tabs>
+
+### Production Build Debugging
+
+Debug production builds with logging:
+
+<Tabs>
+  <Tab title="Linux">
+    ```bash
+    ./Trezor-Suite-22.7.2.AppImage --log-level=debug
+    ```
+  </Tab>
+  <Tab title="macOS">
+    ```bash
+    ./Trezor\ Suite.app/Contents/MacOS/Trezor\ Suite --log-level=debug
+    ```
+  </Tab>
+  <Tab title="Windows">
+    ```cmd
+    "C:\Users\[user-name]\AppData\Local\Programs\Trezor Suite\Trezor Suite.exe" --log-level=debug
+    ```
+  </Tab>
+  <Tab title="NixOS">
+    ```bash
+    appimage-run ./Trezor-Suite.AppImage --log-level=debug
+    ```
+  </Tab>
+</Tabs>
+
+<Info>Logs are written to the console and log files in the app data directory.</Info>
+
+## React Debugging
+
+### React DevTools
+
+Install the [React DevTools extension](https://react.dev/learn/react-developer-tools):
+
+<Tabs>
+  <Tab title="Component tree">
+    - Inspect component hierarchy
+    - View component props and state
+    - Find component in tree by selecting element
+    - Navigate to component source
+  </Tab>
+  <Tab title="Profiler">
+    - Record component render performance
+    - Identify slow renders
+    - Analyze why components re-render
+    - Find optimization opportunities
+  </Tab>
+  <Tab title="Hooks">
+    - Inspect all hooks in a component
+    - View useState, useEffect, useContext values
+    - Edit state values in real-time
+  </Tab>
+</Tabs>
+
+### React Error Boundaries
+
+<Tip>Use error boundaries to catch and debug React errors gracefully.</Tip>
+
+```tsx
+import { Component, ErrorInfo, ReactNode } from 'react';
+
+interface ErrorBoundaryProps {
+    children: ReactNode;
+}
+
+interface ErrorBoundaryState {
+    hasError: boolean;
+    error?: Error;
+}
+
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+    constructor(props: ErrorBoundaryProps) {
+        super(props);
+        this.state = { hasError: false };
+    }
+
+    static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+        return { hasError: true, error };
+    }
+
+    componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+        console.error('Error boundary caught:', error, errorInfo);
+        // Log to error reporting service
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return <div>Something went wrong. {this.state.error?.message}</div>;
+        }
+
+        return this.props.children;
+    }
+}
+```
+
+## Redux Debugging
+
+### Redux DevTools
+
+Install [Redux DevTools Extension](https://github.com/reduxjs/redux-devtools):
+
+<Steps>
+  <Step title="View actions">
+    - See all dispatched actions in real-time
+    - Inspect action type and payload
+    - Jump to action in timeline
+  </Step>
+  
+  <Step title="State inspection">
+    - View complete Redux state tree
+    - See state changes after each action
+    - Diff state between actions
+  </Step>
+  
+  <Step title="Time travel">
+    - Replay actions
+    - Skip actions to see alternative states
+    - Undo/redo actions
+  </Step>
+  
+  <Step title="Export/import state">
+    - Export state for bug reports
+    - Import state to reproduce issues
+    - Share state with team
+  </Step>
+</Steps>
+
+### Logging Redux Actions
+
+<Tabs>
+  <Tab title="Action logger">
+    ```tsx
+    import { Middleware } from '@reduxjs/toolkit';
+
+    const actionLogger: Middleware = store => next => action => {
+        console.group(action.type);
+        console.log('Action:', action);
+        console.log('Previous State:', store.getState());
+        
+        const result = next(action);
+        
+        console.log('Next State:', store.getState());
+        console.groupEnd();
+        
+        return result;
+    };
+
+    // Add to store configuration (development only)
+    ```
+  </Tab>
+  <Tab title="Selector debugging">
+    ```tsx
+    import { createSelector } from '@reduxjs/toolkit';
+
+    const selectUser = createSelector(
+        [(state: RootState) => state.user],
+        user => {
+            console.log('selectUser called with:', user);
+            return user;
+        },
+    );
+    ```
+  </Tab>
+</Tabs>
+
+## Network Debugging
+
+### Chrome Network Tab
+
+<Steps>
+  <Step title="Monitor requests">
+    - View all network requests
+    - See request/response headers
+    - Inspect payload data
+    - Check response status codes
+  </Step>
+  
+  <Step title="Filter requests">
+    - Filter by type (XHR, Fetch, WS)
+    - Search by URL or domain
+    - Show only failed requests
+  </Step>
+  
+  <Step title="Throttling">
+    - Simulate slow network
+    - Test loading states
+    - Debug timeout issues
+  </Step>
+</Steps>
+
+### Trezor Connect Debugging
+
+<Info>Trezor Connect handles device communication.</Info>
+
+```tsx
+import TrezorConnect from '@trezor/connect';
+
+// Enable debug mode
+TrezorConnect.init({
+    manifest: { /* ... */ },
+    debug: true, // Logs all communication
+});
+
+// Listen to events
+TrezorConnect.on('DEVICE_EVENT', event => {
+    console.log('Device event:', event);
+});
+
+TrezorConnect.on('UI_EVENT', event => {
+    console.log('UI event:', event);
+});
+```
+
+## Performance Debugging
+
+### React Profiler
+
+<Tabs>
+  <Tab title="Record profile">
+    1. Open React DevTools
+    2. Switch to "Profiler" tab
+    3. Click record button
+    4. Perform actions in app
+    5. Stop recording
+  </Tab>
+  <Tab title="Analyze results">
+    - Flame graph: Visual render hierarchy
+    - Ranked: Components by render time
+    - Commits: Individual render commits
+    - Why did this render? Identify causes
+  </Tab>
+</Tabs>
+
+### Performance API
+
+```tsx
+// Measure component render time
+const MyComponent = () => {
+    React.useEffect(() => {
+        performance.mark('component-render-start');
+        
+        return () => {
+            performance.mark('component-render-end');
+            performance.measure(
+                'component-render',
+                'component-render-start',
+                'component-render-end',
+            );
+            
+            const measure = performance.getEntriesByName('component-render')[0];
+            console.log('Render time:', measure.duration, 'ms');
+        };
+    });
+
+    return <div>Content</div>;
+};
+```
+
+### Chrome Performance Tab
+
+<Steps>
+  <Step title="Record performance">
+    1. Open Chrome DevTools → Performance tab
+    2. Click record button
+    3. Perform slow action
+    4. Stop recording
+  </Step>
+  
+  <Step title="Analyze profile">
+    - Flame chart: See what's taking time
+    - Bottom-Up: Longest running functions
+    - Call Tree: Function call hierarchy
+    - Event Log: Timeline of events
+  </Step>
+</Steps>
+
+## VS Code Debugging
+
+### Launch Configuration
+
+Create `.vscode/launch.json`:
+
+```json
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Chrome Debug",
+            "type": "chrome",
+            "request": "launch",
+            "url": "http://localhost:8000",
+            "webRoot": "${workspaceFolder}/packages/suite",
+            "sourceMapPathOverrides": {
+                "webpack:///*": "${webRoot}/*"
+            }
+        },
+        {
+            "name": "Jest Debug",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceFolder}/node_modules/.bin/jest",
+            "args": ["--runInBand", "--coverage=0"],
+            "console": "integratedTerminal"
+        }
+    ]
+}
+```
+
+<Steps>
+  <Step title="Set breakpoints">
+    Click to the left of line numbers in VS Code
+  </Step>
+  <Step title="Start debugging">
+    Press `F5` or use Debug panel
+  </Step>
+  <Step title="Use debug controls">
+    - Continue (F5)
+    - Step over (F10)
+    - Step into (F11)
+    - Step out (Shift+F11)
+  </Step>
+</Steps>
+
+## Common Debugging Scenarios
+
+<AccordionGroup>
+  <Accordion title="Component not rendering">
+    1. Check React DevTools component tree
+    2. Verify component is in render path
+    3. Check conditional rendering logic
+    4. Inspect parent component props
+    5. Look for errors in console
+  </Accordion>
+  
+  <Accordion title="State not updating">
+    1. Open Redux DevTools
+    2. Check if action was dispatched
+    3. Verify action payload is correct
+    4. Inspect reducer logic
+    5. Check if component is subscribed to state
+  </Accordion>
+  
+  <Accordion title="Slow performance">
+    1. Use React Profiler to find slow components
+    2. Check for unnecessary re-renders
+    3. Verify memoization (useMemo, useCallback)
+    4. Look for expensive computations
+    5. Use Chrome Performance tab for details
+  </Accordion>
+  
+  <Accordion title="API request failing">
+    1. Open Network tab in DevTools
+    2. Find the failing request
+    3. Check request headers and payload
+    4. Inspect response status and body
+    5. Verify CORS settings if applicable
+    6. Check Trezor Connect logs for device communication
+  </Accordion>
+</AccordionGroup>
+
+## Development on Windows
+
+<Info>Windows development requires special setup. See the [Environment Setup](/development/environment-setup) guide.</Info>
+
+### Common Windows Issues
+
+<Warning>
+Always use Git Bash, not CMD or PowerShell, for running commands.
+</Warning>
+
+- **Slow builds**: Exclude trezor-suite folder from Windows Defender
+- **Path issues**: Use forward slashes in paths
+- **Line endings**: Configure Git to use LF: `git config --global core.autocrlf input`
+- **Node version**: Use Node.js >=25.4.0 (not the version in .nvmrc)
+
+## Debugging Best Practices
+
+<Steps>
+  <Step title="Reproduce consistently">
+    Find reliable steps to reproduce the issue before debugging
+  </Step>
+  
+  <Step title="Isolate the problem">
+    Narrow down which component, function, or module has the issue
+  </Step>
+  
+  <Step title="Check the obvious first">
+    - Console errors
+    - Network failures
+    - Missing data
+    - Type errors
+  </Step>
+  
+  <Step title="Use debugger effectively">
+    - Set breakpoints at suspected locations
+    - Inspect variable values
+    - Step through code execution
+  </Step>
+  
+  <Step title="Document findings">
+    Note what you learned for future reference or bug reports
+  </Step>
+</Steps>
+
+## Resources
+
+<CardGroup cols={2}>
+  <Card title="Chrome DevTools" icon="chrome" href="https://developer.chrome.com/docs/devtools/">
+    Official Chrome DevTools documentation
+  </Card>
+  <Card title="React DevTools" icon="react" href="https://react.dev/learn/react-developer-tools">
+    React debugging tools guide
+  </Card>
+  <Card title="Redux DevTools" icon="layer-group" href="https://github.com/reduxjs/redux-devtools">
+    Redux debugging extension
+  </Card>
+  <Card title="Electron Debugging" icon="electron" href="https://www.electronjs.org/docs/latest/tutorial/debugging-main-process">
+    Electron debugging guide
+  </Card>
+</CardGroup>

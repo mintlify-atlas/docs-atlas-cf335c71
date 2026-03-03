@@ -1,0 +1,541 @@
+---
+title: Trading Platform Integration
+description: Exchange integration for buying and selling cryptocurrencies directly in Trezor Suite
+---
+
+# Trading Platform Integration
+
+Trezor Suite integrates with cryptocurrency exchanges to enable secure buying and selling of crypto directly from the application.
+
+## Overview
+
+Trading integration provides:
+
+- **Direct exchange access**: Buy and sell crypto without leaving Suite
+- **Secure transactions**: Funds never leave your Trezor device
+- **Multiple providers**: Access to various exchange partners
+- **Seamless UX**: Integrated flow within Suite interface
+
+## Supported Exchanges
+
+Trezor Suite partners with multiple exchange providers:
+
+<CardGroup cols={2}>
+  <Card title="Buy Providers" icon="credit-card">
+    Fiat-to-crypto purchase services with credit card, bank transfer, and other payment methods
+  </Card>
+  <Card title="Sell Providers" icon="money-bill">
+    Crypto-to-fiat conversion services with direct bank deposits
+  </Card>
+  <Card title="Exchange Services" icon="arrow-right-arrow-left">
+    Crypto-to-crypto swaps and trading pairs
+  </Card>
+  <Card title="P2P Platforms" icon="users">
+    Peer-to-peer trading options
+  </Card>
+</CardGroup>
+
+## Trading Flow
+
+### Buying Cryptocurrency
+
+<Steps>
+  <Step title="Select Asset">
+    Choose cryptocurrency to purchase and destination account
+  </Step>
+  <Step title="Choose Provider">
+    View available providers with rates and fees
+  </Step>
+  <Step title="Enter Amount">
+    Specify purchase amount in fiat or crypto
+  </Step>
+  <Step title="Connect to Exchange">
+    Redirected to provider's platform for KYC/payment
+  </Step>
+  <Step title="Confirm Address">
+    Verify receiving address on Trezor device
+  </Step>
+  <Step title="Complete Purchase">
+    Funds arrive at your Trezor address
+  </Step>
+</Steps>
+
+### Selling Cryptocurrency
+
+<Steps>
+  <Step title="Select Asset">
+    Choose cryptocurrency and amount to sell
+  </Step>
+  <Step title="Choose Provider">
+    Compare sell rates and payment methods
+  </Step>
+  <Step title="Bank Details">
+    Provide bank account for fiat deposit
+  </Step>
+  <Step title="Sign Transaction">
+    Approve transaction on Trezor device
+  </Step>
+  <Step title="Receive Fiat">
+    Fiat currency deposited to your bank
+  </Step>
+</Steps>
+
+## Redux State Management
+
+### Trading Reducer
+
+```typescript
+interface TradingState {
+  providers: Provider[];
+  selectedProvider: Provider | null;
+  quotes: Quote[];
+  activeQuote: Quote | null;
+  tradingForm: TradingForm;
+  trades: Trade[];
+  isLoading: boolean;
+  error: string | null;
+}
+```
+
+### Key Actions
+
+<CodeGroup>
+```typescript Actions
+// Provider selection
+dispatch(selectProvider(provider));
+
+// Fetch quotes
+dispatch(fetchQuotes({
+  fromCurrency: 'USD',
+  toCurrency: 'BTC',
+  amount: 1000
+}));
+
+// Submit trade
+dispatch(submitTrade({
+  quoteId: quote.id,
+  receivingAddress: address
+}));
+
+// Track trade status
+dispatch(watchTradeStatus(tradeId));
+```
+</CodeGroup>
+
+## Provider Integration
+
+### Provider API
+
+Exchange providers implement standardized interface:
+
+```typescript
+interface ExchangeProvider {
+  // Provider metadata
+  id: string;
+  name: string;
+  supportedCountries: string[];
+  supportedPaymentMethods: PaymentMethod[];
+  
+  // Trading methods
+  getQuote(params: QuoteParams): Promise<Quote>;
+  createTrade(params: TradeParams): Promise<Trade>;
+  getTradeStatus(tradeId: string): Promise<TradeStatus>;
+  
+  // KYC/verification
+  getKYCStatus(): Promise<KYCStatus>;
+  initiateKYC(returnUrl: string): Promise<string>;
+}
+```
+
+### Rate Quotes
+
+Real-time exchange rates with fees:
+
+```typescript
+interface Quote {
+  id: string;
+  provider: string;
+  fromCurrency: string;
+  toCurrency: string;
+  fromAmount: string;
+  toAmount: string;
+  rate: number;
+  fees: {
+    network?: string;
+    provider?: string;
+    total: string;
+  };
+  expiresAt: number;
+  paymentMethods: PaymentMethod[];
+}
+```
+
+## Trading Form
+
+### Form State
+
+```typescript
+interface TradingForm {
+  // Asset selection
+  fromCurrency: string;
+  toCurrency: string;
+  
+  // Amount
+  amount: string;
+  amountType: 'fiat' | 'crypto';
+  
+  // Receiving address
+  address: string;
+  addressVerified: boolean;
+  
+  // Provider selection  
+  selectedProvider: string | null;
+  selectedPaymentMethod: PaymentMethod | null;
+  
+  // Validation
+  errors: FormErrors;
+  isValid: boolean;
+}
+```
+
+### Validation
+
+<AccordionGroup>
+  <Accordion title="Address Validation">
+    - Must be valid for selected cryptocurrency
+    - Must belong to connected Trezor device
+    - Must be verified on device
+    - Cannot be exchange address
+  </Accordion>
+  
+  <Accordion title="Amount Validation">
+    - Minimum/maximum limits from provider
+    - Must respect account balance (for sells)
+    - Sufficient for network fees
+  </Accordion>
+  
+  <Accordion title="Provider Validation">
+    - Available in user's country
+    - Supports selected currency pair
+    - KYC requirements met
+    - Service operational
+  </Accordion>
+</AccordionGroup>
+
+## Trade Lifecycle
+
+### Trade States
+
+```typescript
+type TradeStatus = 
+  | 'PENDING'           // Awaiting payment/confirmation
+  | 'CONFIRMING'        // Payment received, processing
+  | 'CONVERTING'        // Converting currencies
+  | 'SENDING'           // Sending crypto to address
+  | 'COMPLETED'         // Successfully completed
+  | 'CANCELLED'         // User cancelled
+  | 'FAILED'            // Error occurred
+  | 'REFUNDED';         // Funds returned
+```
+
+### Status Tracking
+
+Automatic trade monitoring:
+
+```typescript
+// Watch trade status
+const watchTrade = (tradeId: string) => async (dispatch) => {
+  const interval = setInterval(async () => {
+    const status = await provider.getTradeStatus(tradeId);
+    
+    dispatch(updateTradeStatus({ tradeId, status }));
+    
+    if (status.isTerminal) {
+      clearInterval(interval);
+      dispatch(finalizeTradeStatus(tradeId));
+    }
+  }, 10000); // Poll every 10 seconds
+};
+```
+
+## Security Considerations
+
+### Address Verification
+
+<Warning>
+Always verify receiving addresses on your Trezor device screen. Never trust addresses shown only in Suite.
+</Warning>
+
+```typescript
+// Verify address on device
+const verifyAddress = async (address: string) => {
+  const result = await TrezorConnect.getAddress({
+    path: account.path,
+    address,
+    showOnTrezor: true, // Display on device
+  });
+  
+  return result.success && result.payload.address === address;
+};
+```
+
+### Transaction Signing
+
+All transactions signed on device:
+
+1. User reviews transaction details on device
+2. Verifies destination address
+3. Confirms amount and fees
+4. Physically approves on device
+5. Signed transaction sent to blockchain
+
+## Provider Availability
+
+### Country Restrictions
+
+Provider availability varies by country:
+
+```typescript
+// Check provider availability
+const getAvailableProviders = (
+  country: string,
+  fromCurrency: string,
+  toCurrency: string
+) => {
+  return providers.filter(provider => 
+    provider.supportedCountries.includes(country) &&
+    provider.supportedPairs.includes(`${fromCurrency}-${toCurrency}`)
+  );
+};
+```
+
+### Geolocation
+
+Automatic country detection:
+
+- IP-based geolocation
+- User can override in Settings
+- Affects available providers and payment methods
+- Required for compliance
+
+## Payment Methods
+
+Supported payment options:
+
+<Tabs>
+  <Tab title="Credit/Debit Card">
+    - Instant purchase
+    - Higher fees
+    - Lower limits
+    - KYC required
+  </Tab>
+  <Tab title="Bank Transfer">
+    - Lower fees
+    - Higher limits
+    - 1-3 day processing
+    - Full KYC required
+  </Tab>
+  <Tab title="SEPA (Europe)">
+    - Eurozone transfers
+    - Low fees
+    - 1-2 day processing
+    - KYC required
+  </Tab>
+  <Tab title="Cryptocurrency">
+    - For exchanges/swaps
+    - Network fees apply
+    - Instant
+    - Limited KYC
+  </Tab>
+</Tabs>
+
+## KYC Integration
+
+### Verification Levels
+
+Most providers require identity verification:
+
+<Steps>
+  <Step title="Email Verification">
+    Basic account creation
+  </Step>
+  <Step title="Identity Verification">
+    Photo ID upload (driver's license, passport)
+  </Step>
+  <Step title="Address Verification">
+    Proof of residence (utility bill, bank statement)
+  </Step>
+  <Step title="Enhanced Due Diligence">
+    For high-value transactions
+  </Step>
+</Steps>
+
+### KYC Flow
+
+```typescript
+// Check KYC status
+const kycStatus = await provider.getKYCStatus();
+
+if (!kycStatus.verified) {
+  // Redirect to provider KYC
+  const kycUrl = await provider.initiateKYC(
+    'https://suite.trezor.io/trade/callback'
+  );
+  
+  window.open(kycUrl, '_blank');
+}
+```
+
+## Fee Structure
+
+### Types of Fees
+
+| Fee Type | Description | Who Charges |
+|----------|-------------|-------------|
+| Provider fee | Exchange service fee | Exchange provider |
+| Network fee | Blockchain transaction fee | Miners/validators |
+| Payment fee | Card/bank processing fee | Payment processor |
+| Spread | Buy/sell price difference | Exchange provider |
+
+### Fee Transparency
+
+All fees displayed before confirmation:
+
+```typescript
+interface FeeBreakdown {
+  providerFee: Money;
+  networkFee: Money;
+  paymentFee?: Money;
+  total: Money;
+  effectiveRate: number;
+}
+```
+
+## Error Handling
+
+<AccordionGroup>
+  <Accordion title="Provider Unavailable">
+    - Show alternative providers
+    - Display service status
+    - Allow retry or come back later
+  </Accordion>
+  
+  <Accordion title="Quote Expired">
+    - Rates valid for limited time (usually 30-60 seconds)
+    - Automatically refresh quote
+    - Prompt user to review new rate
+  </Accordion>
+  
+  <Accordion title="Payment Failed">
+    - Clear error messaging
+    - Suggest alternatives
+    - Offer support contact
+    - No funds lost
+  </Accordion>
+  
+  <Accordion title="Transaction Failed">
+    - After signing on device
+    - Blockchain confirmation issues
+    - Retry mechanism
+    - Refund process
+  </Accordion>
+</AccordionGroup>
+
+## Trade History
+
+Persistent trade records:
+
+```typescript
+interface Trade {
+  id: string;
+  provider: string;
+  timestamp: number;
+  type: 'buy' | 'sell' | 'exchange';
+  status: TradeStatus;
+  
+  fromCurrency: string;
+  fromAmount: string;
+  
+  toCurrency: string;
+  toAmount: string;
+  
+  address: string;
+  txid?: string;
+  
+  fees: FeeBreakdown;
+  paymentMethod: PaymentMethod;
+}
+```
+
+Access trade history:
+- View in Accounts section
+- Export for tax purposes
+- Track pending trades
+- Review completed transactions
+
+## Analytics
+
+Trading events tracked (with user consent):
+
+```typescript
+// Tracked events
+analytics.report({
+  type: 'trade/initiated',
+  payload: {
+    provider: provider.id,
+    fromCurrency,
+    toCurrency,
+    type: 'buy' | 'sell',
+  }
+});
+
+analytics.report({
+  type: 'trade/completed',
+  payload: {
+    provider: provider.id,
+    status: 'success' | 'failed',
+    duration: completionTime - startTime,
+  }
+});
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="For Users" icon="user">
+    - Compare rates from multiple providers
+    - Verify addresses on device
+    - Start with small amounts
+    - Complete KYC early to avoid delays
+    - Keep trade records for taxes
+  </Card>
+  <Card title="For Developers" icon="code">
+    - Always verify addresses on device
+    - Handle quote expiration gracefully
+    - Implement robust error handling
+    - Poll trade status appropriately
+    - Cache provider metadata
+  </Card>
+</CardGroup>
+
+## Implementation Files
+
+```typescript
+// Trading actions
+packages/suite/src/actions/wallet/trading/
+
+// Trading reducer  
+packages/suite/src/reducers/wallet/tradingReducer.ts
+
+// Trading middleware
+packages/suite/src/middlewares/wallet/tradingMiddleware.ts
+
+// Trading types
+packages/suite/src/types/trading/
+```
+
+## Related Resources
+
+- [Wallet Management](/suite/wallet-management)
+- [Transactions](/suite/transactions)
+- [Analytics](/features/analytics)

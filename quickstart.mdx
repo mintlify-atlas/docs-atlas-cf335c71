@@ -1,80 +1,213 @@
 ---
 title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+description: "Get started with Trezor Suite as a user or developer"
+icon: "rocket"
 ---
 
-## Get started in three steps
+Get up and running with Trezor Suite quickly, whether you're a user setting up your hardware wallet or a developer contributing to the project.
 
-Get your documentation site running locally and make your first customization.
+<Tabs>
+  <Tab title="For Users">
+    ## Using Trezor Suite
 
-### Step 1: Set up your local environment
+    Get started with Trezor Suite to manage your cryptocurrency portfolio securely.
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+    <Steps>
+      <Step title="Get a Trezor Device">
+        Purchase a Trezor hardware wallet from [trezor.io](https://trezor.io).
+        
+        **Supported models:**
+        - Trezor Model T
+        - Trezor Model One
+        - Trezor Safe 3
+        - Trezor Safe 5
+      </Step>
 
-### Step 2: Deploy your changes
+      <Step title="Download Trezor Suite">
+        Choose your platform:
+        
+        - **Desktop:** Download from [suite.trezor.io](https://suite.trezor.io)
+        - **Web:** Visit [suite.trezor.io/web](https://suite.trezor.io/web) in your browser
+        - **Mobile:** Download from App Store or Google Play
+        
+        See [Installation](/installation) for detailed instructions.
+      </Step>
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+      <Step title="Set Up Your Device">
+        1. Connect your Trezor device to your computer or mobile device
+        2. Follow the onboarding wizard in Trezor Suite
+        3. Create a new wallet or recover an existing one
+        4. Write down your recovery seed and store it safely
+        
+        <Warning>Never share your recovery seed with anyone!</Warning>
+      </Step>
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+      <Step title="Add Your Accounts">
+        1. Enable cryptocurrencies you want to use
+        2. Suite will discover your accounts automatically
+        3. Start receiving and sending cryptocurrency
+        
+        Learn more about [Account Discovery](/suite/account-discovery).
+      </Step>
+    </Steps>
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+    ## Next Steps
 
-### Step 3: Go live
+    <CardGroup cols={2}>
+      <Card title="Send & Receive" icon="arrow-right-arrow-left" href="/suite/send-receive">
+        Learn how to send and receive cryptocurrency
+      </Card>
+      <Card title="Security" icon="shield" href="/suite/security">
+        Understand Suite's security features
+      </Card>
+      <Card title="Backup & Recovery" icon="life-ring" href="/suite/backup-recovery">
+        Protect your funds with proper backup
+      </Card>
+      <Card title="CoinJoin Privacy" icon="user-secret" href="/suite/coinjoin-privacy">
+        Enhance your Bitcoin privacy
+      </Card>
+    </CardGroup>
+  </Tab>
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+  <Tab title="For Developers">
+    ## Development Setup
 
-## Next steps
+    Set up your development environment to contribute to Trezor Suite.
 
-Now that you have your docs running, explore these key features:
+    <Steps>
+      <Step title="Prerequisites">
+        Install required tools:
+        
+        ```bash
+        # Install NVM (Node Version Manager)
+        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+        
+        # Install Node.js 24
+        nvm install 24
+        nvm use 24
+        
+        # Enable Yarn
+        corepack enable
+        
+        # Install Git LFS
+        # macOS: brew install git-lfs
+        # Ubuntu: sudo apt-get install git-lfs
+        ```
+        
+        See [Environment Setup](/development/environment-setup) for platform-specific instructions.
+      </Step>
 
-<CardGroup cols={2}>
+      <Step title="Clone Repository">
+        ```bash
+        git clone git@github.com:trezor/trezor-suite.git
+        cd trezor-suite
+        git submodule update --init --recursive
+        git lfs install
+        git lfs pull
+        ```
+      </Step>
 
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
+      <Step title="Install Dependencies">
+        ```bash
+        # Install Node.js version specified in .nvmrc
+        nvm install
+        
+        # Install dependencies (takes 5-10 minutes)
+        yarn
+        
+        # Build essential packages (takes 5-10 minutes)
+        yarn build:essential
+        ```
+      </Step>
 
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
+      <Step title="Run Development Server">
+        Choose what to run:
+        
+        <CodeGroup>
+        ```bash Suite Web
+        yarn suite:dev
+        ```
+        ```bash Suite Desktop
+        yarn suite:dev:desktop
+        ```
+        ```bash Suite Mobile
+        yarn native:start
+        ```
+        </CodeGroup>
+        
+        See [Running Apps](/development/running-apps) for more options.
+      </Step>
+    </Steps>
 
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
+    ## Integrate Trezor Connect
 
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
+    Add Trezor hardware wallet support to your application:
 
+    <CodeGroup>
+    ```bash npm
+    npm install @trezor/connect-web
+    ```
+    ```bash yarn
+    yarn add @trezor/connect-web
+    ```
+    ```bash pnpm
+    pnpm add @trezor/connect-web
+    ```
+    </CodeGroup>
+
+    ```typescript
+    import TrezorConnect from '@trezor/connect-web';
+
+    // Initialize
+    await TrezorConnect.init({
+      manifest: {
+        email: 'developer@example.com',
+        appUrl: 'https://example.com',
+      },
+    });
+
+    // Get Bitcoin address
+    const result = await TrezorConnect.getAddress({
+      path: "m/49'/0'/0'/0/0",
+      coin: 'btc',
+    });
+
+    if (result.success) {
+      console.log('Address:', result.payload.address);
+    }
+    ```
+
+    Learn more in the [Connect SDK docs](/connect/overview).
+
+    ## Next Steps
+
+    <CardGroup cols={2}>
+      <Card title="Project Structure" icon="folder-tree" href="/development/project-structure">
+        Understand the monorepo architecture
+      </Card>
+      <Card title="Code Style" icon="code" href="/development/code-style">
+        Follow our coding standards
+      </Card>
+      <Card title="Testing" icon="flask" href="/development/testing">
+        Write and run tests
+      </Card>
+      <Card title="Connect API" icon="plug" href="/connect/overview">
+        Integrate Trezor into your app
+      </Card>
+    </CardGroup>
+  </Tab>
+</Tabs>
+
+## Get Help
+
+<CardGroup cols={3}>
+  <Card title="GitHub Issues" icon="github" href="https://github.com/trezor/trezor-suite/issues">
+    Report bugs or request features
+  </Card>
+  <Card title="Documentation" icon="book" href="/introduction">
+    Browse the full documentation
+  </Card>
+  <Card title="Security" icon="shield-halved" href="/resources/security">
+    Report security vulnerabilities
+  </Card>
 </CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>

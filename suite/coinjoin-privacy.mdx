@@ -1,0 +1,379 @@
+---
+title: 'CoinJoin privacy'
+description: 'Enhanced privacy for Bitcoin transactions using CoinJoin in Trezor Suite'
+keywords: ['coinjoin', 'privacy', 'bitcoin', 'anonymization', 'mixing', 'UTXO']
+---
+
+# CoinJoin privacy
+
+CoinJoin is a privacy-enhancing technology built into Trezor Suite that allows you to break the link between your Bitcoin transactions, making it significantly harder to track your transaction history on the blockchain.
+
+<Info>
+CoinJoin is currently available for Bitcoin (BTC) only. Support for other networks may be added in the future.
+</Info>
+
+## What is CoinJoin?
+
+CoinJoin is a privacy technique that combines multiple Bitcoin transactions from multiple users into a single transaction. This makes it difficult for blockchain analysts to determine which inputs correspond to which outputs.
+
+### How it works
+
+<Steps>
+  <Step title="Mixing pool">
+    Your Bitcoin joins a pool with other users who want to enhance their privacy.
+  </Step>
+  
+  <Step title="Coordinator">
+    A coordinator (run by Trezor Suite) orchestrates the mixing process without gaining custody of your funds.
+  </Step>
+  
+  <Step title="Combined transaction">
+    All participants create a single transaction with multiple inputs and outputs of equal amounts.
+  </Step>
+  
+  <Step title="Anonymity set">
+    After mixing, it's unclear which input corresponds to which output, creating plausible deniability.
+  </Step>
+</Steps>
+
+<Note>
+Your Trezor device maintains full control of your private keys throughout the entire CoinJoin process. The coordinator never has access to your funds.
+</Note>
+
+## Setting up CoinJoin
+
+CoinJoin requires a special account type optimized for privacy.
+
+### Creating a CoinJoin account
+
+<Steps>
+  <Step title="Navigate to Bitcoin accounts">
+    In Suite, select your Bitcoin wallet and click the **+** icon to create a new account.
+  </Step>
+  
+  <Step title="Choose Coinjoin account">
+    Select **Coinjoin** as the account type. This creates a specialized account with privacy features enabled.
+  </Step>
+  
+  <Step title="Configure privacy settings">
+    Set your desired anonymity level:
+    - **Low**: Faster mixing, lower privacy
+    - **Medium**: Balanced speed and privacy (recommended)
+    - **High**: Slower mixing, maximum privacy
+  </Step>
+  
+  <Step title="Fund the account">
+    Transfer Bitcoin to your CoinJoin account. Only transfer from the account you want to anonymize.
+    
+    <Warning>
+    Don't send Bitcoin directly from an exchange to your CoinJoin account. First send to a regular Suite account, then transfer to CoinJoin.
+    </Warning>
+  </Step>
+</Steps>
+
+### Anonymity levels
+
+The anonymity level determines how many mixing rounds your coins will go through:
+
+<Tabs>
+  <Tab title="Low">
+    - **Rounds**: 1-2
+    - **Time**: 1-4 hours
+    - **Privacy**: Basic anonymization
+    - **Use case**: Quick privacy boost
+  </Tab>
+  
+  <Tab title="Medium">
+    - **Rounds**: 3-5
+    - **Time**: 4-12 hours
+    - **Privacy**: Strong anonymization
+    - **Use case**: Recommended for most users
+  </Tab>
+  
+  <Tab title="High">
+    - **Rounds**: 6-10
+    - **Time**: 12-48 hours
+    - **Privacy**: Maximum anonymization
+    - **Use case**: When privacy is paramount
+  </Tab>
+</Tabs>
+
+## Using CoinJoin
+
+### Starting a CoinJoin session
+
+<Steps>
+  <Step title="Open CoinJoin account">
+    Navigate to your CoinJoin account in Suite.
+  </Step>
+  
+  <Step title="Review conditions">
+    Ensure you meet the requirements:
+    - Device connected and unlocked
+    - Sufficient balance (minimum 5,000 sats recommended)
+    - Suite running and connected to internet
+  </Step>
+  
+  <Step title="Start mixing">
+    Click **Start CoinJoin** to begin the anonymization process.
+  </Step>
+  
+  <Step title="Keep Suite running">
+    Suite must remain running for the mixing to complete. You can minimize the window but don't close it.
+    
+    <Tip>
+    CoinJoin sessions can take several hours. Start them before going to bed or during work hours.
+    </Tip>
+  </Step>
+</Steps>
+
+### CoinJoin session phases
+
+The CoinJoin process goes through several phases:
+
+```typescript
+type CoinjoinPhase =
+  | 'idle'              // Not running
+  | 'connecting'        // Connecting to coordinator
+  | 'registering'       // Registering UTXOs
+  | 'waiting'           // Waiting for other participants
+  | 'signing'           // Signing transaction on device
+  | 'broadcasting'      // Broadcasting to network
+  | 'success'           // Round completed
+  | 'failed';           // Round failed
+```
+
+### Monitoring progress
+
+Suite displays real-time progress:
+
+- **Current phase**: What's happening now
+- **Rounds completed**: How many mixing rounds finished
+- **Target anonymity**: Goal anonymity set size
+- **Current anonymity**: Current level achieved
+- **Estimated time**: Time remaining (approximate)
+
+<Note>
+Progress is not linear. Some rounds complete quickly while others may take longer depending on participant availability.
+</Note>
+
+## CoinJoin fees
+
+CoinJoin involves two types of fees:
+
+### Coordinator fees
+
+- **Rate**: 0.3% of the mixed amount
+- **Charged**: Per successful mixing round
+- **Example**: Mixing 1 BTC costs approximately 0.003 BTC per round
+
+### Mining fees
+
+- Standard Bitcoin network fees
+- Split among all participants
+- Typically lower than regular transactions
+
+```typescript
+// Fee calculation example
+const calculateCoinjoinCost = (
+  amount: number,
+  rounds: number,
+  coordinatorFeeRate: number = 0.003
+) => {
+  const coordinatorFees = amount * coordinatorFeeRate * rounds;
+  const miningFees = estimateNetworkFee();
+  return coordinatorFees + miningFees;
+};
+```
+
+<Info>
+Total fees depend on your anonymity target. Higher privacy levels require more rounds and thus higher fees.
+</Info>
+
+## Best practices
+
+<AccordionGroup>
+  <Accordion title="Do not mix coins from exchanges directly">
+    Always send from an exchange to a regular Suite account first, then transfer to your CoinJoin account. This prevents exchanges from flagging your account.
+  </Accordion>
+  
+  <Accordion title="Keep Suite running during sessions">
+    CoinJoin requires Suite to be actively running. Closing Suite interrupts the process and you'll need to start over.
+  </Accordion>
+  
+  <Accordion title="Avoid small amounts">
+    Mixing very small amounts (< 5,000 sats) is inefficient due to fees. Consider accumulating more before mixing.
+  </Accordion>
+  
+  <Accordion title="Don't consolidate mixed outputs">
+    After mixing, avoid combining multiple outputs in a single transaction, as this can reduce privacy gains.
+  </Accordion>
+  
+  <Accordion title="Use Tor for maximum privacy">
+    Enable Tor in Suite settings to hide your IP address from the coordinator.
+  </Accordion>
+</AccordionGroup>
+
+## Privacy considerations
+
+### What CoinJoin protects
+
+<Check>Breaks the link between your old and new UTXOs</Check>
+<Check>Makes it harder to track your spending history</Check>
+<Check>Provides plausible deniability for transactions</Check>
+<Check>Increases your financial privacy on the blockchain</Check>
+
+### What CoinJoin doesn't protect
+
+<Warning>
+CoinJoin is not a silver bullet for privacy. It doesn't protect against:
+- IP address tracking (use Tor)
+- Poor operational security
+- Combining mixed and unmixed coins
+- Exchange KYC requirements
+</Warning>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="CoinJoin session not starting">
+    **Check blockers**:
+    - Device must be connected and unlocked
+    - Internet connection required
+    - Minimum balance threshold
+    - Backend connectivity
+    
+    Common solutions:
+    - Restart Suite
+    - Reconnect device
+    - Check internet connection
+    - Verify account balance
+  </Accordion>
+  
+  <Accordion title="CoinJoin stuck or slow">
+    **Reasons for delays**:
+    - Waiting for other participants
+    - Network congestion
+    - Coordinator maintenance
+    
+    **What to do**:
+    - Be patient - sessions can take hours
+    - Keep Suite running
+    - Check coordinator status
+    - Try again during peak hours (more participants)
+  </Accordion>
+  
+  <Accordion title="Failed rounds">
+    **Common causes**:
+    - Device disconnected during signing
+    - Another participant dropped out
+    - Network issues
+    
+    **Solution**:
+    - Suite automatically retries
+    - No funds are lost
+    - Failed rounds don't incur fees
+  </Accordion>
+  
+  <Accordion title="Prison list">
+    If your UTXO is flagged as problematic:
+    - Review why it was flagged
+    - Wait for the ban period to expire
+    - Contact support if you believe it's an error
+    
+    ```typescript
+    interface PrisonInmate {
+      id: string;          // UTXO identifier
+      reason: string;      // Why it was flagged
+      bannedUntil: number; // Unix timestamp
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Technical details
+
+### CoinJoin service architecture
+
+Suite implements CoinJoin using a client-server architecture:
+
+```typescript
+import { CoinjoinBackend, CoinjoinClient } from '@trezor/coinjoin';
+
+class CoinjoinService {
+  backend: CoinjoinBackend;  // Blockchain communication
+  client: CoinjoinClient;    // Coordination logic
+  
+  async createInstance(symbol: 'btc' | 'test') {
+    const config = getCoinjoinConfig(symbol);
+    this.backend = new CoinjoinBackend(config);
+    this.client = new CoinjoinClient(config);
+  }
+}
+```
+
+### Desktop vs Web
+
+<Tabs>
+  <Tab title="Desktop">
+    - Full CoinJoin support
+    - Runs in background
+    - Better performance
+    - Can mix while minimized
+  </Tab>
+  
+  <Tab title="Web">
+    - Requires tab to stay open
+    - May pause if tab inactive
+    - Browser memory limits apply
+    - Slower performance
+  </Tab>
+</Tabs>
+
+<Tip>
+For best CoinJoin experience, use Suite Desktop.
+</Tip>
+
+## Development and testing
+
+For developers working with CoinJoin:
+
+### Local CoinJoin backend
+
+```bash
+# Start local CoinJoin backend (Regtest)
+./docker/docker-coinjoin-backend.sh
+
+# Backend control panel at:
+# http://localhost:8080/
+```
+
+### Configuration
+
+1. Enable Debug mode in Suite (click "Settings" header 5 times)
+2. Go to **Settings → Crypto** and enable **Bitcoin Regtest**
+3. Set custom backend to `http://localhost:19121/`
+
+<Warning>
+Local CoinJoin backend requires VPN for affiliate server communication.
+</Warning>
+
+## Related topics
+
+<Columns cols={2}>
+  <Card title="Security" icon="shield" href="/suite/security">
+    Overall security features and best practices
+  </Card>
+  
+  <Card title="Transactions" icon="arrow-right-arrow-left" href="/suite/transactions">
+    Viewing and managing your transaction history
+  </Card>
+  
+  <Card title="Send and receive" icon="paper-plane" href="/suite/send-receive">
+    Basic cryptocurrency transactions
+  </Card>
+  
+  <Card title="Application settings" icon="gear" href="/suite/application-settings">
+    Enable Tor and other privacy settings
+  </Card>
+</Columns>

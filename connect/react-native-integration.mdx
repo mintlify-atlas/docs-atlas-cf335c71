@@ -1,0 +1,618 @@
+---
+title: React Native Integration
+description: Integrate @trezor/connect-mobile into React Native apps using deep links to communicate with Trezor Suite mobile.
+---
+
+# React Native Integration
+
+The `@trezor/connect-mobile` package enables React Native applications to interact with Trezor hardware wallets through deep links that communicate with the Trezor Suite mobile app.
+
+<Info>
+This package uses **deep links** to launch Trezor Suite mobile, where users complete their operations, then returns control back to your app with the results.
+</Info>
+
+## Installation
+
+Install the package and required dependencies:
+
+<CodeGroup>
+```bash npm
+npm install @trezor/connect-mobile
+```
+
+```bash yarn
+yarn add @trezor/connect-mobile
+```
+
+```bash expo
+npx expo install @trezor/connect-mobile expo-linking
+```
+</CodeGroup>
+
+## Prerequisites
+
+<Steps>
+  <Step title="Trezor Suite Mobile">
+    Users must have the Trezor Suite mobile app installed on their device.
+  </Step>
+  
+  <Step title="Deep Link Configuration">
+    Configure your app to handle deep link callbacks from Trezor Suite.
+  </Step>
+  
+  <Step title="React Native Linking">
+    For Expo, install `expo-linking`. For bare React Native, use the built-in `Linking` API.
+  </Step>
+</Steps>
+
+## Basic Setup
+
+### Expo Application
+
+```javascript
+import { useEffect } from 'react';
+import * as Linking from 'expo-linking';
+import TrezorConnect from '@trezor/connect-mobile';
+
+// Initialize TrezorConnect
+TrezorConnect.init({
+    manifest: {
+        email: 'developer@example.com',
+        appName: 'My React Native App',
+        appUrl: 'https://myapp.example.com',
+    },
+    deeplinkOpen: (url) => {
+        // Open Trezor Suite with the deep link
+        Linking.openURL(url);
+    },
+    deeplinkCallbackUrl: Linking.createURL('/connect'),
+});
+
+// Set up deep link listener
+useEffect(() => {
+    const subscription = Linking.addEventListener('url', (event) => {
+        TrezorConnect.handleDeeplink(event.url);
+    });
+
+    return () => subscription?.remove();
+}, []);
+```
+
+### Bare React Native
+
+```javascript
+import { useEffect } from 'react';
+import { Linking } from 'react-native';
+import TrezorConnect from '@trezor/connect-mobile';
+
+TrezorConnect.init({
+    manifest: {
+        email: 'developer@example.com',
+        appName: 'My React Native App',
+        appUrl: 'https://myapp.example.com',
+    },
+    deeplinkOpen: (url) => {
+        Linking.openURL(url);
+    },
+    deeplinkCallbackUrl: 'myapp://connect',
+});
+
+useEffect(() => {
+    const subscription = Linking.addEventListener('url', (event) => {
+        TrezorConnect.handleDeeplink(event.url);
+    });
+
+    return () => subscription.remove();
+}, []);
+```
+
+## Complete Example
+
+Here's a complete React Native component with Expo:
+
+```javascript
+import { useEffect, useState } from 'react';
+import { Button, StyleSheet, Text, View } from 'react-native';
+import * as Linking from 'expo-linking';
+import TrezorConnect from '@trezor/connect-mobile';
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#fff',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    dataContainer: {
+        marginTop: 20,
+        padding: 16,
+        alignItems: 'flex-start',
+    },
+});
+
+export const App = () => {
+    const [address, setAddress] = useState('');
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    // Initialize TrezorConnect
+    const initialize = () => {
+        TrezorConnect.init({
+            manifest: {
+                email: 'developer@example.com',
+                appName: 'Trezor Connect Mobile Example',
+                appUrl: 'https://example.com',
+            },
+            deeplinkOpen: (url) => {
+                console.log('Opening deep link:', url);
+                Linking.openURL(url);
+            },
+            deeplinkCallbackUrl: Linking.createURL('/connect'),
+        });
+    };
+
+    // Get Bitcoin address
+    const getAddress = async () => {
+        setLoading(true);
+        setError('');
+        setAddress('');
+
+        const response = await TrezorConnect.getAddress({
+            path: "m/49'/0'/0'/0/0",
+            coin: 'btc',
+        });
+
+        setLoading(false);
+
+        if (response.success) {
+            setAddress(response.payload.address);
+        } else {
+            setError('Failed to get address');
+        }
+    };
+
+    // Sign message
+    const signMessage = async () => {
+        setLoading(true);
+        setError('');
+
+        const response = await TrezorConnect.signMessage({
+            path: "m/49'/0'/0'/0/0",
+            message: 'Hello from React Native!',
+        });
+
+        setLoading(false);
+
+        if (response.success) {
+            console.log('Signature:', response.payload.signature);
+        } else {
+            setError('Failed to sign message');
+        }
+    };
+
+    // Set up deep link listener
+    useEffect(() => {
+        const subscription = Linking.addEventListener('url', (event) => {
+            TrezorConnect.handleDeeplink(event.url);
+        });
+
+        return () => subscription?.remove();
+    }, []);
+
+    return (
+        <View style={styles.container}>
+            <Text>Trezor Connect Mobile Example</Text>
+            
+            <Button 
+                onPress={initialize} 
+                title="Initialize TrezorConnect" 
+            />
+            
+            <Button 
+                onPress={getAddress} 
+                title="Get Address" 
+                disabled={loading}
+            />
+            
+            <Button 
+                onPress={signMessage} 
+                title="Sign Message" 
+                disabled={loading}
+            />
+
+            {loading && <Text>Processing...</Text>}
+
+            {address && (
+                <View style={styles.dataContainer}>
+                    <Text>Address: {address}</Text>
+                </View>
+            )}
+
+            {error && (
+                <View style={styles.dataContainer}>
+                    <Text style={{ color: 'red' }}>{error}</Text>
+                </View>
+            )}
+        </View>
+    );
+};
+```
+
+## Configuration Options
+
+### Required Options
+
+<ParamField path="manifest" type="object" required>
+  Application identification object.
+  
+  <Expandable title="properties">
+    <ParamField path="email" type="string" required>
+      Developer contact email
+    </ParamField>
+    <ParamField path="appName" type="string" required>
+      Application name shown to users
+    </ParamField>
+    <ParamField path="appUrl" type="string" required>
+      Application URL or identifier
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="deeplinkOpen" type="function" required>
+  Function that opens deep links. Receives the URL to open.
+  
+  ```javascript
+  deeplinkOpen: (url) => Linking.openURL(url)
+  ```
+</ParamField>
+
+<ParamField path="deeplinkCallbackUrl" type="string" required>
+  The callback URL where Trezor Suite returns results.
+  
+  ```javascript
+  // Expo
+  deeplinkCallbackUrl: Linking.createURL('/connect')
+  
+  // Bare React Native
+  deeplinkCallbackUrl: 'myapp://connect'
+  ```
+</ParamField>
+
+### Optional Options
+
+<ParamField path="connectSrc" type="string">
+  Custom Trezor Suite deep link URL. Default: `trezorsuite://connect`
+  
+  ```javascript
+  // For local development
+  connectSrc: 'trezorsuite://connect'
+  ```
+</ParamField>
+
+## Deep Link Configuration
+
+### Expo Configuration
+
+Add deep link scheme to your `app.json`:
+
+```json
+{
+  "expo": {
+    "scheme": "myapp",
+    "ios": {
+      "bundleIdentifier": "com.example.myapp"
+    },
+    "android": {
+      "package": "com.example.myapp"
+    }
+  }
+}
+```
+
+### iOS Configuration (Bare React Native)
+
+Add URL scheme to `Info.plist`:
+
+```xml
+<key>CFBundleURLTypes</key>
+<array>
+  <dict>
+    <key>CFBundleURLSchemes</key>
+    <array>
+      <string>myapp</string>
+    </array>
+  </dict>
+</array>
+```
+
+### Android Configuration (Bare React Native)
+
+Add intent filter to `AndroidManifest.xml`:
+
+```xml
+<activity
+  android:name=".MainActivity"
+  android:launchMode="singleTask">
+  <intent-filter>
+    <action android:name="android.intent.action.VIEW" />
+    <category android:name="android.intent.category.DEFAULT" />
+    <category android:name="android.intent.category.BROWSABLE" />
+    <data android:scheme="myapp" />
+  </intent-filter>
+</activity>
+```
+
+## API Methods
+
+All standard TrezorConnect methods are available:
+
+### Get Address
+
+```javascript
+const result = await TrezorConnect.getAddress({
+    path: "m/49'/0'/0'/0/0",
+    coin: 'btc',
+    showOnTrezor: true,
+});
+
+if (result.success) {
+    console.log('Address:', result.payload.address);
+    console.log('Path:', result.payload.path);
+}
+```
+
+### Get Ethereum Address
+
+```javascript
+const result = await TrezorConnect.ethereumGetAddress({
+    path: "m/44'/60'/0'/0/0",
+    showOnTrezor: true,
+});
+
+if (result.success) {
+    console.log('ETH Address:', result.payload.address);
+}
+```
+
+### Sign Message
+
+```javascript
+const result = await TrezorConnect.signMessage({
+    path: "m/49'/0'/0'/0/0",
+    message: 'Hello from mobile app!',
+    coin: 'btc',
+});
+
+if (result.success) {
+    console.log('Signature:', result.payload.signature);
+}
+```
+
+### Get Public Key
+
+```javascript
+const result = await TrezorConnect.getPublicKey({
+    path: "m/49'/0'/0'",
+    coin: 'btc',
+});
+
+if (result.success) {
+    console.log('xpub:', result.payload.xpub);
+}
+```
+
+## User Flow
+
+Understand how the deep link flow works:
+
+<Steps>
+  <Step title="User Initiates Action">
+    User taps a button in your app to get an address or sign a transaction.
+  </Step>
+  
+  <Step title="Deep Link Opens Suite">
+    Your app calls `TrezorConnect.getAddress()`, which triggers the `deeplinkOpen` callback to launch Trezor Suite mobile.
+  </Step>
+  
+  <Step title="User Completes in Suite">
+    Trezor Suite mobile opens, user connects their device and confirms the action.
+  </Step>
+  
+  <Step title="Result Returns to App">
+    Suite mobile deep links back to your app with the result, which is handled by `TrezorConnect.handleDeeplink()`.
+  </Step>
+  
+  <Step title="Promise Resolves">
+    The original promise resolves with the result, and your app can continue.
+  </Step>
+</Steps>
+
+## Error Handling
+
+Handle errors appropriately in your mobile app:
+
+```javascript
+const getAddress = async () => {
+    try {
+        const result = await TrezorConnect.getAddress({
+            path: "m/49'/0'/0'/0/0",
+            coin: 'btc',
+        });
+
+        if (result.success) {
+            // Success
+            setAddress(result.payload.address);
+        } else {
+            // User cancelled or error occurred
+            if (result.payload.error === 'Cancelled') {
+                Alert.alert('Cancelled', 'Operation was cancelled');
+            } else {
+                Alert.alert('Error', result.payload.error);
+            }
+        }
+    } catch (error) {
+        // Network or system error
+        Alert.alert('Error', 'Failed to communicate with Trezor Suite');
+    }
+};
+```
+
+## TypeScript Support
+
+Full TypeScript definitions are included:
+
+```typescript
+import TrezorConnect, { Success, Unsuccessful } from '@trezor/connect-mobile';
+import * as Linking from 'expo-linking';
+
+interface AppState {
+    address: string;
+    error: string;
+}
+
+const getAddress = async (): Promise<void> => {
+    const result = await TrezorConnect.getAddress({
+        path: "m/49'/0'/0'/0/0",
+        coin: 'btc',
+    });
+
+    if (result.success) {
+        // TypeScript knows this is Success<Address>
+        const address: string = result.payload.address;
+        console.log('Address:', address);
+    } else {
+        // TypeScript knows this is Unsuccessful
+        console.error('Error:', result.payload.error);
+    }
+};
+```
+
+## Testing Deep Links
+
+### Test Deep Link Opening
+
+```javascript
+const testDeepLink = () => {
+    const testUrl = 'trezorsuite://connect';
+    
+    Linking.canOpenURL(testUrl)
+        .then((supported) => {
+            if (supported) {
+                console.log('Trezor Suite can be opened');
+                Linking.openURL(testUrl);
+            } else {
+                console.log('Trezor Suite is not installed');
+            }
+        })
+        .catch((err) => console.error('Error checking URL:', err));
+};
+```
+
+### Test Callback Handling
+
+```javascript
+useEffect(() => {
+    // Handle initial URL (if app was closed)
+    Linking.getInitialURL().then((url) => {
+        if (url) {
+            console.log('Initial URL:', url);
+            TrezorConnect.handleDeeplink(url);
+        }
+    });
+
+    // Handle URLs while app is open
+    const subscription = Linking.addEventListener('url', (event) => {
+        console.log('Received URL:', event.url);
+        TrezorConnect.handleDeeplink(event.url);
+    });
+
+    return () => subscription?.remove();
+}, []);
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Initialize Early" icon="rocket">
+    Initialize TrezorConnect when your app starts, not before each operation.
+  </Accordion>
+
+  <Accordion title="Handle Background State" icon="mobile">
+    Your app may be backgrounded when Suite opens. Ensure state is preserved correctly.
+  </Accordion>
+
+  <Accordion title="User Guidance" icon="circle-info">
+    Show clear messages about what will happen (e.g., "This will open Trezor Suite").
+  </Accordion>
+
+  <Accordion title="Check Suite Installation" icon="download">
+    Use `Linking.canOpenURL()` to check if Trezor Suite is installed and guide users to install it.
+  </Accordion>
+
+  <Accordion title="Handle Cancellations" icon="xmark">
+    Users can cancel operations in Suite. Handle the cancellation response gracefully.
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Deep Link Not Opening" icon="link">
+    Ensure Trezor Suite mobile is installed. Check that your deep link configuration in `app.json` or native config files is correct.
+  </Accordion>
+
+  <Accordion title="Callback Not Received" icon="arrow-rotate-left">
+    Verify your `deeplinkCallbackUrl` matches your app's URL scheme. Check that the deep link listener is set up correctly.
+  </Accordion>
+
+  <Accordion title="App State Lost" icon="database">
+    Use React state management or AsyncStorage to persist important state when the app backgrounds.
+  </Accordion>
+
+  <Accordion title="iOS Simulator Issues" icon="apple">
+    Deep links may not work properly in iOS Simulator. Test on a real device.
+  </Accordion>
+</AccordionGroup>
+
+## Running the Example
+
+The Trezor Suite repository includes a complete Expo example:
+
+```bash
+# Clone the repository
+git clone https://github.com/trezor/trezor-suite.git
+cd trezor-suite/packages/connect-examples/mobile-expo
+
+# Install dependencies
+yarn install
+
+# Run on Android
+yarn android
+
+# Run on iOS
+yarn ios
+```
+
+<Note>
+You'll also need the Trezor Suite mobile app installed. Follow the [Suite Native setup guide](https://github.com/trezor/trezor-suite/blob/develop/suite-native/app/README.md) for development.
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="API Methods" icon="code" href="/connect/methods">
+    Explore all available TrezorConnect methods
+  </Card>
+  
+  <Card title="Mobile Example" icon="mobile" href="https://github.com/trezor/trezor-suite/tree/develop/packages/connect-examples/mobile-expo" target="_blank">
+    Complete React Native + Expo example
+  </Card>
+  
+  <Card title="Suite Native" icon="shield" href="https://github.com/trezor/trezor-suite/tree/develop/suite-native" target="_blank">
+    Trezor Suite mobile app source
+  </Card>
+  
+  <Card title="Deep Links" icon="link" href="https://reactnative.dev/docs/linking" target="_blank">
+    React Native Linking API docs
+  </Card>
+</CardGroup>

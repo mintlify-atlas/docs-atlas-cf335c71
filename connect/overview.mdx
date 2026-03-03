@@ -1,0 +1,221 @@
+---
+title: 'Trezor Connect SDK Overview'
+description: 'A platform for seamless integration of Trezor hardware wallets into your applications'
+keywords: ['trezor', 'connect', 'sdk', 'hardware wallet', 'api', 'integration']
+icon: 'plug'
+---
+
+## What is Trezor Connect?
+
+Trezor Connect is a high-level JavaScript interface for Trezor hardware wallets. It provides a comprehensive API for integrating Trezor functionality into third-party applications, wallets, and services.
+
+<Note>
+  Trezor Connect version 10.0.0 is currently in alpha stage. This represents a major evolution of the platform with improved architecture and capabilities.
+</Note>
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Multi-Platform Support" icon="devices">
+    Works across Node.js, web browsers, browser extensions, Electron apps, and React Native mobile applications.
+  </Card>
+  <Card title="Comprehensive Blockchain Support" icon="bitcoin-sign">
+    Supports Bitcoin, Ethereum, Cardano, Solana, Ripple, Stellar, Tezos, and many more cryptocurrencies.
+  </Card>
+  <Card title="Transaction Signing" icon="signature">
+    Sign cryptocurrency transactions securely with hardware-backed private keys.
+  </Card>
+  <Card title="Public Key Export" icon="key">
+    Access public keys and extended public keys (xpub) for account management.
+  </Card>
+  <Card title="Message Authentication" icon="shield">
+    Sign and verify messages for authentication and proof of ownership.
+  </Card>
+  <Card title="Account Discovery" icon="magnifying-glass">
+    Discover wallet accounts and retrieve balance information across multiple blockchains.
+  </Card>
+</CardGroup>
+
+## Use Cases
+
+### Cryptocurrency Wallets
+Integrate Trezor hardware wallet support into your cryptocurrency wallet application to provide users with enhanced security for their digital assets.
+
+### Decentralized Applications (DApps)
+Connect users' Trezor devices to authenticate and sign blockchain transactions directly from your dApp interface.
+
+### Exchanges and Trading Platforms
+Enable secure withdrawal confirmations and transaction signing for users who prefer hardware wallet security.
+
+### Enterprise Applications
+Implement hardware-based authentication and cryptographic signing for enterprise applications requiring high security standards.
+
+### Portfolio Management
+Access read-only account information to display balances and transaction history without exposing private keys.
+
+## Architecture
+
+Trezor Connect uses a modular architecture designed for different environments:
+
+<Steps>
+  <Step title="Transport Layer">
+    Handles communication with Trezor devices through multiple transport protocols:
+    - **BridgeTransport**: Communicates via Trezor Bridge (default for Node.js)
+    - **WebUSB**: Direct browser communication with devices
+    - **Bluetooth**: Wireless connection for supported models
+  </Step>
+  <Step title="API Layer">
+    Provides high-level methods for blockchain operations:
+    - Account management and discovery
+    - Transaction composition and signing
+    - Public key derivation
+    - Message signing and verification
+  </Step>
+  <Step title="Device Management">
+    Handles device state, events, and user interactions:
+    - Device connection/disconnection events
+    - Firmware updates and verification
+    - PIN and passphrase management
+  </Step>
+</Steps>
+
+## Package Variants
+
+Trezor Connect is available in multiple variants optimized for different environments:
+
+<CodeGroup>
+
+```bash Node.js
+npm install @trezor/connect
+```
+
+```bash Web Applications
+npm install @trezor/connect-web
+```
+
+```bash Browser Extensions
+npm install @trezor/connect-webextension
+```
+
+```bash React Native
+npm install @trezor/connect-mobile
+```
+
+</CodeGroup>
+
+<Warning>
+  **Choose the right package for your environment:**
+  - Use `@trezor/connect` for Node.js and Electron main process
+  - Use `@trezor/connect-web` for web applications (includes popup UI)
+  - Use `@trezor/connect-webextension` for browser extensions (Manifest V3 compatible)
+  - Use `@trezor/connect-mobile` for React Native apps (communicates via deep links)
+</Warning>
+
+## Core Concepts
+
+### Manifest
+
+All applications must provide a manifest with identification information:
+
+```typescript
+const manifest = {
+  appName: 'My Application',
+  appUrl: 'https://myapp.example.com',
+  email: 'developer@example.com',
+  appIcon: 'https://myapp.example.com/icon.png' // optional
+};
+```
+
+### Events
+
+Trezor Connect uses an event-driven architecture for device and transport notifications:
+
+- **DEVICE_EVENT**: Fired when devices connect, disconnect, or change state
+- **TRANSPORT_EVENT**: Notifies about transport layer status (Bridge, WebUSB, etc.)
+- **BLOCKCHAIN_EVENT**: Updates on blockchain connection and subscriptions
+- **UI_EVENT**: Requests for user interaction or confirmation
+
+### Permissions
+
+API methods require specific permissions:
+
+- **read**: Access public keys and addresses
+- **write**: Sign transactions and messages
+- **management**: Device configuration and firmware updates
+
+## Security Model
+
+Trezor Connect is designed with security as the primary concern:
+
+<AccordionGroup>
+  <Accordion title="Private keys never leave the device">
+    All cryptographic operations happen inside the Trezor hardware wallet. Private keys are never exposed to the host computer or application.
+  </Accordion>
+  <Accordion title="User confirmation required">
+    Critical operations like transaction signing require physical confirmation on the Trezor device screen.
+  </Accordion>
+  <Accordion title="Deterministic key derivation">
+    Uses BIP32/BIP39/BIP44 standards for hierarchical deterministic key derivation.
+  </Accordion>
+  <Accordion title="Firmware verification">
+    Built-in firmware hash checking ensures device authenticity and integrity.
+  </Accordion>
+</AccordionGroup>
+
+## Response Format
+
+All API methods return a consistent response structure:
+
+```typescript
+// Success response
+{
+  success: true,
+  payload: {
+    // Method-specific data
+  },
+  device: {
+    // Device information
+  }
+}
+
+// Error response
+{
+  success: false,
+  error: 'Error message',
+  code: 'ERROR_CODE'
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/connect/installation">
+    Install Trezor Connect for your environment
+  </Card>
+  <Card title="Initialization" icon="power-off" href="/connect/initialization">
+    Set up and initialize Trezor Connect
+  </Card>
+  <Card title="Supported Coins" icon="coins" href="/connect/supported-coins">
+    View all supported cryptocurrencies
+  </Card>
+  <Card title="API Reference" icon="book" href="/api-reference">
+    Explore the complete API documentation
+  </Card>
+</CardGroup>
+
+## Resources
+
+<CardGroup cols={2}>
+  <Card title="GitHub Repository" icon="github" href="https://github.com/trezor/trezor-suite/tree/develop/packages/connect">
+    View source code and contribute
+  </Card>
+  <Card title="Interactive Explorer" icon="browser" href="https://connect.trezor.io/">
+    Try the API in your browser
+  </Card>
+  <Card title="Examples" icon="code" href="https://github.com/trezor/trezor-suite/tree/develop/packages/connect-examples">
+    Sample implementations for various environments
+  </Card>
+  <Card title="NPM Package" icon="npm" href="https://www.npmjs.com/package/@trezor/connect">
+    View package on NPM registry
+  </Card>
+</CardGroup>

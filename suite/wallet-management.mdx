@@ -1,0 +1,201 @@
+---
+title: 'Wallet management'
+description: 'Managing cryptocurrency wallets in Trezor Suite with standard and hidden wallets'
+keywords: ['wallet', 'passphrase', 'hidden wallet', 'wallet selection', 'multiple wallets']
+---
+
+# Wallet management
+
+Trezor Suite allows you to manage multiple cryptocurrency wallets on a single device. Each wallet can contain multiple accounts across different blockchain networks, providing flexible organization for your digital assets.
+
+## Wallet types
+
+### Standard wallet
+
+The standard wallet is the default wallet created when you set up your Trezor device. It is secured by your recovery seed and device PIN.
+
+<Info>
+Your standard wallet is always accessible when you connect your Trezor device to Suite.
+</Info>
+
+**Key features:**
+- Direct access with PIN authentication
+- Contains all discovered accounts across supported networks
+- Backed up by your recovery seed
+- No additional passphrase required
+
+### Hidden wallets
+
+Hidden wallets (also known as passphrase wallets) provide an additional layer of security. Each unique passphrase creates a completely separate wallet with its own set of accounts and balances.
+
+<Warning>
+Passphrases are case-sensitive and there is no way to recover a hidden wallet if you forget the passphrase. Write it down securely.
+</Warning>
+
+**Use cases for hidden wallets:**
+- **Plausible deniability**: Keep a small amount in your standard wallet and larger holdings in hidden wallets
+- **Multiple identities**: Separate personal and business funds
+- **Enhanced security**: Add extra protection beyond PIN and recovery seed
+
+## Creating wallets
+
+<Steps>
+  <Step title="Connect your device">
+    Connect your Trezor device to your computer and unlock it with your PIN.
+  </Step>
+  
+  <Step title="Access wallet selection">
+    In Suite, click on the wallet name in the top navigation bar to open the wallet selection menu.
+  </Step>
+  
+  <Step title="Add hidden wallet">
+    Click **Add hidden wallet** to create a new passphrase-protected wallet.
+    
+    You can choose to:
+    - Enter passphrase on the device (recommended for maximum security)
+    - Enter passphrase in Suite (convenient but less secure)
+  </Step>
+  
+  <Step title="Enter passphrase">
+    Create a strong, memorable passphrase. This can be any combination of characters, including spaces.
+    
+    <Tip>
+    Use a passphrase that is easy for you to remember but difficult for others to guess. Consider using a phrase or sentence rather than a single word.
+    </Tip>
+  </Step>
+</Steps>
+
+## Switching between wallets
+
+To switch between your wallets:
+
+1. Click the wallet name in the top navigation bar
+2. Select the wallet you want to access from the list
+3. If switching to a hidden wallet, you'll need to re-enter the passphrase
+
+<Note>
+Suite remembers recently used wallets for quick access. The wallet list shows all wallets you've accessed with the current device.
+</Note>
+
+## Wallet labels
+
+You can assign custom labels to your wallets to easily identify them. This is particularly useful when managing multiple hidden wallets.
+
+### Setting wallet labels
+
+<Steps>
+  <Step title="Open wallet selection">
+    Click the wallet name in the top navigation to open the wallet menu.
+  </Step>
+  
+  <Step title="Add label">
+    Hover over a wallet and click the pencil icon to add or edit a label.
+  </Step>
+  
+  <Step title="Sync labels">
+    Enable metadata synchronization in **Settings → Application** to sync labels across devices using Dropbox or Google Drive.
+  </Step>
+</Steps>
+
+<Info>
+Wallet labels are stored in encrypted form when using metadata synchronization. See [Metadata labeling](/suite/metadata-labeling) for details.
+</Info>
+
+## Wallet instances
+
+Suite uses the concept of "instances" to manage multiple wallets on the same device. Each passphrase creates a new instance with its own:
+
+- Device state and session
+- Account discovery process
+- Transaction history
+- Metadata and labels
+- Application settings
+
+```typescript
+// Internal wallet instance structure
+interface WalletInstance {
+  deviceState: string;        // Unique identifier
+  staticSessionId: string;    // Session reference
+  walletLabel?: string;       // User-defined label
+  metadata: {
+    status: 'enabled' | 'disabled' | 'cancelled';
+    key: string;
+    fileName: string;
+    aesKey: string;
+  };
+}
+```
+
+## Best practices
+
+<AccordionGroup>
+  <Accordion title="Use meaningful wallet labels">
+    Label your wallets clearly (e.g., "Savings", "Trading", "Business") to avoid confusion when switching between them.
+  </Accordion>
+  
+  <Accordion title="Document your passphrases securely">
+    Store passphrases offline in a secure location, separate from your recovery seed. Consider using a password manager or physical storage.
+  </Accordion>
+  
+  <Accordion title="Test passphrases before funding">
+    After creating a hidden wallet, test accessing it multiple times before transferring significant funds.
+  </Accordion>
+  
+  <Accordion title="Keep your standard wallet active">
+    Maintain a small balance in your standard wallet to provide plausible deniability if ever coerced.
+  </Accordion>
+</AccordionGroup>
+
+## Removing wallets
+
+To remove a wallet from Suite:
+
+1. Navigate to **Settings → Device**
+2. Click **Eject device** to disconnect and clear all wallet sessions
+3. When you reconnect, only the wallets you explicitly access will appear
+
+<Warning>
+Removing a wallet from Suite does not delete it. The wallet still exists on the blockchain and can be accessed again by entering the correct passphrase.
+</Warning>
+
+## Security considerations
+
+### Passphrase strength
+
+- **Strong**: "My grandmother loves gardening in spring 2024!"
+- **Weak**: "password123"
+- **Very weak**: "" (empty passphrase)
+
+### Physical security
+
+When entering passphrases:
+- Ensure no one can see your screen or device
+- Be aware of security cameras
+- Consider using device entry for maximum security
+
+### Recovery
+
+To recover a hidden wallet:
+- You need **both** your recovery seed **and** the exact passphrase
+- Passphrases are case-sensitive with no typo correction
+- There is no way to reset or recover a forgotten passphrase
+
+## Related topics
+
+<Columns cols={2}>
+  <Card title="Account discovery" icon="magnifying-glass" href="/suite/account-discovery">
+    Learn how Suite discovers accounts within your wallets
+  </Card>
+  
+  <Card title="Metadata labeling" icon="tag" href="/suite/metadata-labeling">
+    Sync wallet labels and other metadata across devices
+  </Card>
+  
+  <Card title="Backup and recovery" icon="shield" href="/suite/backup-recovery">
+    Understand how to backup and recover your wallets
+  </Card>
+  
+  <Card title="Security best practices" icon="lock" href="/suite/security">
+    Advanced security practices for wallet management
+  </Card>
+</Columns>

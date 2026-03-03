@@ -1,0 +1,425 @@
+---
+title: 'Firmware updates'
+description: 'Updating Trezor device firmware safely through Suite'
+keywords: ['firmware', 'update', 'bootloader', 'device update', 'firmware verification']
+---
+
+# Firmware updates
+
+Keeping your Trezor firmware up to date ensures you have the latest security patches, features, and cryptocurrency support. Suite makes firmware updates safe and straightforward.
+
+<Info>
+Firmware updates are signed and verified by Trezor. Suite automatically checks signatures before installation.
+</Info>
+
+## Why update firmware?
+
+### Security improvements
+
+- Patches for discovered vulnerabilities
+- Enhanced cryptographic implementations
+- Improved secure element integration (Safe 3)
+- Protection against new attack vectors
+
+### New features
+
+- Support for additional cryptocurrencies
+- UI/UX improvements on device
+- Enhanced privacy features
+- Performance optimizations
+
+### Bug fixes
+
+- Resolution of reported issues
+- Stability improvements
+- Edge case handling
+
+<Tip>
+Check the changelog before updating to see what's new in each firmware release.
+</Tip>
+
+## Checking for updates
+
+Suite automatically checks for firmware updates when you connect your device.
+
+### Notification system
+
+When a new firmware is available:
+
+1. A notification appears in Suite
+2. The device dropdown shows an update badge
+3. Settings page displays the update option
+
+<Note>
+You can also manually check for updates in **Settings → Device → Firmware**.
+</Note>
+
+### Update types
+
+<Tabs>
+  <Tab title="Required updates">
+    **Critical security updates**:
+    - Marked as "Required"
+    - Strongly recommended to install immediately
+    - May limit features until updated
+    
+    Example: Firmware 1.9.4 → 1.10.0 (security patch)
+  </Tab>
+  
+  <Tab title="Optional updates">
+    **Feature and improvement updates**:
+    - Marked as "Optional"
+    - Install at your convenience
+    - Brings new features and improvements
+    
+    Example: Firmware 2.4.0 → 2.5.0 (new coins)
+  </Tab>
+</Tabs>
+
+## Update process
+
+Updating firmware is a multi-step process that requires careful attention.
+
+<Warning>
+Never disconnect your device during a firmware update. This could brick your device.
+</Warning>
+
+### Standard update flow
+
+<Steps>
+  <Step title="Backup check">
+    Suite verifies your device is backed up. If not, you'll be prompted to create a backup first.
+    
+    <Warning>
+    Always ensure you have a valid backup before updating. If something goes wrong, you'll need it to recover your funds.
+    </Warning>
+  </Step>
+  
+  <Step title="Download firmware">
+    Suite downloads the firmware file from Trezor servers and verifies the signature.
+  </Step>
+  
+  <Step title="Enter bootloader">
+    Follow on-screen instructions to put your device into bootloader mode:
+    
+    - **Model One**: Hold both buttons while connecting
+    - **Model T/Safe 3**: Touch screen while connecting
+  </Step>
+  
+  <Step title="Upload firmware">
+    Suite uploads the firmware to your device. Progress is shown in real-time.
+    
+    <Info>
+    This step takes 1-2 minutes. The device screen shows progress.
+    </Info>
+  </Step>
+  
+  <Step title="Verify fingerprint">
+    After upload, verify the firmware fingerprint displayed on your device matches the one shown in Suite.
+  </Step>
+  
+  <Step title="Install firmware">
+    Confirm installation on your device. The device will:
+    - Install the firmware
+    - Verify installation
+    - Restart automatically
+  </Step>
+  
+  <Step title="Complete">
+    Your device restarts with the new firmware. Re-enter your PIN and you're ready to use Suite.
+  </Step>
+</Steps>
+
+### Update timeline
+
+Typical update duration:
+
+```typescript
+const updateDuration = {
+  download: '30-60 seconds',       // Depends on connection
+  bootloaderEntry: '10 seconds',   // Manual step
+  upload: '60-120 seconds',        // To device
+  verification: '5 seconds',       // Signature check
+  installation: '30-60 seconds',   // On device
+  restart: '10 seconds',           // Device reboot
+  total: '3-5 minutes'             // End to end
+};
+```
+
+## Firmware verification
+
+Suite implements multiple verification steps to ensure firmware authenticity.
+
+### Signature verification
+
+All firmware files are signed by Trezor:
+
+```typescript
+// Firmware signature structure
+interface FirmwareSignature {
+  version: [number, number, number]; // e.g., [2, 5, 1]
+  vendorHeader: string;               // Vendor signature
+  image: {
+    code: string;                     // Code section hash
+    data: string;                     // Data section hash
+  };
+  signatures: string[];               // Multiple signatures
+}
+```
+
+<Info>
+Firmware requires multiple signatures from Trezor's signing keys. This prevents unauthorized firmware from being installed.
+</Info>
+
+### Fingerprint verification
+
+After upload, verify the fingerprint:
+
+1. Device displays firmware hash
+2. Suite displays the same hash
+3. Verify they match character by character
+4. Confirm on device to proceed
+
+<Warning>
+If fingerprints don't match, DO NOT proceed with installation. Contact Trezor support.
+</Warning>
+
+### Bootloader check
+
+Bootloader is verified during update:
+
+- Checks bootloader authenticity
+- Verifies bootloader hasn't been tampered with
+- Ensures compatibility with new firmware
+
+## Special update scenarios
+
+### First-time firmware installation
+
+Brand new devices come without firmware:
+
+<Steps>
+  <Step title="Connect new device">
+    Suite detects the device needs firmware.
+  </Step>
+  
+  <Step title="Automatic download">
+    Suite automatically downloads the latest firmware.
+  </Step>
+  
+  <Step title="Install">
+    Device is already in bootloader mode. Follow installation prompts.
+  </Step>
+  
+  <Step title="Setup">
+    After installation, proceed with device setup (create or recover wallet).
+  </Step>
+</Steps>
+
+### Downgrading firmware
+
+<Warning>
+Downgrading firmware is generally not recommended and may not be possible due to bootloader restrictions.
+</Warning>
+
+Some firmware versions prevent downgrading:
+
+- Security-critical updates may block downgrades
+- Bootloader updates are irreversible
+- Check release notes for downgrade restrictions
+
+### Beta firmware
+
+For developers and testers:
+
+1. Enable debug mode in Suite (click "Settings" header 5 times)
+2. Access **Settings → Device → Firmware**
+3. Select "Show beta versions"
+4. Choose beta firmware version
+
+<Warning>
+Beta firmware is for testing only. It may contain bugs and is not recommended for managing real funds.
+</Warning>
+
+## Firmware types
+
+### Bitcoin-only firmware
+
+Specialized firmware for Bitcoin purists:
+
+<Tabs>
+  <Tab title="Features">
+    - Only Bitcoin support
+    - Smaller code footprint
+    - Reduced attack surface
+    - Identical security model
+  </Tab>
+  
+  <Tab title="Limitations">
+    - No altcoin support
+    - No Ethereum, Cardano, etc.
+    - Cannot switch to universal without wipe
+  </Tab>
+</Tabs>
+
+### Universal firmware
+
+Standard firmware with all supported cryptocurrencies:
+
+- All coins and tokens supported
+- Regular feature updates
+- Most users should use this
+
+<Note>
+You can switch from universal to Bitcoin-only, but switching back requires wiping the device.
+</Note>
+
+## Troubleshooting updates
+
+<AccordionGroup>
+  <Accordion title="Update failed or interrupted">
+    **Don't panic**: The bootloader protects against bricked devices.
+    
+    **Recovery steps**:
+    1. Disconnect and reconnect device
+    2. Device should be in bootloader mode
+    3. Start update process again
+    4. If problems persist, try different USB port/cable
+  </Accordion>
+  
+  <Accordion title="Device stuck in bootloader">
+    **Symptoms**: Device shows bootloader screen on every connection
+    
+    **Solution**:
+    1. Connect device to Suite
+    2. Suite detects bootloader mode
+    3. Install firmware normally
+    4. Device will exit bootloader after installation
+  </Accordion>
+  
+  <Accordion title="Signature verification failed">
+    **Cause**: Downloaded firmware is corrupted or invalid
+    
+    **Solution**:
+    1. Clear Suite cache
+    2. Retry firmware download
+    3. Check internet connection
+    4. If persists, contact support
+    
+    <Warning>
+    Never proceed with installation if signature verification fails.
+    </Warning>
+  </Accordion>
+  
+  <Accordion title="Bootloader mode entry fails">
+    **Model One**:
+    - Hold both buttons BEFORE connecting
+    - Keep holding until bootloader screen appears
+    - Try different USB port
+    
+    **Model T/Safe 3**:
+    - Ensure screen is completely off
+    - Touch screen before connecting
+    - Keep touching until bootloader screen
+  </Accordion>
+  
+  <Accordion title="Low battery warning (Model T/Safe 3)">
+    **Symptom**: Update cannot proceed due to low battery
+    
+    **Solution**:
+    1. Keep device connected and charging
+    2. Wait 30-60 minutes
+    3. Retry firmware update
+    
+    <Info>
+    Firmware updates require adequate battery to prevent interruption.
+    </Info>
+  </Accordion>
+</AccordionGroup>
+
+## Post-update steps
+
+### Verify update success
+
+After updating:
+
+1. Check firmware version in Suite
+2. Verify it matches the expected version
+3. Test basic operations (account access, transaction signing)
+
+### Check new features
+
+Review the changelog:
+
+- New coins available in **Settings → Crypto**
+- Updated features in device settings
+- Security improvements (usually transparent)
+
+### Re-enable metadata
+
+If you had metadata enabled:
+
+1. Metadata keys remain valid after update
+2. Reconnect to your storage provider if needed
+3. Labels should sync automatically
+
+## Security best practices
+
+<Check>Always update through official Trezor Suite</Check>
+<Check>Verify firmware signatures (Suite does this automatically)</Check>
+<Check>Never download firmware from third-party sources</Check>
+<Check>Ensure you have a valid backup before updating</Check>
+<Check>Verify fingerprint during installation</Check>
+<Check>Keep Suite updated to get latest firmware releases</Check>
+
+<Warning>
+Never install firmware from unofficial sources. This could compromise your device and funds.
+</Warning>
+
+## Firmware release cycle
+
+### Release channels
+
+1. **Development**: Active development, frequent changes
+2. **Beta**: Testing phase, available to developers
+3. **Stable**: Public release, recommended for all users
+
+### Version numbering
+
+Firmware uses semantic versioning:
+
+```plaintext
+Major.Minor.Patch
+  2  . 5  .  1
+  │    │    └─ Bug fixes
+  │    └───── New features
+  └──────── Breaking changes
+```
+
+### Update frequency
+
+Typical release schedule:
+
+- **Security patches**: As needed (immediate)
+- **Minor updates**: Every 2-3 months
+- **Major updates**: Annually
+
+## Related topics
+
+<Columns cols={2}>
+  <Card title="Device management" icon="plug" href="/suite/device-management">
+    Managing devices and connections
+  </Card>
+  
+  <Card title="Backup and recovery" icon="shield" href="/suite/backup-recovery">
+    Backup before updating firmware
+  </Card>
+  
+  <Card title="Device settings" icon="gear" href="/suite/device-settings">
+    Configure device after updating
+  </Card>
+  
+  <Card title="Security" icon="lock" href="/suite/security">
+    Overall security best practices
+  </Card>
+</Columns>

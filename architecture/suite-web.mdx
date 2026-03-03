@@ -1,0 +1,791 @@
+---
+title: Suite Web Architecture
+description: Technical architecture of the browser-based Trezor Suite web application, including WebUSB integration, security headers, and deployment strategy.
+---
+
+# Suite Web Architecture
+
+Trezor Suite Web is a browser-based application that provides access to Trezor wallet functionality without requiring installation. It's built with modern web technologies and optimized for security and performance.
+
+## Overview
+
+Suite Web is accessible at [suite.trezor.io/web](https://suite.trezor.io/web) and runs entirely in the browser.
+
+<CardGroup cols={2}>
+  <Card title="React 19.1.0" icon="react">
+    Modern UI with hooks and concurrent features
+  </Card>
+  <Card title="Redux Toolkit" icon="database">
+    Predictable state management
+  </Card>
+  <Card title="WebUSB API" icon="usb">
+    Direct browser-to-device communication
+  </Card>
+  <Card title="Webpack 5" icon="box">
+    Optimized bundling and code splitting
+  </Card>
+</CardGroup>
+
+---
+
+## Architecture Overview
+
+```text
+┌────────────────────────────────────────┐
+│              Browser                      │
+│  ┌──────────────────────────────────┐  │
+│  │  React Application              │  │
+│  │  - @trezor/suite                │  │
+│  │  - Redux Store                  │  │
+│  │  - React Router                 │  │
+│  └──────────────────────────────────┘  │
+│  ┌──────────────────────────────────┐  │
+│  │  @trezor/connect-web            │  │
+│  │  - WebUSB Transport             │  │
+│  │  - Device Communication         │  │
+│  └──────────────────────────────────┘  │
+│  ┌──────────────────────────────────┐  │
+│  │  Browser APIs                   │  │
+│  │  - IndexedDB (Storage)          │  │
+│  │  - WebUSB (Device Access)       │  │
+│  │  - Crypto (Encryption)          │  │
+│  │  - Service Worker (Caching)     │  │
+│  └──────────────────────────────────┘  │
+└──────────────────┬─────────────────────┘
+                 │
+┌──────────────────┴─────────────────────┐
+│          CDN / Backend                  │
+│  - Static Assets                        │
+│  - Firmware Binaries                    │
+│  - Blockchain APIs                      │
+│  - Fiat Rate Services                   │
+└────────────────────────────────────────┘
+```
+
+---
+
+## Key Components
+
+### Application Layer
+
+<Tabs>
+  <Tab title="@trezor/suite">
+    **Core Application Package**
+    
+    The main Suite package provides:
+    - React components and screens
+    - Redux store and middleware
+    - Business logic
+    - Routing and navigation
+    - Hooks and utilities
+    
+    ```typescript
+    // Entry point: packages/suite-web/src/index.tsx
+    import { Suite } from '@trezor/suite';
+    import { render } from 'react-dom';
+    
+    render(
+      <Suite />,
+      document.getElementById('app')
+    );
+    ```
+    
+    <Note>
+      The same `@trezor/suite` package is used in both Web and Desktop builds.
+    </Note>
+  </Tab>
+
+  <Tab title="@trezor/connect-web">
+    **Browser-Optimized Connect**
+    
+    Web-specific implementation of Trezor Connect:
+    - Loaded as part of JavaScript bundle
+    - WebUSB for device communication
+    - Browser-compatible crypto
+    
+    ```typescript
+    import TrezorConnect from '@trezor/connect-web';
+    
+    // Initialize Connect
+    TrezorConnect.init({
+      manifest: {
+        email: 'info@trezor.io',
+        appUrl: 'https://suite.trezor.io/web',
+      },
+    });
+    
+    // Use WebUSB to communicate
+    const result = await TrezorConnect.getAddress({
+      path: "m/49'/0'/0'/0/0",
+      coin: 'btc',
+    });
+    ```
+    
+    <Info>
+      Webpack replaces `@trezor/connect` imports with `@trezor/connect-web` in the web build. See [webpack config](https://github.com/trezor/trezor-suite/blob/develop/packages/suite-build/configs/web.webpack.config.ts).
+    </Info>
+  </Tab>
+
+  <Tab title="State Management">
+    **Redux Toolkit Store**
+    
+    Centralized state management:
+    - **Slices**: Modular state containers
+    - **Thunks**: Async actions
+    - **Selectors**: Derived state
+    - **Middleware**: Side effects
+    
+    ```typescript
+    // Store structure
+    {
+      suite: { ... },           // App state
+      wallet: { ... },          // Wallet data
+      devices: [ ... ],         // Connected devices
+      accounts: [ ... ],        // User accounts
+      transactions: { ... },    // Transaction history
+      fiat: { ... },           // Fiat rates
+      ... 
+    }
+    ```
+    
+    **Persistence**: State saved to IndexedDB
+  </Tab>
+
+  <Tab title="Routing">
+    **React Router v6**
+    
+    Client-side routing with:
+    - Code splitting per route
+    - Lazy loading
+    - Protected routes
+    - Redirect handling
+    
+    ```typescript
+    const routes = [
+      { path: '/', component: Dashboard },
+      { path: '/accounts', component: Accounts },
+      { path: '/accounts/:symbol/:accountIndex', component: AccountDetail },
+      { path: '/settings', component: Settings },
+      // ... more routes
+    ];
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Key Differences: Web vs Desktop
+
+<Tabs>
+  <Tab title="Connect Integration">
+    ### Web
+    ```typescript
+    // @trezor/connect-web is part of bundle
+    import TrezorConnect from '@trezor/connect';
+    // ↑ Webpack replaces with '@trezor/connect-web'
+    
+    // Direct WebUSB communication
+    const result = await TrezorConnect.getPublicKey(...);
+    ```
+    
+    ### Desktop
+    ```typescript
+    // @trezor/ipc-proxy in renderer
+    import TrezorConnect from '@trezor/connect';
+    // ↑ Proxies to main process via IPC
+    
+    // Main process has real Connect with USB/HID
+    const result = await TrezorConnect.getPublicKey(...);
+    ```
+    
+    <Note>
+      Web uses direct WebUSB; Desktop uses IPC to Node.js main process.
+    </Note>
+  </Tab>
+
+  <Tab title="Firmware Updates">
+    ### Web
+    - Firmware downloaded from **CDN**
+    - URL: `https://suite.trezor.io/web/build/static/connect/data/firmware/[version]/[file]`
+    - Uses `fetch()` API
+    - **Requires internet**
+    
+    ```typescript
+    // Fetched on-demand
+    const firmwareUrl = `${CDN_URL}/firmware/2.6.0/trezor-2.6.0.bin`;
+    const response = await fetch(firmwareUrl);
+    const firmware = await response.arrayBuffer();
+    ```
+    
+    ### Desktop
+    - Firmware **bundled** with app
+    - Located in `bin/` directory
+    - Uses `fs.readFile()`
+    - **Works offline**
+    
+    ```typescript
+    // Read from filesystem
+    const firmwarePath = path.join(resourcesPath, 'bin/firmware/2.6.0/trezor-2.6.0.bin');
+    const firmware = fs.readFileSync(firmwarePath);
+    ```
+  </Tab>
+
+  <Tab title="Storage">
+    ### Web
+    - **IndexedDB**: Primary storage
+    - **LocalStorage**: Small settings
+    - **SessionStorage**: Temporary data
+    - Domain-specific (separate per URL)
+    
+    ```typescript
+    // IndexedDB for wallet data
+    const db = await openDB('trezor-suite', 1);
+    await db.put('accounts', accountData);
+    ```
+    
+    ### Desktop
+    - **IndexedDB**: Same as web
+    - **File system**: Logs, exports
+    - Stored in app data directory
+    - Environment-specific paths
+  </Tab>
+
+  <Tab title="Limitations">
+    ### Web Limitations
+    ❌ **No Tor support**: Browser limitations
+    
+    ❌ **No Bluetooth**: WebBluetooth not implemented
+    
+    ❌ **Browser-dependent**: WebUSB only in Chromium browsers
+    
+    ❌ **Internet required**: Can't work fully offline
+    
+    ❌ **Limited file access**: No arbitrary file system access
+    
+    ### Desktop Advantages
+    
+    ✅ **Tor integration**: Built-in privacy
+    
+    ✅ **Bluetooth support**: BLE device connectivity
+    
+    ✅ **All browsers**: No WebUSB dependency
+    
+    ✅ **Offline mode**: Full functionality without internet
+    
+    ✅ **File system**: Export logs, backups, etc.
+  </Tab>
+</Tabs>
+
+---
+
+## Build System
+
+### Package Structure
+
+```text
+packages/suite-web/
+├── src/
+│   ├── index.tsx              # Entry point
+│   ├── support/               # Support pages
+│   └── static/                # Static assets
+├── build/                     # Production output
+│   ├── static/
+│   │   ├── css/
+│   │   ├── js/
+│   │   └── connect/
+│   │       └── data/
+│   │           └── firmware/
+│   └── index.html
+├── package.json
+└── preview.vite.config.mts    # Preview server config
+```
+
+### Build Process
+
+<Steps>
+  <Step title="Development Build">
+    ```bash
+    yarn suite:dev
+    ```
+    
+    - Webpack dev server on `http://localhost:8000`
+    - Hot Module Replacement (HMR)
+    - Source maps
+    - Fast refresh
+    
+    **Experimental Vite:**
+    ```bash
+    yarn suite:dev:vite
+    ```
+    <Warning>
+      Vite is experimental for development only. Production uses Webpack.
+    </Warning>
+  </Step>
+
+  <Step title="Production Build">
+    ```bash
+    yarn suite:build:web
+    ```
+    
+    **Output**: `packages/suite-web/build/`
+    
+    Optimizations:
+    - Minification (Terser)
+    - Code splitting
+    - Tree shaking
+    - Asset optimization
+    - Gzip/Brotli compression
+  </Step>
+
+  <Step title="Bundle Analysis">
+    ```bash
+    yarn workspace @trezor/suite-web analyze
+    ```
+    
+    Opens Webpack Bundle Analyzer showing:
+    - Bundle size breakdown
+    - Module dependencies
+    - Duplicate code
+    - Optimization opportunities
+  </Step>
+
+  <Step title="Preview Production Build">
+    ```bash
+    yarn suite:build:web:preview
+    ```
+    
+    Runs Vite preview server with:
+    - Production build
+    - Security headers applied
+    - Localhost testing
+    
+    Access at: `http://localhost:4173`
+  </Step>
+</Steps>
+
+### Webpack Configuration
+
+Key configurations in `packages/suite-build/configs/web.webpack.config.ts`:
+
+<Accordion title="Module Replacement">
+  Replace imports for web environment:
+  ```javascript
+  alias: {
+    '@trezor/connect': '@trezor/connect-web',
+    // Other platform-specific replacements
+  }
+  ```
+</Accordion>
+
+<Accordion title="Code Splitting">
+  ```javascript
+  optimization: {
+    splitChunks: {
+      chunks: 'all',
+      cacheGroups: {
+        vendor: {
+          test: /[\\/]node_modules[\\/]/,
+          priority: -10,
+        },
+        common: {
+          minChunks: 2,
+          priority: -20,
+        },
+      },
+    },
+  }
+  ```
+</Accordion>
+
+<Accordion title="Asset Optimization">
+  - Images: `image-webpack-loader`
+  - SVGs: `@svgr/webpack`
+  - Fonts: Subset and compress
+  - Compression: Gzip + Brotli plugins
+</Accordion>
+
+---
+
+## Security
+
+### Content Security Policy (CSP)
+
+Production builds include strict CSP headers:
+
+```http
+Content-Security-Policy: 
+  default-src 'self';
+  script-src 'self' 'wasm-unsafe-eval';
+  style-src 'self' 'unsafe-inline';
+  img-src 'self' data: https:;
+  connect-src 'self' https://suite.trezor.io https://*.trezor.io wss://blockbook.trezor.io;
+  font-src 'self' data:;
+  object-src 'none';
+  base-uri 'self';
+  form-action 'none';
+  frame-ancestors 'none';
+```
+
+<Info>
+  CSP headers are configured in the CDN/hosting platform (Cloudflare, Nginx, etc.).
+</Info>
+
+### Other Security Headers
+
+```http
+X-Frame-Options: DENY
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 1; mode=block
+Referrer-Policy: strict-origin-when-cross-origin
+Permissions-Policy: camera=(), microphone=(), geolocation=()
+```
+
+### HTTPS Only
+
+<Warning>
+  Suite Web **requires HTTPS**. WebUSB API is only available on secure origins.
+</Warning>
+
+---
+
+## Browser Compatibility
+
+### Supported Browsers
+
+| Browser | Version | WebUSB | Notes |
+|---------|---------|--------|-------|
+| **Chrome** | 90+ | ✅ Yes | Recommended |
+| **Edge** | 90+ | ✅ Yes | Chromium-based |
+| **Brave** | 1.24+ | ✅ Yes | Privacy-focused |
+| **Opera** | 76+ | ✅ Yes | Chromium-based |
+| **Firefox** | 88+ | ❌ No | No WebUSB support |
+| **Safari** | 14+ | ❌ No | Limited support |
+
+<Note>
+  **Recommended**: Chrome or Brave for full functionality.
+</Note>
+
+### Feature Detection
+
+```typescript
+// Check WebUSB support
+if ('usb' in navigator) {
+  // WebUSB available
+  await navigator.usb.requestDevice({ filters: [{ vendorId: 0x1209 }] });
+} else {
+  // Show warning or redirect to desktop download
+  showWebUSBNotSupported();
+}
+```
+
+### Polyfills
+
+Included polyfills:
+- Core-js for ES6+ features
+- Crypto polyfills for older browsers
+- Fetch polyfill
+
+---
+
+## Development
+
+### Local Development
+
+```bash
+# Start dev server
+yarn suite:dev
+
+# Open browser
+open http://localhost:8000
+```
+
+### Environment Variables
+
+Create `.env.local` in repository root:
+
+```bash
+# Enable React Query DevTools
+TANSTACK_REACT_QUERY_DEV_TOOLS=true
+
+# Custom backend URLs (optional)
+BLOCKCHAIN_LINK_URL=http://localhost:8080
+
+# Feature flags
+FEATURE_FLAG_EXPERIMENTAL=true
+```
+
+### Hot Module Replacement
+
+```typescript
+// Enable HMR for Redux store
+if (module.hot) {
+  module.hot.accept('./store/rootReducer', () => {
+    store.replaceReducer(require('./store/rootReducer').default);
+  });
+}
+```
+
+### Development Tools
+
+<CardGroup cols={2}>
+  <Card title="Redux DevTools" icon="browser">
+    Browser extension for Redux debugging
+  </Card>
+  <Card title="React DevTools" icon="react">
+    Component tree inspection
+  </Card>
+  <Card title="Network Tab" icon="network-wired">
+    Monitor API calls and WebUSB
+  </Card>
+  <Card title="Console" icon="terminal">
+    Debug logs and errors
+  </Card>
+</CardGroup>
+
+---
+
+## Deployment
+
+### Build & Deploy
+
+<Steps>
+  <Step title="Build Production">
+    ```bash
+    yarn suite:build:web
+    ```
+  </Step>
+
+  <Step title="Review Output">
+    Check `packages/suite-web/build/` directory:
+    - Verify file sizes
+    - Test bundle loading
+    - Check source maps
+  </Step>
+
+  <Step title="Deploy to CDN">
+    Upload `build/` contents to CDN:
+    - Cloudflare Workers
+    - AWS S3 + CloudFront
+    - Vercel
+    - Netlify
+  </Step>
+
+  <Step title="Configure Headers">
+    Set security headers on CDN:
+    - Content-Security-Policy
+    - X-Frame-Options
+    - Cache-Control
+  </Step>
+
+  <Step title="Test Deployment">
+    - Test on multiple browsers
+    - Verify WebUSB functionality
+    - Check error tracking (Sentry)
+    - Monitor performance
+  </Step>
+</Steps>
+
+### CI/CD Pipeline
+
+Automated deployment via GitHub Actions:
+
+```yaml
+# .github/workflows/deploy-web.yml
+name: Deploy Suite Web
+
+on:
+  push:
+    branches: [main, develop]
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node
+        uses: actions/setup-node@v3
+      - name: Install dependencies
+        run: yarn
+      - name: Build
+        run: yarn suite:build:web
+      - name: Deploy to CDN
+        # ... deployment steps
+```
+
+---
+
+## Performance Optimization
+
+<Tabs>
+  <Tab title="Bundle Size">
+    **Techniques**:
+    - Code splitting by route
+    - Lazy loading components
+    - Tree shaking unused code
+    - Dynamic imports
+    
+    ```typescript
+    // Lazy load heavy components
+    const AccountDetail = lazy(() => import('./screens/AccountDetail'));
+    
+    // Render with Suspense
+    <Suspense fallback={<Loading />}>
+      <AccountDetail />
+    </Suspense>
+    ```
+    
+    **Target sizes**:
+    - Initial bundle: < 500 KB (gzipped)
+    - Total app: < 5 MB (gzipped)
+  </Tab>
+
+  <Tab title="Loading Performance">
+    **Strategies**:
+    - Preload critical resources
+    - Defer non-critical scripts
+    - Optimize images (WebP)
+    - Use service worker caching
+    
+    ```html
+    <!-- Preload critical assets -->
+    <link rel="preload" href="/static/css/main.css" as="style">
+    <link rel="preload" href="/static/js/main.js" as="script">
+    ```
+  </Tab>
+
+  <Tab title="Runtime Performance">
+    **Optimizations**:
+    - React.memo for expensive components
+    - useMemo/useCallback hooks
+    - Virtual scrolling for long lists
+    - Debounce/throttle user input
+    
+    ```typescript
+    // Memoize expensive computations
+    const sortedTransactions = useMemo(
+      () => transactions.sort(byDate),
+      [transactions]
+    );
+    ```
+  </Tab>
+
+  <Tab title="Network">
+    **Optimizations**:
+    - HTTP/2 multiplexing
+    - Brotli compression
+    - CDN edge caching
+    - WebSocket for blockchain data
+    
+    **Cache strategy**:
+    ```http
+    # Static assets
+    Cache-Control: public, max-age=31536000, immutable
+    
+    # HTML
+    Cache-Control: no-cache, must-revalidate
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Monitoring & Analytics
+
+### Error Tracking
+
+**Sentry Integration**:
+
+```typescript
+import * as Sentry from '@sentry/browser';
+
+Sentry.init({
+  dsn: 'https://your-dsn@sentry.io/project',
+  environment: 'production',
+  release: `suite-web@${APP_VERSION}`,
+  beforeSend(event) {
+    // Filter sensitive data
+    return sanitizeEvent(event);
+  },
+});
+```
+
+### Performance Monitoring
+
+```typescript
+// Web Vitals
+import { getCLS, getFID, getFCP, getLCP, getTTFB } from 'web-vitals';
+
+getCLS(console.log);
+getFID(console.log);
+getFCP(console.log);
+getLCP(console.log);
+getTTFB(console.log);
+```
+
+### Usage Analytics
+
+Suite includes privacy-respecting analytics:
+- No personal data collected
+- Anonymized user IDs
+- Opt-out available
+- Compliant with GDPR
+
+---
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="WebUSB not working" icon="usb">
+    **Possible causes**:
+    1. Unsupported browser (use Chrome/Brave)
+    2. Non-HTTPS connection
+    3. Missing USB permissions
+    4. Another app is using the device
+    
+    **Solutions**:
+    ```javascript
+    // Request permissions explicitly
+    await navigator.usb.requestDevice({
+      filters: [{ vendorId: 0x1209, productId: 0x53C1 }]
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="Build errors" icon="triangle-exclamation">
+    ```bash
+    # Clean build
+    rm -rf packages/suite-web/build
+    rm -rf node_modules/.cache
+    
+    # Rebuild
+    yarn build:essential
+    yarn suite:build:web
+    ```
+  </Accordion>
+
+  <Accordion title="Slow performance" icon="gauge">
+    1. Check bundle size: `yarn suite:analyze`
+    2. Profile with React DevTools
+    3. Check network waterfall
+    4. Verify CDN caching
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Suite Desktop" icon="desktop" href="/architecture/suite-desktop">
+    Compare with desktop architecture
+  </Card>
+  <Card title="Suite Mobile" icon="mobile" href="/architecture/suite-mobile">
+    Explore mobile architecture
+  </Card>
+  <Card title="Connect API" icon="plug" href="/connect/overview">
+    Learn about Trezor Connect
+  </Card>
+  <Card title="Contributing" icon="code-pull-request" href="https://github.com/trezor/trezor-suite/blob/develop/COMMITS.md">
+    Contribute to Suite Web
+  </Card>
+</CardGroup>

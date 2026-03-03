@@ -1,0 +1,379 @@
+---
+title: 'Transactions'
+description: 'Managing transaction history, searching, filtering, and exporting in Trezor Suite'
+keywords: ['transactions', 'transaction history', 'search', 'export', 'blockchain']
+---
+
+# Transactions
+
+Trezor Suite provides comprehensive transaction management features, allowing you to view, search, filter, and export your transaction history across all supported cryptocurrencies.
+
+## Transaction overview
+
+The transaction list displays all confirmed and pending transactions for the currently selected account:
+
+- **Transaction type**: Send, receive, or self-transfer
+- **Amount**: Value sent or received
+- **Date and time**: When the transaction was confirmed
+- **Status**: Confirmed, pending, or failed
+- **Labels**: Custom labels for addresses and outputs
+
+<Info>
+Transaction data is fetched from blockchain backends in real-time and cached locally for performance.
+</Info>
+
+## Transaction details
+
+Click any transaction to view detailed information:
+
+<Tabs>
+  <Tab title="Basic info">
+    - Transaction ID (TXID)
+    - Block height and confirmations
+    - Fee paid
+    - Total amount
+    - Network status
+  </Tab>
+  
+  <Tab title="Inputs & Outputs">
+    - All input addresses (where funds came from)
+    - All output addresses (where funds went)
+    - Change addresses identified
+    - Labels for known addresses
+  </Tab>
+  
+  <Tab title="Technical details">
+    - Raw transaction data
+    - Size in bytes
+    - Fee rate (sat/vB for Bitcoin)
+    - RBF status
+    - Locktime (if set)
+  </Tab>
+</Tabs>
+
+## Searching transactions
+
+Suite offers powerful transaction search capabilities using an advanced query syntax.
+
+### Opening search
+
+<Steps>
+  <Step title="Access search">
+    Click the magnifying glass icon above the transaction list or use the keyboard shortcut:
+    - **Windows/Linux**: `Ctrl + F`
+    - **macOS**: `⌘ + F`
+  </Step>
+  
+  <Step title="Enter search query">
+    Type your search term in the input field. Results update in real-time as you type.
+  </Step>
+</Steps>
+
+### Search types
+
+<AccordionGroup>
+  <Accordion title="Free text search">
+    Search for:
+    - Transaction IDs (full or partial)
+    - Addresses (input or output)
+    - Output labels
+    - Address labels
+    
+    Example: `bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh`
+  </Accordion>
+  
+  <Accordion title="Amount search">
+    Any number is treated as an amount search. Supports operators:
+    - `> 0.001` - Amounts greater than 0.001
+    - `< 0` - All outgoing transactions
+    - `= 0.01` - Exactly 0.01
+    - `!= 0.01` - Not equal to 0.01
+    
+    Partial matches work without operators.
+  </Accordion>
+  
+  <Accordion title="Date search">
+    Use ISO date format `yyyy-mm-dd`:
+    - `2024-03-15` - Transactions on March 15, 2024
+    - `> 2024-01-01` - After January 1, 2024
+    - `< 2024-12-31` - Before December 31, 2024
+    - `!= 2024-03-15` - Not on March 15, 2024
+  </Accordion>
+  
+  <Accordion title="Combined search">
+    Use operators to combine searches:
+    - **AND operator**: `&`
+    - **OR operator**: `|`
+    
+    Examples:
+    - `> 2024-01-01 & < 2024-12-31` - All of 2024
+    - `> 2024-01-01 & > 0` - Incoming transactions in 2024
+    - `> 0.01 | > 2024-01-01` - Large amounts OR recent
+    
+    <Note>
+    The AND operator (`&`) has precedence over OR (`|`), similar to SQL.
+    </Note>
+  </Accordion>
+</AccordionGroup>
+
+### Search examples
+
+```plaintext
+All incoming transactions in December 2020:
+> 2020-12-01 & < 2020-12-31 & > 0
+
+All transactions from December 2019 or 2020:
+> 2019-12-01 & < 2019-12-31 | > 2020-12-01 & < 2020-12-31
+
+All outgoing transactions over 0.01 BTC:
+< 0 & > 0.01
+
+Transactions to a specific address:
+bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh
+```
+
+## Exporting transactions
+
+Export your transaction history for accounting, tax reporting, or data analysis.
+
+### Export formats
+
+<Tabs>
+  <Tab title="PDF">
+    **Best for**: Printing and official records
+    
+    **Contains**:
+    - Account information
+    - Transaction list with dates, amounts, and fees
+    - Fiat values at transaction time
+    - Formatted for readability
+  </Tab>
+  
+  <Tab title="CSV">
+    **Best for**: Spreadsheets and accounting software
+    
+    **Contains**:
+    - All transaction fields in comma-separated format
+    - Compatible with Excel, Google Sheets
+    - Historical fiat rates included
+  </Tab>
+  
+  <Tab title="JSON">
+    **Best for**: Data analysis and custom processing
+    
+    **Contains**:
+    - Complete transaction data structure
+    - All metadata and technical details
+    - Easy to parse programmatically
+    
+    ```json
+    [
+      {
+        "txid": "9f472739fa7034dfb9736fa4d98915f2e8ddf70a86ee5e0a9ac0634f8c1d0007",
+        "type": "recv",
+        "amount": "1000000",
+        "fee": "141",
+        "blockHeight": 650000,
+        "blockTime": 1609459200,
+        "targets": [
+          {
+            "addresses": ["bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh"],
+            "amount": "1000000",
+            "isAddress": true
+          }
+        ]
+      }
+    ]
+    ```
+  </Tab>
+</Tabs>
+
+### Exporting transactions
+
+<Steps>
+  <Step title="Open export menu">
+    Click the three-dot menu icon next to the search button in the transaction list.
+  </Step>
+  
+  <Step title="Select format">
+    Choose your preferred export format: PDF, CSV, or JSON.
+  </Step>
+  
+  <Step title="Configure options">
+    Select which transactions to export:
+    - All transactions
+    - Current search results
+    - Date range
+  </Step>
+  
+  <Step title="Download file">
+    The file is generated and downloaded to your default downloads folder.
+  </Step>
+</Steps>
+
+<Tip>
+Use search filters before exporting to create custom reports (e.g., "all incoming transactions in 2024").
+</Tip>
+
+## Transaction states
+
+### Pending transactions
+
+Transactions that have been broadcast but not yet confirmed:
+
+- Show with a **Pending** badge
+- Update in real-time as confirmations increase
+- Can be bumped using Replace-by-Fee (RBF) on Bitcoin
+
+<Warning>
+Pending transactions can potentially be replaced or cancelled before confirmation. Wait for at least one confirmation before considering a transaction final.
+</Warning>
+
+### Confirmed transactions
+
+Transactions included in a block:
+
+- Show confirmation count
+- Include block height and timestamp
+- Cannot be reversed (unless blockchain reorganizes)
+
+### Failed transactions
+
+Transactions that did not confirm:
+
+- Marked with a **Failed** badge
+- May have insufficient fee
+- Funds return to sender
+
+## Historical fiat rates
+
+Suite automatically fetches and stores fiat exchange rates at the time of each transaction.
+
+### Rate providers
+
+- **Blockbook**: Primary source for Bitcoin, Ethereum, Litecoin, and ERC-20 tokens
+- **CoinGecko**: Fallback provider and primary for XRP, Solana, Cardano
+
+### Rate fetching
+
+```typescript
+// Historical rates are fetched on transaction add
+interface TransactionWithRate {
+  txid: string;
+  amount: string;
+  blockTime: number;
+  rates: {
+    [currency: string]: number; // e.g., { "usd": 45000.00 }
+  };
+}
+```
+
+<Info>
+Historical rates are stored permanently with each transaction and don't update (unlike current market rates).
+</Info>
+
+## Transaction labeling
+
+Add custom labels to transaction outputs and addresses for better organization.
+
+### Where labels appear
+
+- **Transaction list**: Labels show instead of addresses
+- **Transaction details**: Both label and address visible
+- **Send form**: Auto-suggests previously labeled addresses
+
+### Setting labels
+
+You can add labels in multiple places:
+
+1. **Receive tab**: Label receiving addresses
+2. **Transaction details**: Label any input or output
+3. **Send form**: Label the recipient while sending
+4. **Coin control**: Label UTXOs for organization
+
+<Note>
+Labels are stored using the metadata system and can be synced across devices. See [Metadata labeling](/suite/metadata-labeling) for details.
+</Note>
+
+## Network-specific features
+
+<Tabs>
+  <Tab title="Bitcoin">
+    - Replace-by-Fee (RBF) support
+    - UTXO (coin) selection
+    - OP_RETURN data display
+    - Locktime support
+    - Multiple account types (Native SegWit, SegWit, Legacy)
+  </Tab>
+  
+  <Tab title="Ethereum">
+    - ERC-20 token transfers
+    - Internal transactions
+    - Smart contract interactions
+    - Data field for contract calls
+    - Gas price and limit
+  </Tab>
+  
+  <Tab title="Cardano">
+    - Multi-asset transactions
+    - Staking rewards
+    - Delegation history
+    - Token metadata
+  </Tab>
+  
+  <Tab title="Solana">
+    - SPL token transfers
+    - Program interactions
+    - Rent payments
+    - Associated token accounts
+  </Tab>
+</Tabs>
+
+## Performance optimization
+
+Suite implements several optimizations for transaction handling:
+
+### Pagination
+
+Transactions are loaded in pages:
+
+```typescript
+// Transactions per page by network
+const TX_PER_PAGE = {
+  bitcoin: 25,
+  ethereum: 25,
+  cardano: 25,
+  solana: 50,
+  ripple: 25,
+};
+```
+
+### Smart updates
+
+- Only active accounts poll for new transactions
+- Update interval: 30 seconds
+- Faster polling for accounts with pending transactions
+
+### Local caching
+
+Transaction data is cached in IndexedDB for instant loading on subsequent visits.
+
+## Related topics
+
+<Columns cols={2}>
+  <Card title="Send and receive" icon="paper-plane" href="/suite/send-receive">
+    Create new transactions and receive funds
+  </Card>
+  
+  <Card title="Metadata labeling" icon="tag" href="/suite/metadata-labeling">
+    Learn about syncing transaction labels
+  </Card>
+  
+  <Card title="Account discovery" icon="magnifying-glass" href="/suite/account-discovery">
+    How accounts and transactions are discovered
+  </Card>
+  
+  <Card title="CoinJoin privacy" icon="user-secret" href="/suite/coinjoin-privacy">
+    Enhanced privacy for Bitcoin transactions
+  </Card>
+</Columns>

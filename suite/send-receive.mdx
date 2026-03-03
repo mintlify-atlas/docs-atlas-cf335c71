@@ -1,0 +1,495 @@
+---
+title: 'Send and receive'
+description: 'Sending and receiving cryptocurrency with Trezor Suite across all supported networks'
+keywords: ['send', 'receive', 'transaction', 'address', 'fee', 'QR code']
+---
+
+# Send and receive
+
+Trezor Suite makes it easy to send and receive cryptocurrency across all supported blockchain networks. Every transaction requires confirmation on your Trezor device for maximum security.
+
+## Receiving cryptocurrency
+
+Receiving funds is straightforward and doesn't require device confirmation.
+
+<Steps>
+  <Step title="Navigate to Receive tab">
+    Select the account you want to receive funds into and click the **Receive** tab.
+  </Step>
+  
+  <Step title="Generate fresh address">
+    Click **Show address** to generate a new receiving address. Suite automatically shows unused addresses.
+  </Step>
+  
+  <Step title="Verify on device">
+    The address appears on your Trezor device screen. Verify it matches the address shown in Suite.
+    
+    <Warning>
+    Always verify the address on your Trezor device screen before sharing it. This protects against malware that might alter the address in Suite.
+    </Warning>
+  </Step>
+  
+  <Step title="Share address">
+    Copy the address or scan the QR code to share with the sender. You can safely reuse this address for multiple transactions.
+  </Step>
+</Steps>
+
+### Address types
+
+Different cryptocurrencies use different address formats:
+
+<Tabs>
+  <Tab title="Bitcoin">
+    **Native SegWit** (recommended):
+    - Format: `bc1...` (mainnet) or `tb1...` (testnet)
+    - Lowest transaction fees
+    - Full SegWit benefits
+    
+    **SegWit (wrapped)**:
+    - Format: `3...`
+    - Compatible with older services
+    - Slightly higher fees than Native SegWit
+    
+    **Legacy**:
+    - Format: `1...`
+    - Maximum compatibility
+    - Highest transaction fees
+  </Tab>
+  
+  <Tab title="Ethereum">
+    - Format: `0x...` (42 characters)
+    - Case-insensitive with checksum validation
+    - Works for ETH and all ERC-20 tokens
+    - Same address across all EVM-compatible chains
+  </Tab>
+  
+  <Tab title="Cardano">
+    - Format: `addr1...` (Byron) or stake addresses
+    - Supports multi-asset transactions
+    - Long address format for security
+  </Tab>
+  
+  <Tab title="Solana">
+    - Format: Base58-encoded (32-44 characters)
+    - Main account for SOL
+    - Associated token accounts for SPL tokens
+  </Tab>
+</Tabs>
+
+### Address labeling
+
+Add custom labels to your receiving addresses for better organization:
+
+1. Click the pencil icon next to an address in the Receive tab
+2. Enter a descriptive label (e.g., "Salary March 2024", "Coinbase transfer")
+3. Labels sync across devices when metadata is enabled
+
+<Info>
+Labeled addresses appear in transaction history with their labels, making it easy to identify the source of funds.
+</Info>
+
+### Address reuse
+
+For privacy reasons, it's recommended to use a fresh address for each transaction:
+
+- **Bitcoin**: Suite automatically generates new addresses; previous addresses remain valid
+- **Ethereum**: Single address per account (reuse is standard)
+- **Cardano**: New addresses generated automatically
+- **Solana**: Single address per account
+
+## Sending cryptocurrency
+
+Sending requires device confirmation and signature for security.
+
+### Basic send flow
+
+<Steps>
+  <Step title="Navigate to Send tab">
+    Select the account you want to send from and click the **Send** tab.
+  </Step>
+  
+  <Step title="Enter recipient address">
+    Paste or type the recipient's address. Suite validates the address format automatically.
+    
+    <Tip>
+    Click the QR code icon to scan an address from your camera or upload an image.
+    </Tip>
+  </Step>
+  
+  <Step title="Enter amount">
+    Enter the amount to send in cryptocurrency or fiat currency. Use the **Send max** button to send all available funds.
+  </Step>
+  
+  <Step title="Select fee level">
+    Choose a transaction fee:
+    - **Low**: Slower confirmation, lower cost
+    - **Normal**: Balanced speed and cost (recommended)
+    - **High**: Faster confirmation, higher cost
+    - **Custom**: Set your own fee rate
+  </Step>
+  
+  <Step title="Review and confirm">
+    Click **Review** to see transaction details. Confirm all details on your Trezor device screen.
+  </Step>
+  
+  <Step title="Sign transaction">
+    Approve the transaction on your device. Suite broadcasts it to the network.
+  </Step>
+</Steps>
+
+### Send form validation
+
+Suite validates all inputs in real-time:
+
+#### Address validation
+
+```typescript
+// Address error types
+type AddressError =
+  | 'RECIPIENT_IS_NOT_SET'           // Empty field
+  | 'RECIPIENT_IS_NOT_VALID'         // Invalid format
+  | 'RECIPIENT_CANNOT_SEND_TO_MYSELF' // XRP restriction
+```
+
+#### Amount validation
+
+<AccordionGroup>
+  <Accordion title="General amount errors">
+    - `AMOUNT_IS_NOT_SET`: Empty amount field
+    - `AMOUNT_IS_TOO_LOW`: Zero or negative amount
+    - `AMOUNT_IS_NOT_ENOUGH`: Insufficient balance
+    - `AMOUNT_IS_NOT_IN_RANGE_DECIMALS`: Too many decimal places
+  </Accordion>
+  
+  <Accordion title="Bitcoin-specific errors">
+    - `AMOUNT_IS_BELOW_DUST`: Below network dust limit (546 satoshis)
+    - Dust limit prevents creating uneconomical UTXOs
+  </Accordion>
+  
+  <Accordion title="Ethereum-specific errors">
+    - `AMOUNT_NOT_ENOUGH_CURRENCY_FEE`: Not enough ETH for gas when sending tokens
+    - `AMOUNT_IS_NOT_INTEGER`: ERC-20 token doesn't allow decimals
+  </Accordion>
+  
+  <Accordion title="Network-specific errors">
+    - **XRP**: `AMOUNT_IS_MORE_THAN_RESERVE` - Cannot spend 20 XRP reserve
+    - **XRP**: `AMOUNT_IS_LESS_THAN_RESERVE` - Must send at least 20 XRP to new accounts
+    - **Solana**: `REMAINING_BALANCE_LESS_THAN_RENT` - Must maintain rent-exempt balance
+  </Accordion>
+</AccordionGroup>
+
+### Multiple recipients
+
+Bitcoin and compatible networks support sending to multiple addresses in one transaction:
+
+1. Click **Add recipient** in the send form
+2. Enter address and amount for each recipient
+3. Total amount and fee are calculated automatically
+4. More cost-efficient than separate transactions
+
+<Note>
+Multiple recipients reduce total fees by consolidating transactions into a single blockchain entry.
+</Note>
+
+### Fee management
+
+#### Fee levels
+
+Suite provides recommended fee levels based on current network conditions:
+
+```typescript
+// Fee level structure
+interface FeeLevel {
+  label: 'low' | 'normal' | 'high' | 'custom';
+  feePerUnit: string;      // Satoshis per byte (BTC) or Gwei (ETH)
+  feeLimit?: string;       // Gas limit for Ethereum
+  estimatedTime?: number;  // Minutes (BTC only)
+}
+```
+
+#### Custom fees
+
+<Warning>
+Setting custom fees requires understanding of network fee markets. Too low fees may result in stuck transactions.
+</Warning>
+
+Custom fee validation:
+- **Bitcoin**: Must be integer satoshis per byte
+- **Ethereum**: Maximum 9 decimal places (Gwei precision)
+- **All networks**: Must be between minimum and maximum allowed
+
+#### Send max behavior
+
+When **Send max** is enabled:
+
+- Calculates maximum sendable amount after fees
+- Updates automatically when fee level changes
+- Accounts for UTXO selection (Bitcoin)
+- Reserves required minimums (XRP, Solana)
+
+```typescript
+// Send max calculation triggers
+const sendMaxRecalculation = [
+  'onFeeLevelChange',
+  'onCustomFeeChange',
+  'onAdditionalDataChange',    // OP_RETURN, ETH data
+  'onSecondOutputChange',      // Multiple recipients
+  'onTokenSwitch',            // ETH <-> ERC-20
+];
+```
+
+### Advanced features
+
+<Tabs>
+  <Tab title="Bitcoin">
+    **OP_RETURN data**:
+    - Add arbitrary data to transactions (up to 80 bytes)
+    - ASCII or hexadecimal input
+    - Useful for timestamping and proof-of-existence
+    
+    **Locktime**:
+    - Set future time or block height for transaction validity
+    - Blocks after 500,000,000 are timestamps
+    - Below 500,000,000 are block numbers
+    - Disables RBF and broadcast options
+    
+    **Replace-by-Fee (RBF)**:
+    - Mark transaction as replaceable
+    - Allows fee bumping if transaction is stuck
+    - Cannot be used with locktime
+  </Tab>
+  
+  <Tab title="Ethereum">
+    **Data field**:
+    - Add hexadecimal data for smart contract calls
+    - Up to 8,192 bytes
+    - ASCII or hex input supported
+    
+    **Gas settings**:
+    - Gas price: Cost per unit of computation
+    - Gas limit: Maximum computation allowed
+    - Total fee = gas price × gas limit
+    
+    **Token selection**:
+    - Switch between ETH and ERC-20 tokens
+    - Must have enough ETH for gas
+    - Token amounts use token decimals
+  </Tab>
+  
+  <Tab title="XRP">
+    **Destination tag**:
+    - Optional numeric identifier (0-4,294,967,295)
+    - Required by most exchanges
+    - No fee impact
+    - Not a part of the address
+    
+    **Reserve requirement**:
+    - 10 XRP base reserve
+    - Cannot spend below reserve
+    - New accounts need 20 XRP minimum
+  </Tab>
+  
+  <Tab title="Cardano">
+    **Token bundles**:
+    - Send multiple native tokens in one transaction
+    - Include both ADA and tokens
+    - Automatic UTXO selection
+  </Tab>
+</Tabs>
+
+### Broadcast options
+
+Control whether to broadcast the transaction immediately:
+
+<AccordionGroup>
+  <Accordion title="Send transaction (default)">
+    Signs and broadcasts the transaction to the network immediately.
+  </Accordion>
+  
+  <Accordion title="Sign only">
+    Signs the transaction but doesn't broadcast it. Useful for:
+    - Offline signing
+    - Manual broadcasting via another tool
+    - Testing transaction construction
+    
+    The signed transaction can be:
+    - Copied as hexadecimal
+    - Downloaded as a file
+    - Broadcast later using **Send Raw** feature
+  </Accordion>
+</AccordionGroup>
+
+### Draft saving
+
+Suite automatically saves incomplete send forms as drafts:
+
+- Saves on any valid field change
+- Loads automatically when returning to send form
+- One draft per account
+- Cleared when transaction is sent
+
+<Tip>
+Drafts let you prepare transactions across multiple sessions without losing data.
+</Tip>
+
+## Transaction review
+
+Before signing, Suite shows a review modal:
+
+### Review details
+
+1. **Recipient address**: Verify it matches your intended recipient
+2. **Amount**: Confirm the sending amount
+3. **Fee**: Review the transaction fee
+4. **Total**: Amount + fee
+5. **Additional data**: OP_RETURN, destination tags, etc.
+
+<Warning>
+Always verify the recipient address on your Trezor device screen. The device screen is the only trusted source of truth.
+</Warning>
+
+### Device confirmation
+
+The transaction details appear on your Trezor device:
+
+1. **Amount screens**: Show each output amount and address
+2. **Fee screen**: Shows the transaction fee
+3. **Total screen**: Shows the total amount leaving your wallet
+4. **Confirmation screen**: Final approval to sign
+
+<Info>
+For transactions with many outputs or long data fields, you'll need to scroll through multiple screens on the device.
+</Info>
+
+## QR code support
+
+Suite supports QR codes for both sending and receiving:
+
+### Receiving QR codes
+
+- Automatically generated for each address
+- Follows BIP-21 standard (Bitcoin) or equivalent
+- Scannable by mobile wallets
+- Includes amount if specified
+
+### Scanning QR codes
+
+To scan a QR code in the send form:
+
+1. Click the QR icon next to the address field
+2. Allow camera access or upload an image
+3. Suite extracts address and amount (if present)
+
+```plaintext
+QR code format examples:
+
+Bitcoin:
+bitcoin:bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh?amount=0.01
+
+Ethereum:
+ethereum:0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb?value=1.5e18
+```
+
+## Network-specific sending
+
+<Tabs>
+  <Tab title="Bitcoin">
+    **UTXO selection** (Coin control):
+    - Manually select which UTXOs to spend
+    - Optimize for privacy or fees
+    - Access via **Coin control** button
+    
+    **Fee estimation**:
+    - Based on current mempool state
+    - Estimated confirmation time
+    - Updates every block
+  </Tab>
+  
+  <Tab title="Ethereum">
+    **Nonce management**:
+    - Automatic nonce assignment
+    - Sequential transaction ordering
+    - Prevents nonce gaps
+    
+    **ERC-20 considerations**:
+    - Requires ETH for gas
+    - Approve token allowance first (if needed)
+    - Check token contract address
+  </Tab>
+  
+  <Tab title="Cardano">
+    **UTXO selection**:
+    - Automatic selection for optimal fees
+    - Multi-asset support
+    - Minimum ADA per UTXO
+  </Tab>
+  
+  <Tab title="Solana">
+    **Recent blockhash**:
+    - Transactions expire after ~60 seconds
+    - Automatic retry on expiration
+    - Must have rent-exempt balance
+  </Tab>
+</Tabs>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Transaction not confirming">
+    **Bitcoin**: Use Replace-by-Fee (RBF) to bump the fee if the transaction is stuck.
+    
+    **Ethereum**: Wait for nonce to clear. You can replace with higher gas price.
+    
+    **Other networks**: Wait for network congestion to clear.
+  </Accordion>
+  
+  <Accordion title="Insufficient balance error">
+    - Check you have enough funds including fees
+    - For tokens, ensure you have enough base currency for fees
+    - Consider minimum reserve requirements (XRP, Solana)
+  </Accordion>
+  
+  <Accordion title="Invalid address error">
+    - Verify the address format matches the network
+    - Check for typos or extra characters
+    - Ensure you're on the correct network
+  </Accordion>
+  
+  <Accordion title="Fee too high warning">
+    - Review custom fee settings
+    - Compare with recommended fees
+    - Check network congestion
+  </Accordion>
+</AccordionGroup>
+
+## Best practices
+
+<Check>Always verify addresses on your Trezor device screen before sending</Check>
+<Check>Start with a small test transaction to new recipients</Check>
+<Check>Use recommended fee levels unless you understand fee markets</Check>
+<Check>Label your transactions for future reference</Check>
+<Check>Keep your Suite updated for the latest fee estimation algorithms</Check>
+
+<Warning>
+Cryptocurrency transactions are irreversible. Once confirmed, there is no way to undo or refund a transaction.
+</Warning>
+
+## Related topics
+
+<Columns cols={2}>
+  <Card title="Transactions" icon="arrow-right-arrow-left" href="/suite/transactions">
+    View and manage your transaction history
+  </Card>
+  
+  <Card title="Account discovery" icon="magnifying-glass" href="/suite/account-discovery">
+    How Suite discovers your accounts and addresses
+  </Card>
+  
+  <Card title="Metadata labeling" icon="tag" href="/suite/metadata-labeling">
+    Sync address and transaction labels
+  </Card>
+  
+  <Card title="CoinJoin privacy" icon="user-secret" href="/suite/coinjoin-privacy">
+    Enhanced privacy for Bitcoin transactions
+  </Card>
+</Columns>

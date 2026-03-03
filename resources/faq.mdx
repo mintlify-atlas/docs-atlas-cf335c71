@@ -1,0 +1,391 @@
+---
+title: 'Frequently Asked Questions'
+description: 'Common questions about Trezor Suite and Connect development'
+---
+
+## General Questions
+
+<AccordionGroup>
+  <Accordion title="What is Trezor Suite?" icon="wallet">
+    Trezor Suite is a comprehensive application for managing your Trezor hardware wallet. It includes:
+    
+    - **Desktop Application**: Native app for Windows, macOS, and Linux
+    - **Web Application**: Browser-based interface at suite.trezor.io
+    - **Mobile Application**: iOS and Android apps for mobile wallet management
+    
+    Suite provides a complete solution for cryptocurrency management, including sending, receiving, trading, and portfolio tracking.
+  </Accordion>
+
+  <Accordion title="What is Trezor Connect?" icon="plug">
+    Trezor Connect is a JavaScript SDK that enables developers to integrate Trezor hardware wallet functionality into their own applications. It provides:
+    
+    - Easy-to-use API for blockchain operations
+    - Support for multiple cryptocurrencies
+    - Secure transaction signing
+    - Address generation and verification
+    
+    Connect handles all the complexity of communicating with Trezor devices, so you can focus on building your application.
+  </Accordion>
+
+  <Accordion title="What's the difference between Connect 9 and 10?" icon="code-compare">
+    Connect 10.0.0 introduces major changes:
+    
+    **Removed**:
+    - Legacy iframe and popup integration methods
+    - EOS support
+    - NEM support
+    
+    **Added**:
+    - Tron support (tronGetAddress, tronSignTransaction)
+    - Suite-based integration
+    - Enhanced security and user experience
+    
+    See the [Migration Guide](/resources/migration-guide) for details on upgrading.
+  </Accordion>
+
+  <Accordion title="Is Trezor Suite open source?" icon="code">
+    Yes! The entire Trezor Suite monorepo is open source and available on [GitHub](https://github.com/trezor/trezor-suite). It uses the TREZOR REFERENCE SOURCE LICENSE (T-RSL), which allows reference use for debugging, maintaining, or enhancing interoperability with your products.
+  </Accordion>
+</AccordionGroup>
+
+## Development Setup
+
+<AccordionGroup>
+  <Accordion title="What are the system requirements?" icon="laptop">
+    **Minimum Requirements**:
+    - Node.js version 19 or higher (check .nvmrc for exact version)
+    - Yarn package manager
+    - Git with Git LFS
+    - 8GB RAM (16GB recommended)
+    - 10GB free disk space
+    
+    **Platform Support**:
+    - macOS (primary)
+    - Linux (primary)
+    - Windows (via Git Bash or WSL2)
+    
+    See the [README](https://github.com/trezor/trezor-suite) for complete setup instructions.
+  </Accordion>
+
+  <Accordion title="How long does initial setup take?" icon="clock">
+    Expected times:
+    - Initial clone and setup: 15-20 minutes
+    - First build: 10-15 minutes
+    - Subsequent builds: 2-5 minutes (incremental)
+    
+    **Performance Tips**:
+    - Use SSD storage
+    - Exclude from antivirus scanning (Windows)
+    - Use WSL2 on Windows for better performance
+    - Ensure stable internet connection for dependencies
+  </Accordion>
+
+  <Accordion title="Do I need a Trezor device for development?" icon="microchip">
+    No! You can use the [Trezor User Env](https://github.com/trezor/trezor-user-env) emulator for development and testing. It supports:
+    
+    - All Trezor device models
+    - Complete firmware emulation
+    - Automated testing scenarios
+    - No physical hardware required
+    
+    The emulator is perfect for development, testing, and CI/CD pipelines.
+  </Accordion>
+
+  <Accordion title="Which IDE should I use?" icon="code">
+    Any modern IDE works, but we recommend:
+    
+    **Visual Studio Code** with extensions:
+    - ESLint
+    - Prettier
+    - MDX extension (for documentation)
+    - TypeScript support
+    
+    **WebStorm/IntelliJ IDEA**:
+    - Built-in TypeScript support
+    - Excellent refactoring tools
+    
+    See [IDE.md](https://github.com/trezor/trezor-suite/blob/develop/IDE.md) for IDE-specific settings.
+  </Accordion>
+</AccordionGroup>
+
+## Connect Integration
+
+<AccordionGroup>
+  <Accordion title="Which package should I use?" icon="box">
+    Choose based on your platform:
+    
+    - **@trezor/connect-web**: Web applications
+    - **@trezor/connect-webextension**: Browser extensions
+    - **@trezor/connect-mobile**: React Native mobile apps
+    - **@trezor/connect**: Core package (usually not used directly)
+    
+    Most web developers will use `@trezor/connect-web`.
+  </Accordion>
+
+  <Accordion title="How do I initialize Connect?" icon="power-off">
+    Basic initialization:
+    
+    ```javascript
+    import TrezorConnect from '@trezor/connect-web';
+    
+    await TrezorConnect.init({
+      manifest: {
+        email: 'developer@example.com',
+        appUrl: 'https://example.com'
+      }
+    });
+    ```
+    
+    The manifest is required and helps identify your application to users.
+  </Accordion>
+
+  <Accordion title="What cryptocurrencies are supported?" icon="coins">
+    Connect supports a wide range of cryptocurrencies:
+    
+    - Bitcoin and Bitcoin-based coins
+    - Ethereum and ERC-20 tokens
+    - EVM-compatible chains
+    - Tron (new in v10)
+    - Many altcoins
+    
+    See the complete [Supported Cryptocurrencies](/resources/supported-cryptocurrencies) list.
+  </Accordion>
+
+  <Accordion title="How do I handle errors?" icon="circle-exclamation">
+    All Connect methods return a result object:
+    
+    ```javascript
+    const result = await TrezorConnect.getAddress({
+      path: "m/49'/0'/0'/0/0",
+      coin: 'btc'
+    });
+    
+    if (result.success) {
+      console.log('Address:', result.payload.address);
+    } else {
+      console.error('Error:', result.payload.error);
+      console.error('Code:', result.payload.code);
+    }
+    ```
+    
+    Always check the `success` property before using the payload.
+  </Accordion>
+
+  <Accordion title="Can I test without a real device?" icon="vial">
+    Yes! Use Connect Explorer at [connect.trezor.io/10](https://connect.trezor.io/10/) to:
+    
+    - Test all Connect methods
+    - See example code
+    - Understand request/response formats
+    - Debug integration issues
+    
+    For automated testing, use the Trezor emulator.
+  </Accordion>
+</AccordionGroup>
+
+## Suite Development
+
+<AccordionGroup>
+  <Accordion title="How do I run Suite locally?" icon="rocket">
+    After setup, use these commands:
+    
+    ```bash
+    # Web app
+    yarn suite:dev
+    
+    # Desktop app
+    yarn suite:dev:desktop
+    
+    # Production preview
+    yarn suite:build:web:preview
+    ```
+    
+    The dev server will start at `http://localhost:8000` by default.
+  </Accordion>
+
+  <Accordion title="What is the versioning scheme?" icon="tag">
+    Suite uses **calendar versioning** (CalVer) in format `YY.MM.PATCH`:
+    
+    - `YY`: Current year
+    - `MM`: Current month
+    - `PATCH`: Release number in that month
+    
+    Examples:
+    - `20.10.1`: First release in October 2020
+    - `20.10.3`: Third release in October 2020
+    
+    See [Versioning](/resources/releases#versioning) for details.
+  </Accordion>
+
+  <Accordion title="How do I add a new cryptocurrency?" icon="plus">
+    To add cryptocurrency support:
+    
+    1. **Firmware Support**: Coin must be supported in trezor-firmware
+    2. **Update Submodules**:
+       ```bash
+       yarn update-submodules
+       ```
+    3. **Update Coins**:
+       ```bash
+       python3 -m venv .venv
+       source .venv/bin/activate
+       pip install -r submodules/trezor-common/tools/requirements.txt
+       yarn update-coins
+       ```
+    
+    See [supported-coins.md](https://github.com/trezor/trezor-suite/blob/develop/docs/packages/connect/supported-coins.md) for details.
+  </Accordion>
+
+  <Accordion title="How do I contribute code?" icon="code-pull-request">
+    Follow these steps:
+    
+    1. **Fork the repository** on GitHub
+    2. **Create a branch** for your feature/fix
+    3. **Follow coding standards**:
+       - Use Conventional Commits format
+       - Run ESLint and Prettier
+       - Add tests for new features
+    4. **Submit a pull request** to the develop branch
+    
+    See [CONTRIBUTING.md](https://github.com/trezor/trezor-suite/blob/develop/CONTRIBUTING.md) for guidelines.
+  </Accordion>
+</AccordionGroup>
+
+## Testing and Deployment
+
+<AccordionGroup>
+  <Accordion title="How do I run tests?" icon="flask">
+    Use these commands:
+    
+    ```bash
+    # Unit tests
+    yarn test:unit
+    
+    # Integration tests
+    yarn test:integration
+    
+    # E2E tests
+    yarn test:e2e
+    
+    # Specific package
+    yarn workspace @trezor/connect test
+    ```
+    
+    See the [Tests documentation](https://github.com/trezor/trezor-suite/tree/develop/docs/tests) for more details.
+  </Accordion>
+
+  <Accordion title="What environments are available?" icon="server">
+    Suite has multiple environments:
+    
+    - **Development**: Local development server
+    - **Staging**: Internal testing at staging-suite.trezor.io (VPN required)
+    - **Production**: Public release at suite.trezor.io
+    
+    Connect has:
+    - **Canary**: connect.trezor.io (latest development)
+    - **Stable**: Versioned releases via NPM
+    
+    See [Environments](/resources/releases#environments) for details.
+  </Accordion>
+
+  <Accordion title="How are releases managed?" icon="rocket">
+    The release process:
+    
+    1. **Development**: Features merged to develop branch
+    2. **Release Branch**: Create release/YYYY-MM branch
+    3. **Testing**: QA testing on staging environment
+    4. **Production**: Deploy to suite.trezor.io
+    5. **Desktop**: Build and sign binaries for distribution
+    
+    See [Releases](/resources/releases) for the complete process.
+  </Accordion>
+</AccordionGroup>
+
+## Security and Privacy
+
+<AccordionGroup>
+  <Accordion title="How do I report a security vulnerability?" icon="shield">
+    **DO NOT** create public GitHub issues for security vulnerabilities.
+    
+    Instead:
+    1. Email [security@satoshilabs.com](mailto:security@satoshilabs.com)
+    2. Provide detailed description of the vulnerability
+    3. Include steps to reproduce if possible
+    4. Allow time for responsible disclosure
+    
+    See the [Security Policy](/resources/security) for details.
+  </Accordion>
+
+  <Accordion title="What data does Suite collect?" icon="database">
+    Suite collects minimal analytics:
+    
+    - Anonymous usage statistics (opt-in)
+    - Crash reports (for debugging)
+    - No private keys or transaction details
+    
+    Users can disable analytics in Settings. All sensitive operations happen on the Trezor device itself.
+  </Accordion>
+
+  <Accordion title="Is my data encrypted?" icon="lock">
+    Yes:
+    
+    - **Private keys**: Never leave the Trezor device
+    - **Metadata**: Encrypted before cloud backup
+    - **Communication**: All device communication is encrypted
+    - **Local storage**: Sensitive data encrypted at rest
+    
+    Suite follows security best practices for cryptocurrency applications.
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Build fails on Windows" icon="windows">
+    Common solution:
+    1. Use Git Bash (not cmd/PowerShell)
+    2. Install Visual Studio Build Tools
+    3. Delete node_modules and reinstall
+    
+    See [Troubleshooting](/resources/troubleshooting#development-environment-issues) for details.
+  </Accordion>
+
+  <Accordion title="Device not detected" icon="usb">
+    Try these steps:
+    1. Check USB cable and port
+    2. Update browser to latest version
+    3. Install Trezor Bridge
+    4. On Linux, install udev rules
+    
+    See [Troubleshooting](/resources/troubleshooting#connect-integration-issues) for more solutions.
+  </Accordion>
+
+  <Accordion title="Where can I get more help?" icon="life-ring">
+    Resources:
+    - [Troubleshooting Guide](/resources/troubleshooting)
+    - [Best Practices](/resources/best-practices)
+    - [Trezor Support](https://trezor.io/support)
+    - [GitHub Issues](https://github.com/trezor/trezor-suite/issues)
+    - [Community Forum](https://forum.trezor.io)
+  </Accordion>
+</AccordionGroup>
+
+## Additional Resources
+
+<CardGroup cols={2}>
+  <Card title="Migration Guide" icon="arrow-right" href="/resources/migration-guide">
+    Upgrade to newer versions
+  </Card>
+  
+  <Card title="Best Practices" icon="star" href="/resources/best-practices">
+    Learn recommended approaches
+  </Card>
+  
+  <Card title="Supported Coins" icon="coins" href="/resources/supported-cryptocurrencies">
+    View all supported cryptocurrencies
+  </Card>
+  
+  <Card title="Changelog" icon="clock-rotate-left" href="/resources/changelog">
+    See what's new in each release
+  </Card>
+</CardGroup>

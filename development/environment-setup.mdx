@@ -1,0 +1,306 @@
+---
+title: Environment Setup
+description: Set up your development environment for Trezor Suite
+---
+
+## Prerequisites
+
+Before you begin developing with Trezor Suite, you need to install several tools and dependencies.
+
+### Required Tools
+
+<Steps>
+  <Step title="Install NVM (Node Version Manager)">
+    Install [NVM](https://github.com/nvm-sh/nvm) to manage Node.js versions.
+
+    ```bash
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+    ```
+
+    <Note>
+      You can configure your shell to [automatically switch Node versions](https://github.com/nvm-sh/nvm/blob/master/README.md#calling-nvm-use-automatically-in-a-directory-with-a-nvmrc-file) when entering the repository.
+    </Note>
+  </Step>
+
+  <Step title="Install Node.js">
+    The repository requires **Node.js 24.11.1** (specified in `.nvmrc`).
+
+    ```bash
+    nvm install 24.11.1
+    nvm use 24.11.1
+    ```
+
+    <Note>
+      This version must be consistent with the version defined in `suite-native/app/eas.json` for mobile builds.
+    </Note>
+  </Step>
+
+  <Step title="Enable Yarn">
+    Enable [Yarn](https://yarnpkg.com/getting-started/install) package manager through npm. The project uses **Yarn 4.12.0**.
+
+    ```bash
+    corepack enable
+    corepack prepare yarn@4.12.0 --activate
+    ```
+  </Step>
+
+  <Step title="Install Git LFS">
+    Install [Git LFS](https://git-lfs.github.com/) to handle binary assets.
+
+    <CodeGroup>
+      ```bash macOS
+      brew install git-lfs
+      ```
+
+      ```bash Ubuntu/Debian
+      # Add the repository
+      curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | sudo bash
+      # Install Git LFS
+      sudo apt-get install git-lfs
+      ```
+
+      ```bash Windows
+      # Download and run the installer from https://git-lfs.github.com/
+      ```
+    </CodeGroup>
+
+    More installation options available in the [Git LFS installation guide](https://github.com/git-lfs/git-lfs/blob/main/INSTALLING.md).
+  </Step>
+</Steps>
+
+## Clone the Repository
+
+<Steps>
+  <Step title="Clone with Git">
+    ```bash
+    git clone git@github.com:trezor/trezor-suite.git
+    cd trezor-suite
+    ```
+  </Step>
+
+  <Step title="Initialize Submodules">
+    The repository uses Git submodules for external dependencies.
+
+    ```bash
+    git submodule update --init --recursive
+    ```
+
+    <Note>
+      Enable automatic submodule updates:
+      ```bash
+      git config --global submodule.recurse true
+      ```
+      This ensures submodules are updated automatically when pulling changes.
+    </Note>
+  </Step>
+
+  <Step title="Set Up Git LFS">
+    Configure Git LFS for your user account and pull binary assets.
+
+    ```bash
+    git lfs install
+    git lfs pull
+    ```
+
+    <Note>
+      You only need to run `git lfs install` once per user account.
+    </Note>
+  </Step>
+</Steps>
+
+## Install Dependencies
+
+<Steps>
+  <Step title="Install Node.js Version">
+    Use NVM to install and activate the correct Node.js version.
+
+    ```bash
+    nvm install
+    ```
+
+    This reads the version from `.nvmrc` and installs it automatically.
+  </Step>
+
+  <Step title="Install Node Modules">
+    Install all project dependencies using Yarn.
+
+    ```bash
+    yarn
+    ```
+
+    <Note>
+      If Playwright installation fails, you can skip native builds:
+      ```bash
+      yarn --mode=skip-build
+      ```
+    </Note>
+
+    <Warning>
+      Initial installation can take **5-10 minutes** depending on your system and network speed.
+    </Warning>
+  </Step>
+
+  <Step title="Build Essential Libraries">
+    Build core libraries required for development.
+
+    ```bash
+    yarn build:essential
+    ```
+
+    This command builds:
+    - `@trezor/suite-data` - Suite data packages
+    - `@trezor/transport-bridge` - Transport layer
+    - Message system configuration
+
+    <Warning>
+      This step takes **3-5 minutes** and must complete before running development servers.
+    </Warning>
+  </Step>
+</Steps>
+
+## Platform-Specific Setup
+
+### macOS and Linux
+
+The development environment is primarily supported on **macOS and Linux**. No additional setup is required beyond the steps above.
+
+### Windows
+
+Development on Windows requires additional configuration. Choose one of the following approaches:
+
+#### Native Windows (Recommended)
+
+<Steps>
+  <Step title="Install Python">
+    Install Python via the [Python for Windows installer](https://www.python.org/downloads/windows/).
+  </Step>
+
+  <Step title="Install Visual Studio">
+    Install [Visual Studio Community](https://visualstudio.microsoft.com/) with C++ build tools.
+
+    <Warning>
+      **Required components:**
+      - Desktop development with C++ workload
+      - C++ Clang Tools for Windows
+
+      These are needed for `node-gyp` to build native modules.
+    </Warning>
+  </Step>
+
+  <Step title="Install Git for Windows">
+    Install [Git for Windows](https://git-scm.com/downloads/win) and ensure Git Bash is included.
+  </Step>
+
+  <Step title="Use Git Bash">
+    <Warning>
+      **All commands must be run in Git Bash**, not cmd or PowerShell.
+
+      If you've run `yarn` in cmd/PowerShell, delete `node_modules` and start over in Git Bash.
+    </Warning>
+  </Step>
+</Steps>
+
+<Note>
+  Exclude the `trezor-suite` folder from Windows Defender to improve build performance.
+</Note>
+
+#### Windows Subsystem for Linux (WSL)
+
+<Warning>
+  WSL is supported but not actively maintained. Some features may not work as expected.
+</Warning>
+
+<Steps>
+  <Step title="Install WSL2">
+    Install [Ubuntu WSL2](https://learn.microsoft.com/en-us/windows/wsl/install) (must be version 2).
+  </Step>
+
+  <Step title="Install Build Tools">
+    In WSL, install required build dependencies:
+
+    ```bash
+    sudo apt-get install build-essential
+    ```
+  </Step>
+
+  <Step title="Install Electron Dependencies">
+    Install [Electron dependencies for Linux](https://www.electronjs.org/docs/latest/development/build-instructions-linux).
+  </Step>
+
+  <Step title="Set Up USB Access (Optional)">
+    To connect physical Trezor devices:
+
+    1. Install [USBIPD](https://learn.microsoft.com/en-us/windows/wsl/connect-usb) on Windows
+    2. Install [udev rules](https://trezor.io/guides/trezorctl/udev-rules) in WSL
+  </Step>
+</Steps>
+
+## Alternative: Nix Setup
+
+You can use Nix to set up the entire development environment automatically. See the [Nix Documentation](https://github.com/trezor/trezor-suite/blob/develop/docs/nix.md) for details.
+
+## Using Trezor Emulator
+
+You don't need a physical Trezor device to develop. Use the [Trezor User Env](https://github.com/trezor/trezor-user-env) to run emulators for any Trezor model.
+
+## Verify Installation
+
+Check that everything is set up correctly:
+
+```bash
+# Check Node.js version
+node --version
+# Should output: v24.11.1
+
+# Check Yarn version
+yarn --version
+# Should output: 4.12.0
+
+# Check Git LFS
+git lfs version
+# Should output version information
+```
+
+## Next Steps
+
+Now that your environment is set up:
+
+- Learn about the [Project Structure](/development/project-structure)
+- Start [Building the Project](/development/building)
+- Run [Development Servers](/development/running-apps)
+
+## Troubleshooting
+
+### Yarn Installation Fails
+
+If `yarn` fails during installation:
+
+1. Try installing with `yarn --mode=skip-build`
+2. Delete `node_modules` and run `yarn` again
+3. Ensure you're using the correct Node.js version (`nvm use`)
+
+### Build Times
+
+<Note>
+  **Expected build times:**
+  - Initial setup: 15-20 minutes
+  - Full library builds: 10-15 minutes
+  - Essential builds: 3-5 minutes
+</Note>
+
+### Submodule Issues
+
+If submodules are out of sync:
+
+```bash
+git submodule update --init --recursive --force
+```
+
+### Git LFS Issues
+
+If binary assets are missing:
+
+```bash
+git lfs fetch --all
+git lfs pull
+```

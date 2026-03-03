@@ -1,0 +1,572 @@
+---
+title: 'Backup and recovery'
+description: 'Creating backups and recovering your Trezor device safely'
+keywords: ['backup', 'recovery', 'recovery seed', 'seed phrase', 'restore', 'shamir backup']
+---
+
+# Backup and recovery
+
+Your recovery seed is the master key to all your cryptocurrency. This guide covers how to safely create backups and recover your device when needed.
+
+<Warning>
+Your recovery seed grants complete access to your funds. Anyone with your seed can steal your cryptocurrency. Protect it carefully.
+</Warning>
+
+## Understanding recovery seeds
+
+A recovery seed (also called a recovery phrase or seed phrase) is a list of words that represents your device's master private key.
+
+### Seed formats
+
+<Tabs>
+  <Tab title="BIP39 (Standard)">
+    **Format**: 12 or 24 words
+    
+    **Structure**:
+    - Words from standardized BIP39 wordlist
+    - 2048 possible words
+    - Each word has a unique prefix
+    - Checksum built into last word
+    
+    **Example**: `witch collapse practice feed shame open despair creek road again ice least`
+    
+    **Compatibility**: Works with most hardware and software wallets
+  </Tab>
+  
+  <Tab title="Shamir Backup">
+    **Format**: Multiple shares of 20 or 33 words each
+    
+    **Structure**:
+    - Split into 2-16 shares
+    - Threshold required (e.g., 3 of 5)
+    - Each share is useless alone
+    - More flexible than single seed
+    
+    **Example**: Share 1/5: `academic acid acrobat...` (20 words)
+    
+    **Availability**: Trezor Model T and Safe 3 only
+    
+    <Note>
+    Shamir Backup can only be set up during initial device setup, not as an upgrade.
+    </Note>
+  </Tab>
+</Tabs>
+
+### How seeds work
+
+```typescript
+// Simplified seed derivation
+const seedToWallet = {
+  recoverySeed: '12-24 words',
+  → masterKey: 'Derived using BIP39',
+  → accounts: 'Derived using BIP44/49/84',
+  → addresses: 'Generated sequentially',
+  → privateKeys: 'Used to sign transactions'
+};
+```
+
+From your seed, everything else can be mathematically derived:
+- All private keys
+- All addresses
+- All accounts
+- Transaction signing capability
+
+<Info>
+As long as you have your recovery seed, you can restore access to your funds on any compatible device.
+</Info>
+
+## Creating a backup
+
+Backup creation happens during initial device setup or can be performed later.
+
+### Initial device setup backup
+
+<Steps>
+  <Step title="Start setup">
+    Connect your new Trezor and follow the setup wizard in Suite.
+  </Step>
+  
+  <Step title="Choose backup type">
+    Select between:
+    - **Standard backup** (12/24 words)
+    - **Shamir backup** (multiple shares) - T/Safe 3 only
+  </Step>
+  
+  <Step title="Write down seed">
+    Your device displays words one at a time:
+    - Write each word on the recovery seed card
+    - Write clearly and legibly
+    - Double-check each word
+    - Never photograph or store digitally
+    
+    <Warning>
+    Write on paper only. Never type into a computer or take a photo.
+    </Warning>
+  </Step>
+  
+  <Step title="Verify backup">
+    The device asks you to confirm random words from your backup:
+    - Read from your written card
+    - Select the correct word on device
+    - Verifies you wrote down correctly
+  </Step>
+  
+  <Step title="Store securely">
+    Place your written seed in secure storage:
+    - Fireproof/waterproof container
+    - Safe deposit box
+    - Multiple locations (for redundancy)
+  </Step>
+</Steps>
+
+### Backup verification
+
+After creating a backup, verify it's correct:
+
+<Steps>
+  <Step title="Access backup check">
+    Go to **Settings → Device → Backup** and click **Check backup**.
+  </Step>
+  
+  <Step title="Follow prompts">
+    Device will ask you to confirm specific words from your backup.
+  </Step>
+  
+  <Step title="Success confirmation">
+    If successful, you've confirmed your backup is valid.
+    
+    <Tip>
+    Perform backup verification regularly, especially after writing down your seed.
+    </Tip>
+  </Step>
+</Steps>
+
+### Pre-backup checklist
+
+Before creating a backup:
+
+<AccordionGroup>
+  <Accordion title="Ensure privacy">
+    - No cameras or security cameras watching
+    - No one looking over your shoulder
+    - Close curtains/blinds
+    - Consider using a privacy screen
+  </Accordion>
+  
+  <Accordion title="Prepare materials">
+    - Recovery seed card (provided with device)
+    - Or durable paper
+    - Working pen (test it)
+    - Secure storage location identified
+  </Accordion>
+  
+  <Accordion title="Plan storage">
+    - Safe deposit box
+    - Fireproof safe
+    - Multiple geographic locations
+    - Consider metal backup for durability
+  </Accordion>
+</AccordionGroup>
+
+## Recovering your device
+
+Device recovery restores your wallet using your recovery seed.
+
+### When to recover
+
+You need to recover when:
+
+- Setting up a new device with existing seed
+- Restoring after device wipe
+- Replacing lost or stolen device
+- Moving to different Trezor model
+- Testing your backup (recommended)
+
+### Standard recovery process
+
+<Steps>
+  <Step title="Start recovery">
+    During device setup, select **Recover wallet** instead of **Create new wallet**.
+  </Step>
+  
+  <Step title="Choose word count">
+    Select the number of words in your seed:
+    - 12 words (most common)
+    - 18 words (rare)
+    - 24 words (maximum security)
+  </Step>
+  
+  <Step title="Enter seed words">
+    **Model One**:
+    - Type each word using Suite interface
+    - Words auto-complete from BIP39 wordlist
+    - Device validates each word
+    
+    **Model T/Safe 3**:
+    - Type directly on device touchscreen
+    - More secure (no computer involvement)
+    - Words auto-complete on device
+  </Step>
+  
+  <Step title="Validation">
+    Device validates the seed:
+    - Checks all words are valid BIP39 words
+    - Verifies checksum
+    - Creates wallet if valid
+  </Step>
+  
+  <Step title="Set new PIN">
+    Create a new PIN for the recovered device.
+    
+    <Note>
+    PIN is device-specific and not part of the recovery seed. You can set any PIN you want.
+    </Note>
+  </Step>
+  
+  <Step title="Account discovery">
+    Suite automatically discovers your accounts and transaction history.
+  </Step>
+</Steps>
+
+### Advanced recovery (Model T/Safe 3)
+
+For maximum security, use Advanced Recovery:
+
+1. Enable in recovery options
+2. Seed entry happens entirely on device
+3. No computer involvement at all
+4. Protects against keyloggers and screen capture malware
+
+<Tip>
+Always use Advanced Recovery on Model T/Safe 3 for maximum security.
+</Tip>
+
+### Shamir Backup recovery
+
+Recovering from Shamir shares:
+
+<Steps>
+  <Step title="Start Shamir recovery">
+    Select **Recover using Shamir Backup** during setup.
+  </Step>
+  
+  <Step title="Enter threshold shares">
+    Enter the required number of shares:
+    - Device prompts for each share
+    - Only need threshold amount (e.g., 3 of 5)
+    - Order doesn't matter
+  </Step>
+  
+  <Step title="Validate and recover">
+    Device reconstructs seed from shares and creates wallet.
+  </Step>
+</Steps>
+
+<Info>
+You don't need all Shamir shares, just the threshold amount you configured during setup.
+</Info>
+
+## Backup storage best practices
+
+### Physical storage
+
+<AccordionGroup>
+  <Accordion title="Paper backups">
+    **Pros**:
+    - Included with device
+    - Easy to create
+    - No special equipment needed
+    
+    **Cons**:
+    - Vulnerable to fire/water
+    - Can fade over time
+    - Easily damaged
+    
+    **Best practices**:
+    - Use quality paper
+    - Store in waterproof bag
+    - Keep in fireproof container
+    - Create multiple copies
+  </Accordion>
+  
+  <Accordion title="Metal backups">
+    **Pros**:
+    - Fireproof (up to high temperatures)
+    - Waterproof
+    - Extremely durable
+    - Long-lasting
+    
+    **Cons**:
+    - Additional cost
+    - Requires metal stamping or engraving
+    - More obvious (less discreet)
+    
+    **Options**:
+    - Steel plates
+    - Titanium plates
+    - Stamped metal
+    - Engraved plates
+  </Accordion>
+  
+  <Accordion title="Safe deposit boxes">
+    **Pros**:
+    - Bank-level security
+    - Fireproof vault
+    - Protected from theft
+    
+    **Cons**:
+    - Annual fees
+    - Limited access hours
+    - Not accessible in bank emergency
+    
+    **Use for**:
+    - Primary backup storage
+    - High-value holdings
+    - Long-term storage
+  </Accordion>
+</AccordionGroup>
+
+### Geographic distribution
+
+For maximum security, distribute backups:
+
+```plaintext
+Scenario: 3-of-5 Shamir backup
+
+Location 1 (Home safe): Share 1, Share 2
+Location 2 (Bank vault): Share 3, Share 4  
+Location 3 (Family member): Share 5
+
+Benefit: Need to access 2 of 3 locations to recover
+```
+
+<Warning>
+Never store all backup materials in a single location. A fire, flood, or theft could destroy all copies.
+</Warning>
+
+### Digital storage (NOT RECOMMENDED)
+
+<Warning>
+**Never** store recovery seeds digitally:
+- No photos
+- No computer files
+- No cloud storage
+- No password managers
+- No encrypted files
+</Warning>
+
+Digital storage creates attack vectors:
+- Malware can steal files
+- Backups can be hacked
+- Cloud accounts can be compromised
+- Devices can be stolen
+
+<Info>
+The only digital exception: Encrypted password managers for **passphrase** reference (not the seed itself), and only if you fully understand the risks.
+</Info>
+
+## Recovery testing
+
+Regularly test your recovery process to ensure your backup works.
+
+### Safe testing methods
+
+<Tabs>
+  <Tab title="Backup verification">
+    Use Suite's built-in verification:
+    
+    1. **Settings → Device → Backup**
+    2. Click **Check backup**
+    3. Confirm words on device
+    4. No funds moved, completely safe
+  </Tab>
+  
+  <Tab title="Recovery dry run (Model T/Safe 3)">
+    Simulate recovery without wiping device:
+    
+    1. **Settings → Device → Backup**
+    2. Click **Dry run recovery**
+    3. Enter complete seed
+    4. Device verifies without wiping
+    5. Proves your backup is complete and correct
+  </Tab>
+  
+  <Tab title="Secondary device recovery">
+    Most thorough test:
+    
+    1. Purchase second Trezor device
+    2. Recover using backup seed
+    3. Verify addresses match
+    4. Keep as backup device or wipe after testing
+    
+    <Tip>
+    Having a backup device is useful in case your primary device fails.
+    </Tip>
+  </Tab>
+</Tabs>
+
+<Warning>
+Never test recovery on your main device unless you're prepared to lose access if something goes wrong. Use dry run or secondary device.
+</Warning>
+
+## Recovery security
+
+### Protecting during recovery
+
+Recovery is a sensitive operation:
+
+<Check>Perform recovery in private</Check>
+<Check>Ensure no cameras or observers</Check>
+<Check>Use Advanced Recovery on Model T/Safe 3</Check>
+<Check>Verify Suite is legitimate before recovering</Check>
+<Check>Never enter seed into websites</Check>
+<Check>Consider using offline computer for recovery</Check>
+
+### Handling recovery failures
+
+<AccordionGroup>
+  <Accordion title="Invalid seed error">
+    **Causes**:
+    - Typo in word entry
+    - Wrong word from similar wordlist
+    - Checksum failure
+    
+    **Solutions**:
+    - Double-check each word carefully
+    - Verify word spelling
+    - Try alternate spellings if handwriting unclear
+    - Consult BIP39 wordlist
+  </Accordion>
+  
+  <Accordion title="Wrong accounts appear">
+    **Causes**:
+    - Correct seed but different passphrase
+    - Seed from different device
+    - Using wrong derivation paths
+    
+    **Solutions**:
+    - Verify passphrase (case-sensitive)
+    - Check if this is the correct seed
+    - Try without passphrase first
+  </Accordion>
+  
+  <Accordion title="Missing funds after recovery">
+    **Check**:
+    - Correct passphrase applied?
+    - All account types discovered? (Native SegWit, SegWit, Legacy)
+    - All networks enabled?
+    - Backend connection working?
+    
+    **Action**:
+    - Re-run account discovery
+    - Enable all account types
+    - Verify blockchain connection
+  </Accordion>
+</AccordionGroup>
+
+## Special recovery scenarios
+
+### Recovering with passphrase
+
+If you used passphrases:
+
+1. Recover with standard seed first
+2. After recovery, apply passphrase
+3. Enter exact passphrase (case-sensitive)
+4. Suite discovers passphrase wallet accounts
+
+<Warning>
+Passphrases must be exact. Even a single character difference creates a completely different wallet.
+</Warning>
+
+### Cross-device recovery
+
+Recovering on different Trezor models:
+
+- **One → T/Safe 3**: Fully compatible
+- **T/Safe 3 → One**: Compatible unless using model-specific features
+- **Shamir → Standard**: Not compatible (Shamir only on T/Safe 3)
+
+### Emergency recovery
+
+If Suite is unavailable:
+
+1. Seeds are BIP39 standard (except Shamir)
+2. Can recover in other BIP39 wallets
+3. Use trusted wallet software
+4. Consider: Electrum, Ledger Live, etc.
+
+<Note>
+Standard BIP39 seeds work with most hardware and software wallets. You're not locked into Trezor.
+</Note>
+
+## Inheritance planning
+
+Ensure your heirs can access funds if needed:
+
+<Steps>
+  <Step title="Document access method">
+    Write clear instructions:
+    - Where backup is stored
+    - How to use recovery seed
+    - Passphrase location (if separate)
+    - Trusted advisor to contact
+  </Step>
+  
+  <Step title="Secure documentation">
+    - Store instructions separately from seed
+    - Use sealed envelope
+    - Include in estate planning
+    - Update regularly
+  </Step>
+  
+  <Step title="Consider multisig or Shamir">
+    - Distribute shares to multiple parties
+    - Requires threshold for access
+    - Prevents single point of failure
+  </Step>
+  
+  <Step title="Educate trusted parties">
+    - Teach basic recovery process
+    - Don't share actual seed yet
+    - Provide general guidance
+    - Update as needed
+  </Step>
+</Steps>
+
+<Info>
+Consider consulting with an estate attorney familiar with cryptocurrency to ensure proper inheritance planning.
+</Info>
+
+## Backup checklist
+
+<Check>Recovery seed written down clearly</Check>
+<Check>Backup verified using device check</Check>
+<Check>Multiple copies created (if using paper)</Check>
+<Check>Stored in secure, separate locations</Check>
+<Check>Fireproof/waterproof protection</Check>
+<Check>Passphrase documented separately (if used)</Check>
+<Check>Recovery tested (dry run or secondary device)</Check>
+<Check>Family members know where to find instructions</Check>
+<Check>Regular backup verification scheduled</Check>
+<Check>Metal backup created for large holdings</Check>
+
+## Related topics
+
+<Columns cols={2}>
+  <Card title="Security" icon="lock" href="/suite/security">
+    Security best practices and threat protection
+  </Card>
+  
+  <Card title="Device settings" icon="gear" href="/suite/device-settings">
+    Configure device during and after recovery
+  </Card>
+  
+  <Card title="Wallet management" icon="wallet" href="/suite/wallet-management">
+    Managing recovered wallets and passphrases
+  </Card>
+  
+  <Card title="Firmware updates" icon="download" href="/suite/firmware-updates">
+    Update firmware after device recovery
+  </Card>
+</Columns>

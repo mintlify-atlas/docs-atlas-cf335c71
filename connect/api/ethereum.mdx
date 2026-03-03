@@ -1,0 +1,368 @@
+---
+title: 'Ethereum Methods'
+description: 'Methods for Ethereum and EVM-compatible blockchains'
+---
+
+Ethereum methods handle transactions, message signing, and typed data signing for Ethereum and EVM-compatible chains.
+
+## ethereumGetAddress
+
+Retrieves an Ethereum address from the device. Can optionally display address on device screen for verification.
+
+<ParamField path="path" type="string | number[]" required>
+  BIP32 derivation path (e.g., `m/44'/60'/0'/0/0`).
+</ParamField>
+
+<ParamField path="address" type="string">
+  Expected address for verification.
+</ParamField>
+
+<ParamField path="showOnTrezor" type="boolean">
+  Display address on device screen.
+</ParamField>
+
+<ParamField path="chunkify" type="boolean">
+  Split large requests into chunks.
+</ParamField>
+
+<ResponseField name="address" type="string">
+  Ethereum address (with 0x prefix).
+</ResponseField>
+
+<ResponseField name="path" type="number[]">
+  Derivation path as integer array.
+</ResponseField>
+
+<ResponseField name="serializedPath" type="string">
+  Derivation path as string.
+</ResponseField>
+
+```typescript
+// Get single address
+const result = await TrezorConnect.ethereumGetAddress({
+    path: "m/44'/60'/0'/0/0",
+    showOnTrezor: true,
+});
+
+// Get multiple addresses (bundle)
+const bundle = await TrezorConnect.ethereumGetAddress({
+    bundle: [
+        { path: "m/44'/60'/0'/0/0" },
+        { path: "m/44'/60'/0'/0/1" },
+    ],
+});
+```
+
+## ethereumGetPublicKey
+
+Retrieves an Ethereum public key from the device.
+
+<ParamField path="path" type="string | number[]" required>
+  BIP32 derivation path.
+</ParamField>
+
+<ParamField path="showOnTrezor" type="boolean">
+  Display public key on device screen.
+</ParamField>
+
+<ResponseField name="publicKey" type="string">
+  Public key in hex format.
+</ResponseField>
+
+<ResponseField name="path" type="number[]">
+  Derivation path as integer array.
+</ResponseField>
+
+<ResponseField name="serializedPath" type="string">
+  Derivation path as string.
+</ResponseField>
+
+```typescript
+const result = await TrezorConnect.ethereumGetPublicKey({
+    path: "m/44'/60'/0'/0/0",
+});
+```
+
+## ethereumSignTransaction
+
+Signs an Ethereum transaction. Supports legacy, EIP-1559, and EIP-2930 transaction types.
+
+<ParamField path="path" type="string | number[]" required>
+  BIP32 derivation path.
+</ParamField>
+
+<ParamField path="transaction" type="object" required>
+  Transaction object.
+  <Expandable title="Legacy Transaction (Type 0)">
+    <ParamField path="to" type="string" required>
+      Destination address (or null for contract creation).
+    </ParamField>
+    <ParamField path="value" type="string" required>
+      Amount in wei (hex string).
+    </ParamField>
+    <ParamField path="gasPrice" type="string" required>
+      Gas price in wei (hex string).
+    </ParamField>
+    <ParamField path="gasLimit" type="string" required>
+      Gas limit (hex string).
+    </ParamField>
+    <ParamField path="nonce" type="string" required>
+      Transaction nonce (hex string).
+    </ParamField>
+    <ParamField path="data" type="string">
+      Contract data (hex string with 0x prefix).
+    </ParamField>
+    <ParamField path="chainId" type="number" required>
+      EIP-155 chain ID.
+    </ParamField>
+    <ParamField path="txType" type="number">
+      Transaction type (0 for legacy).
+    </ParamField>
+  </Expandable>
+  <Expandable title="EIP-1559 Transaction (Type 2)">
+    <ParamField path="to" type="string" required>
+      Destination address (or null for contract creation).
+    </ParamField>
+    <ParamField path="value" type="string" required>
+      Amount in wei (hex string).
+    </ParamField>
+    <ParamField path="maxFeePerGas" type="string" required>
+      Maximum fee per gas (hex string).
+    </ParamField>
+    <ParamField path="maxPriorityFeePerGas" type="string" required>
+      Maximum priority fee per gas (hex string).
+    </ParamField>
+    <ParamField path="gasLimit" type="string" required>
+      Gas limit (hex string).
+    </ParamField>
+    <ParamField path="nonce" type="string" required>
+      Transaction nonce (hex string).
+    </ParamField>
+    <ParamField path="data" type="string">
+      Contract data (hex string).
+    </ParamField>
+    <ParamField path="chainId" type="number" required>
+      Chain ID.
+    </ParamField>
+    <ParamField path="accessList" type="array">
+      EIP-2930 access list.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="chunkify" type="boolean">
+  Split large data into chunks.
+</ParamField>
+
+<ResponseField name="v" type="string">
+  Signature V value (hex).
+</ResponseField>
+
+<ResponseField name="r" type="string">
+  Signature R value (hex).
+</ResponseField>
+
+<ResponseField name="s" type="string">
+  Signature S value (hex).
+</ResponseField>
+
+<ResponseField name="serializedTx" type="string">
+  Serialized signed transaction (hex with 0x prefix).
+</ResponseField>
+
+```typescript
+// Legacy transaction
+const result = await TrezorConnect.ethereumSignTransaction({
+    path: "m/44'/60'/0'/0/0",
+    transaction: {
+        to: '0x...',
+        value: '0x0',
+        gasPrice: '0x14',
+        gasLimit: '0x5208',
+        nonce: '0x0',
+        chainId: 1,
+    },
+});
+
+// EIP-1559 transaction
+const eip1559Result = await TrezorConnect.ethereumSignTransaction({
+    path: "m/44'/60'/0'/0/0",
+    transaction: {
+        to: '0x...',
+        value: '0x0',
+        maxFeePerGas: '0x14',
+        maxPriorityFeePerGas: '0x0',
+        gasLimit: '0x5208',
+        nonce: '0x0',
+        chainId: 1,
+    },
+});
+
+if (result.success) {
+    console.log('Signed transaction:', result.payload.serializedTx);
+}
+```
+
+## ethereumSignMessage
+
+Signs an Ethereum message using the private key derived from the given path.
+
+<ParamField path="path" type="string | number[]" required>
+  BIP32 derivation path.
+</ParamField>
+
+<ParamField path="message" type="string" required>
+  Message to sign (UTF-8 string or hex).
+</ParamField>
+
+<ParamField path="hex" type="boolean">
+  Interpret message as hex string.
+</ParamField>
+
+<ResponseField name="address" type="string">
+  Address corresponding to the signing key.
+</ResponseField>
+
+<ResponseField name="signature" type="string">
+  Message signature (hex with 0x prefix).
+</ResponseField>
+
+```typescript
+const result = await TrezorConnect.ethereumSignMessage({
+    path: "m/44'/60'/0'/0/0",
+    message: 'Hello Ethereum',
+});
+
+if (result.success) {
+    console.log('Signature:', result.payload.signature);
+}
+```
+
+## ethereumSignTypedData
+
+Signs EIP-712 typed structured data. Supports both hash-based signing (for Trezor One) and full typed data signing (for Trezor T).
+
+<ParamField path="path" type="string | number[]" required>
+  BIP32 derivation path.
+</ParamField>
+
+<ParamField path="data" type="object" required>
+  EIP-712 typed data object.
+  <Expandable title="properties">
+    <ParamField path="types" type="object" required>
+      Type definitions including EIP712Domain.
+    </ParamField>
+    <ParamField path="primaryType" type="string" required>
+      Primary type to sign.
+    </ParamField>
+    <ParamField path="domain" type="object" required>
+      Domain separator values.
+      <Expandable title="properties">
+        <ParamField path="name" type="string">
+          Domain name.
+        </ParamField>
+        <ParamField path="version" type="string">
+          Domain version.
+        </ParamField>
+        <ParamField path="chainId" type="number">
+          Chain ID.
+        </ParamField>
+        <ParamField path="verifyingContract" type="string">
+          Verifying contract address.
+        </ParamField>
+        <ParamField path="salt" type="string">
+          Domain salt.
+        </ParamField>
+      </Expandable>
+    </ParamField>
+    <ParamField path="message" type="object" required>
+      Message to sign.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="metamask_v4_compat" type="boolean" required>
+  Use MetaMask V4 compatibility mode.
+</ParamField>
+
+<ParamField path="domain_separator_hash" type="string">
+  Pre-computed domain separator hash (for Trezor One).
+</ParamField>
+
+<ParamField path="message_hash" type="string">
+  Pre-computed message hash (for Trezor One).
+</ParamField>
+
+<ParamField path="show_message_hash" type="boolean">
+  Show message hash on device.
+</ParamField>
+
+<ResponseField name="address" type="string">
+  Address that signed the data.
+</ResponseField>
+
+<ResponseField name="signature" type="string">
+  Signature (hex with 0x prefix).
+</ResponseField>
+
+```typescript
+const result = await TrezorConnect.ethereumSignTypedData({
+    path: "m/44'/60'/0'/0/0",
+    data: {
+        types: {
+            EIP712Domain: [
+                { name: 'name', type: 'string' },
+                { name: 'version', type: 'string' },
+                { name: 'chainId', type: 'uint256' },
+            ],
+            Person: [
+                { name: 'name', type: 'string' },
+                { name: 'wallet', type: 'address' },
+            ],
+        },
+        primaryType: 'Person',
+        domain: {
+            name: 'Example App',
+            version: '1',
+            chainId: 1,
+        },
+        message: {
+            name: 'Alice',
+            wallet: '0x...',
+        },
+    },
+    metamask_v4_compat: true,
+});
+```
+
+## ethereumVerifyMessage
+
+Verifies an Ethereum message signature.
+
+<ParamField path="address" type="string" required>
+  Address that signed the message.
+</ParamField>
+
+<ParamField path="message" type="string" required>
+  Original message that was signed.
+</ParamField>
+
+<ParamField path="hex" type="boolean">
+  Interpret message as hex string.
+</ParamField>
+
+<ParamField path="signature" type="string" required>
+  Message signature (hex with 0x prefix).
+</ParamField>
+
+<ResponseField name="success" type="boolean">
+  Whether signature is valid.
+</ResponseField>
+
+```typescript
+const result = await TrezorConnect.ethereumVerifyMessage({
+    address: '0x...',
+    message: 'Hello Ethereum',
+    signature: '0x...',
+});
+```

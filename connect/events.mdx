@@ -1,0 +1,592 @@
+---
+title: "Events"
+description: "Event system and event handling in TrezorConnect"
+---
+
+## Overview
+
+TrezorConnect uses an event-driven architecture to notify your application about device state changes, user interactions, blockchain updates, and transport status. Events are emitted asynchronously and can be handled using event listeners.
+
+## Event Listeners
+
+Subscribe to events using the `on` method and unsubscribe with `off`:
+
+```typescript
+import TrezorConnect, { DEVICE_EVENT, DEVICE } from '@trezor/connect';
+
+// Subscribe to device events
+const handleDeviceEvent = (event) => {
+  console.log('Device event:', event);
+};
+
+TrezorConnect.on(DEVICE_EVENT, handleDeviceEvent);
+
+// Unsubscribe when done
+TrezorConnect.off(DEVICE_EVENT, handleDeviceEvent);
+
+// Remove all listeners
+TrezorConnect.removeAllListeners();
+```
+
+## Event Categories
+
+Events are organized into four main categories:
+
+<CardGroup cols={2}>
+  <Card title="DEVICE_EVENT" icon="microchip">
+    Device connection, disconnection, and state changes
+  </Card>
+  <Card title="UI_EVENT" icon="window">
+    User interaction requests and firmware progress
+  </Card>
+  <Card title="TRANSPORT_EVENT" icon="plug">
+    Transport layer status and errors
+  </Card>
+  <Card title="BLOCKCHAIN_EVENT" icon="cube">
+    Blockchain connection and transaction notifications
+  </Card>
+</CardGroup>
+
+## Device Events
+
+Monitor device connections and state changes:
+
+### Connection Events
+
+<CodeGroup>
+```typescript Device Connect
+import TrezorConnect, { DEVICE_EVENT, DEVICE } from '@trezor/connect';
+
+TrezorConnect.on(DEVICE_EVENT, (event) => {
+  if (event.type === DEVICE.CONNECT) {
+    console.log('Device connected:', event.payload);
+    console.log('Features:', event.payload.features);
+    console.log('Mode:', event.payload.mode);
+    console.log('Path:', event.payload.path);
+  }
+});
+```
+
+```typescript Device Disconnect
+TrezorConnect.on(DEVICE_EVENT, (event) => {
+  if (event.type === DEVICE.DISCONNECT) {
+    console.log('Device disconnected:', event.payload);
+  }
+});
+```
+
+```typescript Device Changed
+TrezorConnect.on(DEVICE_EVENT, (event) => {
+  if (event.type === DEVICE.CHANGED) {
+    console.log('Device changed:', event.payload);
+    // Emitted when device features change
+  }
+});
+```
+
+```typescript Unacquired Device
+TrezorConnect.on(DEVICE_EVENT, (event) => {
+  if (event.type === DEVICE.CONNECT_UNACQUIRED) {
+    console.log('Device connected but not acquired');
+    // Device is connected but used by another application
+  }
+});
+```
+</CodeGroup>
+
+### Device Event Constants
+
+```typescript
+export const DEVICE = {
+  // Device list events
+  CONNECT: 'device-connect',
+  CONNECT_UNACQUIRED: 'device-connect_unacquired',
+  DISCONNECT: 'device-disconnect',
+  CHANGED: 'device-changed',
+  FIRMWARE_VERSION_CHANGED: 'device-firmware_version_changed',
+  TREZOR_PUSH_NOTIFICATION: 'device-trezor_push_notification',
+  THP_CREDENTIALS_CHANGED: 'device-thp_credentials_changed',
+  
+  // Trezor-link events (protobuf format)
+  BUTTON: 'button',
+  PIN: 'pin',
+  PASSPHRASE: 'passphrase',
+  PASSPHRASE_ON_DEVICE: 'passphrase_on_device',
+  WORD: 'word',
+  THP_PAIRING: 'thp_pairing',
+  THP_PAIRING_STATUS_CHANGED: 'device-thp_pairing_status_changed',
+} as const;
+```
+
+### Button Request Events
+
+<Note>
+Button request events are emitted when the device requires physical confirmation.
+</Note>
+
+```typescript
+TrezorConnect.on(DEVICE_EVENT, (event) => {
+  if (event.type === DEVICE.BUTTON) {
+    console.log('Button request code:', event.payload.code);
+    // Possible codes: ButtonRequest_ConfirmOutput,
+    // ButtonRequest_SignTx, ButtonRequest_Address, etc.
+    
+    // Show UI prompt to user
+    showMessage('Please confirm action on your Trezor device');
+  }
+});
+```
+
+### Firmware Version Changed
+
+```typescript
+TrezorConnect.on(DEVICE_EVENT, (event) => {
+  if (event.type === DEVICE.FIRMWARE_VERSION_CHANGED) {
+    console.log('Old version:', event.payload.oldVersion);
+    console.log('New version:', event.payload.newVersion);
+    console.log('Device:', event.payload.device);
+  }
+});
+```
+
+## UI Events
+
+UI events request user interaction or display progress:
+
+### Request Events
+
+<AccordionGroup>
+  <Accordion title="PIN Request" icon="keyboard">
+    Emitted when the device requires PIN entry:
+
+    ```typescript
+    import { UI_EVENT, UI_REQUEST } from '@trezor/connect';
+
+    TrezorConnect.on(UI_EVENT, (event) => {
+      if (event.type === UI_REQUEST.REQUEST_PIN) {
+        // Show PIN dialog
+        const pin = await showPinDialog();
+        
+        // Send PIN to device
+        TrezorConnect.uiResponse({
+          type: UI_REQUEST.RECEIVE_PIN,
+          payload: pin
+        });
+      }
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="Passphrase Request" icon="lock">
+    Emitted when passphrase is required:
+
+    ```typescript
+    TrezorConnect.on(UI_EVENT, (event) => {
+      if (event.type === UI_REQUEST.REQUEST_PASSPHRASE) {
+        const passphrase = await showPassphraseDialog();
+        
+        TrezorConnect.uiResponse({
+          type: UI_REQUEST.RECEIVE_PASSPHRASE,
+          payload: {
+            value: passphrase,
+            save: false // Don't cache passphrase
+          }
+        });
+      }
+      
+      // Passphrase entry on device
+      if (event.type === UI_REQUEST.REQUEST_PASSPHRASE_ON_DEVICE) {
+        showMessage('Enter passphrase on device');
+      }
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="Word Request" icon="spell-check">
+    Emitted during seed recovery:
+
+    ```typescript
+    TrezorConnect.on(UI_EVENT, (event) => {
+      if (event.type === UI_REQUEST.REQUEST_WORD) {
+        console.log('Word type:', event.payload.type);
+        // WordRequestType_Plain, WordRequestType_Matrix9, etc.
+        
+        const word = await promptForWord();
+        
+        TrezorConnect.uiResponse({
+          type: UI_REQUEST.RECEIVE_WORD,
+          payload: word
+        });
+      }
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="Confirmation Request" icon="circle-check">
+    Generic confirmation requests:
+
+    ```typescript
+    TrezorConnect.on(UI_EVENT, (event) => {
+      if (event.type === UI_REQUEST.REQUEST_CONFIRMATION) {
+        const { view, label } = event.payload;
+        // Possible views: 'export-xpub', 'export-address',
+        // 'no-backup', 'device-management', etc.
+        
+        const confirmed = await showConfirmationDialog(label);
+        
+        TrezorConnect.uiResponse({
+          type: UI_REQUEST.RECEIVE_CONFIRMATION,
+          payload: confirmed
+        });
+      }
+    });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### UI Event Constants
+
+```typescript
+export const UI_REQUEST = {
+  TRANSPORT: 'ui-no_transport',
+  BOOTLOADER: 'ui-device_bootloader_mode',
+  NOT_IN_BOOTLOADER: 'ui-device_not_in_bootloader_mode',
+  INITIALIZE: 'ui-device_not_initialized',
+  SEEDLESS: 'ui-device_seedless',
+  FIRMWARE_OLD: 'ui-device_firmware_old',
+  FIRMWARE_OUTDATED: 'ui-device_firmware_outdated',
+  FIRMWARE_NOT_SUPPORTED: 'ui-device_firmware_unsupported',
+  FIRMWARE_NOT_COMPATIBLE: 'ui-device_firmware_not_compatible',
+  FIRMWARE_NOT_INSTALLED: 'ui-device_firmware_not_installed',
+  FIRMWARE_PROGRESS: 'ui-firmware-progress',
+  FIRMWARE_RECONNECT: 'ui-firmware_reconnect',
+  REQUEST_CONFIRMATION: 'ui-request_confirmation',
+  REQUEST_PIN: 'ui-request_pin',
+  INVALID_PIN: 'ui-invalid_pin',
+  REQUEST_PASSPHRASE: 'ui-request_passphrase',
+  REQUEST_PASSPHRASE_ON_DEVICE: 'ui-request_passphrase_on_device',
+  REQUEST_BUTTON: 'ui-button',
+  REQUEST_WORD: 'ui-request_word',
+  BUNDLE_PROGRESS: 'ui-bundle_progress',
+  ADDRESS_VALIDATION: 'ui-address_validation',
+} as const;
+```
+
+### Firmware Progress
+
+```typescript
+TrezorConnect.on(UI_EVENT, (event) => {
+  if (event.type === UI_REQUEST.FIRMWARE_PROGRESS) {
+    const { operation, progress } = event.payload;
+    // operation: 'downloading' | 'flashing' | 'start-flashing'
+    // progress: 0-100
+    
+    updateProgressBar(progress);
+    console.log(`${operation}: ${progress}%`);
+  }
+});
+```
+
+### Bundle Progress
+
+```typescript
+TrezorConnect.on(UI_EVENT, (event) => {
+  if (event.type === UI_REQUEST.BUNDLE_PROGRESS) {
+    const { total, progress, response } = event.payload;
+    console.log(`Processing ${progress + 1} of ${total}`);
+    console.log('Current response:', response);
+  }
+});
+```
+
+## Transport Events
+
+Monitor transport layer status:
+
+<CodeGroup>
+```typescript Transport Start
+import { TRANSPORT_EVENT, TRANSPORT } from '@trezor/connect';
+
+TrezorConnect.on(TRANSPORT_EVENT, (event) => {
+  if (event.type === TRANSPORT.START) {
+    console.log('Transport started:', event.payload);
+    console.log('Type:', event.payload.type); // 'BridgeTransport', 'WebUsbTransport'
+    console.log('Version:', event.payload.version);
+    console.log('Outdated:', event.payload.outdated);
+  }
+});
+```
+
+```typescript Transport Error
+TrezorConnect.on(TRANSPORT_EVENT, (event) => {
+  if (event.type === TRANSPORT.ERROR) {
+    console.error('Transport error:', event.payload.error);
+    console.error('Code:', event.payload.code);
+  }
+});
+```
+</CodeGroup>
+
+### Transport Constants
+
+```typescript
+export const TRANSPORT = {
+  START: 'transport-start',
+  ERROR: 'transport-error',
+  // Additional transport actions:
+  SET_TRANSPORTS: 'transport-set_transports',
+  DISABLE_WEBUSB: 'transport-disable_webusb',
+  REQUEST_DEVICE: 'transport-request_device',
+  GET_INFO: 'transport-get_info',
+} as const;
+```
+
+## Blockchain Events
+
+Monitor blockchain backend connections and notifications:
+
+### Connection Events
+
+<CodeGroup>
+```typescript Blockchain Connect
+import { BLOCKCHAIN_EVENT, BLOCKCHAIN } from '@trezor/connect';
+
+TrezorConnect.on(BLOCKCHAIN_EVENT, (event) => {
+  if (event.type === BLOCKCHAIN.CONNECT) {
+    console.log('Blockchain connected:', event.payload.coin);
+    console.log('Block height:', event.payload.blockHeight);
+    console.log('Block hash:', event.payload.blockHash);
+  }
+});
+```
+
+```typescript Blockchain Error
+TrezorConnect.on(BLOCKCHAIN_EVENT, (event) => {
+  if (event.type === BLOCKCHAIN.ERROR) {
+    console.error('Blockchain error for', event.payload.coin);
+    console.error('Error:', event.payload.error);
+  }
+});
+```
+
+```typescript Blockchain Reconnecting
+TrezorConnect.on(BLOCKCHAIN_EVENT, (event) => {
+  if (event.type === BLOCKCHAIN.RECONNECTING) {
+    console.log('Reconnecting to', event.payload.coin);
+    console.log('Retry in', event.payload.time, 'ms');
+  }
+});
+```
+</CodeGroup>
+
+### Block and Transaction Events
+
+<CodeGroup>
+```typescript New Block
+TrezorConnect.on(BLOCKCHAIN_EVENT, (event) => {
+  if (event.type === BLOCKCHAIN.BLOCK) {
+    console.log('New block on', event.payload.coin);
+    console.log('Block height:', event.payload.blockHeight);
+    console.log('Block hash:', event.payload.blockHash);
+  }
+});
+```
+
+```typescript Transaction Notification
+TrezorConnect.on(BLOCKCHAIN_EVENT, (event) => {
+  if (event.type === BLOCKCHAIN.NOTIFICATION) {
+    const { coin, notification } = event.payload;
+    console.log('New transaction on', coin);
+    console.log('TX:', notification.tx);
+  }
+});
+```
+
+```typescript Fiat Rates Update
+TrezorConnect.on(BLOCKCHAIN_EVENT, (event) => {
+  if (event.type === BLOCKCHAIN.FIAT_RATES_UPDATE) {
+    console.log('Fiat rates updated for', event.payload.coin);
+    console.log('Rates:', event.payload.rates);
+  }
+});
+```
+</CodeGroup>
+
+### Blockchain Constants
+
+```typescript
+export const BLOCKCHAIN = {
+  CONNECT: 'blockchain-connect',
+  RECONNECTING: 'blockchain-reconnecting',
+  ERROR: 'blockchain-error',
+  BLOCK: 'blockchain-block',
+  NOTIFICATION: 'blockchain-notification',
+  FIAT_RATES_UPDATE: 'fiat-rates-update',
+} as const;
+```
+
+## Event Filtering
+
+Filter specific event types:
+
+```typescript
+import TrezorConnect, { DEVICE_EVENT, DEVICE } from '@trezor/connect';
+
+// Listen to specific device event type
+TrezorConnect.on(DEVICE.CONNECT, (device) => {
+  console.log('Device connected:', device);
+});
+
+TrezorConnect.on(DEVICE.DISCONNECT, (device) => {
+  console.log('Device disconnected:', device);
+});
+
+// Or filter within the event handler
+TrezorConnect.on(DEVICE_EVENT, (event) => {
+  switch (event.type) {
+    case DEVICE.CONNECT:
+      handleConnect(event.payload);
+      break;
+    case DEVICE.DISCONNECT:
+      handleDisconnect(event.payload);
+      break;
+    case DEVICE.CHANGED:
+      handleChanged(event.payload);
+      break;
+  }
+});
+```
+
+## Advanced: UI Response
+
+Respond to UI requests using `uiResponse`:
+
+```typescript
+import TrezorConnect, { UI_REQUEST } from '@trezor/connect';
+
+// Example: Complete PIN flow
+TrezorConnect.on(UI_EVENT, async (event) => {
+  if (event.type === UI_REQUEST.REQUEST_PIN) {
+    const pin = await getUserPin();
+    
+    TrezorConnect.uiResponse({
+      type: UI_REQUEST.RECEIVE_PIN,
+      payload: pin
+    });
+  }
+  
+  if (event.type === UI_REQUEST.INVALID_PIN) {
+    showError('Invalid PIN, please try again');
+  }
+});
+```
+
+## Event Payload Types
+
+All events are fully typed in TypeScript:
+
+```typescript
+import type {
+  DeviceEvent,
+  UiEvent,
+  TransportEvent,
+  BlockchainEvent
+} from '@trezor/connect';
+
+const handleDeviceEvent = (event: DeviceEvent) => {
+  // TypeScript knows the shape of event.payload
+  if (event.type === DEVICE.CONNECT) {
+    const features = event.payload.features; // typed
+  }
+};
+```
+
+## Best Practices
+
+<Warning>
+Always remove event listeners when they're no longer needed to prevent memory leaks.
+</Warning>
+
+<Tip>
+1. Use specific event type listeners (`DEVICE.CONNECT`) for cleaner code
+2. Handle errors in event listeners to prevent unhandled promise rejections
+3. Store listener references to properly clean them up
+4. Test event handling for edge cases (disconnection during operation)
+</Tip>
+
+## Complete Example
+
+```typescript
+import TrezorConnect, {
+  DEVICE_EVENT,
+  DEVICE,
+  UI_EVENT,
+  UI_REQUEST,
+  TRANSPORT_EVENT,
+  TRANSPORT
+} from '@trezor/connect';
+
+class TrezorManager {
+  private listeners: Array<() => void> = [];
+
+  initialize() {
+    // Device events
+    const deviceListener = TrezorConnect.on(DEVICE_EVENT, this.handleDevice);
+    this.listeners.push(() => TrezorConnect.off(DEVICE_EVENT, this.handleDevice));
+
+    // UI events
+    const uiListener = TrezorConnect.on(UI_EVENT, this.handleUI);
+    this.listeners.push(() => TrezorConnect.off(UI_EVENT, this.handleUI));
+
+    // Transport events
+    const transportListener = TrezorConnect.on(TRANSPORT_EVENT, this.handleTransport);
+    this.listeners.push(() => TrezorConnect.off(TRANSPORT_EVENT, this.handleTransport));
+  }
+
+  handleDevice = (event) => {
+    switch (event.type) {
+      case DEVICE.CONNECT:
+        console.log('Device connected');
+        break;
+      case DEVICE.DISCONNECT:
+        console.log('Device disconnected');
+        break;
+    }
+  };
+
+  handleUI = async (event) => {
+    if (event.type === UI_REQUEST.REQUEST_PIN) {
+      const pin = await this.promptPin();
+      TrezorConnect.uiResponse({
+        type: UI_REQUEST.RECEIVE_PIN,
+        payload: pin
+      });
+    }
+  };
+
+  handleTransport = (event) => {
+    if (event.type === TRANSPORT.ERROR) {
+      console.error('Transport error:', event.payload);
+    }
+  };
+
+  cleanup() {
+    this.listeners.forEach(remove => remove());
+    this.listeners = [];
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Methods" icon="code" href="/connect/methods">
+    Learn about TrezorConnect methods
+  </Card>
+  <Card title="Device Management" icon="laptop-mobile" href="/connect/device-management">
+    Manage device connections
+  </Card>
+  <Card title="Error Handling" icon="triangle-exclamation" href="/connect/error-handling">
+    Handle errors effectively
+  </Card>
+</CardGroup>

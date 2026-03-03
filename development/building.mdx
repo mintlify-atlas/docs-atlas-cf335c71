@@ -1,0 +1,481 @@
+---
+title: Building the Project
+description: Build Trezor Suite libraries and applications
+---
+
+## Overview
+
+Trezor Suite uses a multi-stage build process. You must build core libraries before running applications. The build system uses **Webpack** for bundling and **Nx** for task orchestration.
+
+## Quick Start
+
+After cloning the repository and installing dependencies:
+
+```bash
+# Build essential libraries (required before first run)
+yarn build:essential
+
+# Build all libraries (optional, for full development)
+yarn build:libs
+```
+
+<Warning>
+  **Always run `yarn build:essential` after cloning or when switching branches with dependency changes.**
+</Warning>
+
+## Build Commands
+
+### Essential Builds
+
+Build only the core libraries required for development:
+
+```bash
+yarn build:essential
+```
+
+This builds:
+- `@trezor/suite-data` - Data layer and configuration
+- `@trezor/transport-bridge` - Device transport layer
+- Message system signed configuration
+
+<Note>
+  **Build time:** 3-5 minutes
+
+  This is a parallel build that runs multiple tasks simultaneously.
+</Note>
+
+### Full Library Build
+
+Build all libraries in the monorepo:
+
+```bash
+yarn build:libs
+```
+
+This uses **Nx** to build all packages with the `build:lib` target.
+
+<Warning>
+  **Build time:** 10-15 minutes
+
+  Only run this if you're working on library code or need a complete build.
+</Warning>
+
+### Incremental Builds with Nx
+
+Build only libraries affected by your changes:
+
+```bash
+# Build affected libraries
+yarn nx:build:libs
+
+# Show which projects are affected
+yarn nx:show-affected
+```
+
+Nx determines affected projects by:
+- Git diff against the base branch
+- Dependency graph analysis
+- Build cache status
+
+<Note>
+  Nx caching can significantly speed up rebuilds. The cache is stored in `.nx/cache`.
+</Note>
+
+## Application Builds
+
+### Web Application
+
+<Steps>
+  <Step title="Development Build">
+    Run a development server with hot module replacement:
+
+    ```bash
+    yarn suite:dev
+    ```
+
+    - Runs on `http://localhost:8000`
+    - Includes source maps
+    - Hot module replacement enabled
+    - Development mode React DevTools
+  </Step>
+
+  <Step title="Production Build">
+    Create an optimized production build:
+
+    ```bash
+    yarn suite:build:web
+    ```
+
+    Output: `packages/suite-web/build/`
+
+    <Note>
+      **Build time:** 5-10 minutes
+
+      The production build is minified, optimized, and includes hashed filenames for caching.
+    </Note>
+  </Step>
+
+  <Step title="Production Preview">
+    Build and serve the production version locally:
+
+    ```bash
+    yarn suite:build:web:preview
+    ```
+
+    This builds the production version and serves it on localhost with security headers applied (identical to production environment).
+  </Step>
+</Steps>
+
+### Desktop Application
+
+<Steps>
+  <Step title="Development Build">
+    Run the Electron app in development mode:
+
+    ```bash
+    yarn suite:dev:desktop
+    ```
+
+    Features:
+    - Hot reload for renderer process
+    - React DevTools available (press Cmd/Ctrl+R to reload)
+    - Source maps enabled
+    - Development console access
+
+    <Note>
+      To use React DevTools, open DevTools first, then reload the renderer process (Cmd/Ctrl+R).
+    </Note>
+  </Step>
+
+  <Step title="Production Build">
+    Build the desktop application:
+
+    ```bash
+    # Build only (no packaging)
+    yarn workspace @trezor/suite-desktop build
+
+    # Full release build with packaging
+    ./scripts/prepare-desktop-release.sh
+    ```
+
+    <Warning>
+      Desktop release builds require platform-specific dependencies and code signing certificates.
+    </Warning>
+  </Step>
+</Steps>
+
+### Mobile Application
+
+<Note>
+  Mobile builds require [additional platform setup](https://github.com/trezor/trezor-suite/tree/develop/suite-native/app#prerequisites) for iOS and Android.
+</Note>
+
+<Steps>
+  <Step title="Prebuild Native Projects">
+    Generate native iOS and Android projects:
+
+    ```bash
+    yarn native:prebuild
+    ```
+
+    Clean prebuild (removes existing native projects):
+
+    ```bash
+    yarn native:prebuild:clean
+    ```
+  </Step>
+
+  <Step title="Build for Android">
+    ```bash
+    yarn native:android
+    ```
+  </Step>
+
+  <Step title="Build for iOS">
+    ```bash
+    yarn native:ios
+    ```
+  </Step>
+
+  <Step title="Ad-hoc Build">
+    Create an ad-hoc distribution build:
+
+    ```bash
+    yarn native:adhoc
+    ```
+  </Step>
+</Steps>
+
+## Build Configuration
+
+### Webpack Configuration
+
+Webpack configs are located in the `packages/suite-build` package:
+
+```
+packages/suite-build/
+├── configs/
+│   ├── base.webpack.config.ts      # Common configuration
+│   ├── web.webpack.config.ts       # Web-specific
+│   └── desktop.webpack.config.ts   # Desktop-specific
+├── plugins/                        # Custom plugins
+└── utils/                          # Build utilities
+```
+
+### Environment Variables
+
+Optional environment configuration using `.env.local`:
+
+<Steps>
+  <Step title="Create .env.local File">
+    ```bash
+    cp env.local.example .env.local
+    ```
+  </Step>
+
+  <Step title="Configure Options">
+    ```bash
+    # Enable TanStack React Query DevTools
+    TANSTACK_REACT_QUERY_DEV_TOOLS=true
+
+    # Other development flags
+    # ...
+    ```
+  </Step>
+</Steps>
+
+<Warning>
+  Never commit `.env.local` - it's in `.gitignore` for a reason.
+</Warning>
+
+## Experimental Builds
+
+### Vite Development Build
+
+<Warning>
+  **EXPERIMENTAL** - Use for development only, not for production testing.
+</Warning>
+
+```bash
+yarn suite:dev:vite
+```
+
+Features:
+- Faster hot module replacement
+- Instant server start
+- Lightning-fast updates
+
+**Limitations:**
+- May not match production behavior exactly
+- Use `yarn suite:dev` for production-like development
+
+## Build Optimization
+
+### TypeScript Compilation
+
+Type-check all packages:
+
+```bash
+# Full type-check (10-15 minutes)
+yarn type-check
+
+# Type-check affected packages only
+yarn nx:type-check
+
+# Force complete type-check (purges cache)
+yarn type-check:force
+```
+
+<Note>
+  Type-checking is separate from builds. The build process uses Babel or esbuild for transpilation, not `tsc`.
+</Note>
+
+### Project References
+
+Update TypeScript project references for optimal incremental builds:
+
+```bash
+# Update references
+yarn update-project-references
+
+# Verify references are correct
+yarn verify-project-references
+```
+
+Run this after:
+- Creating new packages
+- Changing package dependencies
+- Modifying tsconfig.json files
+
+### Caching
+
+#### Nx Cache
+
+Nx caches build outputs and test results:
+
+```bash
+# Clear Nx cache
+rm -rf .nx/cache
+
+# Skip cache for a single command
+yarn nx run-many --target=build:lib --skip-nx-cache
+```
+
+#### TypeScript Cache
+
+ESLint and TypeScript use caching for faster runs:
+
+```bash
+# Clear all caches
+rm -rf **/libDev **/.eslintcache
+
+# Purge TypeScript cache
+yarn type-check:purge
+```
+
+## Build Troubleshooting
+
+### Common Issues
+
+<CodeGroup>
+```bash Module Not Found
+# Clear node_modules and reinstall
+rm -rf node_modules
+yarn
+
+# Rebuild essential libraries
+yarn build:essential
+```
+
+```bash Type Errors
+# Purge TypeScript cache and recheck
+yarn type-check:purge
+yarn type-check
+
+# Update project references
+yarn update-project-references
+```
+
+```bash Build Fails on Windows
+# Ensure you're using Git Bash
+# Delete node_modules if you used cmd/PowerShell
+rm -rf node_modules
+yarn
+```
+
+```bash Stale Build Output
+# Clear all build artifacts
+yarn g:rimraf "**/build" "**/dist" "**/libDev"
+
+# Rebuild libraries
+yarn build:libs
+```
+</CodeGroup>
+
+### Dependency Issues
+
+Check for dependency problems:
+
+```bash
+# Verify workspace resolutions
+yarn check-workspace-resolutions
+
+# Check for unused dependencies
+yarn depcheck
+
+# List outdated dependencies
+yarn list-outdated
+```
+
+### Clean Slate
+
+Start completely fresh:
+
+```bash
+# Nuclear option: delete all dependencies and caches
+yarn deps  # Shortcut for: rimraf **/node_modules && yarn
+
+# Rebuild everything
+yarn build:libs
+```
+
+<Warning>
+  This will take 15-20 minutes but solves most dependency-related issues.
+</Warning>
+
+## Build Performance Tips
+
+### Incremental Builds
+
+1. **Use Nx affected commands** - Only rebuild what changed
+2. **Skip unnecessary builds** - Use `build:essential` instead of `build:libs`
+3. **Keep Nx cache** - Don't delete `.nx/cache` unless necessary
+4. **Update incrementally** - Run `yarn` frequently to avoid large dependency updates
+
+### Development Workflow
+
+```bash
+# Daily development workflow
+yarn suite:dev              # Start dev server (no rebuild needed)
+
+# After pulling changes
+git pull
+yarn                        # Update dependencies
+yarn build:essential        # Rebuild core libraries (only if needed)
+
+# After changing library code
+yarn nx:build:libs          # Build affected libraries only
+```
+
+### Resource Usage
+
+<Note>
+  **System Requirements for Building:**
+  - **RAM:** 8GB minimum, 16GB recommended
+  - **CPU:** Multi-core processor (builds use parallel processing)
+  - **Disk:** 10GB free space (including node_modules)
+</Note>
+
+## Build Scripts Reference
+
+### Library Scripts
+
+| Command | Description | Time |
+|---------|-------------|------|
+| `yarn build:libs` | Build all libraries | 10-15 min |
+| `yarn build:essential` | Build core libraries only | 3-5 min |
+| `yarn nx:build:libs` | Build affected libraries | Varies |
+
+### Application Scripts
+
+| Command | Description |
+|---------|-------------|
+| `yarn suite:dev` | Web dev server |
+| `yarn suite:dev:desktop` | Desktop dev server |
+| `yarn suite:dev:vite` | Vite dev server (experimental) |
+| `yarn suite:build:web` | Production web build |
+| `yarn suite:build:web:preview` | Build and preview production |
+
+### Mobile Scripts
+
+| Command | Description |
+|---------|-------------|
+| `yarn native:prebuild` | Generate native projects |
+| `yarn native:android` | Build for Android |
+| `yarn native:ios` | Build for iOS |
+| `yarn native:adhoc` | Ad-hoc distribution build |
+
+### Utility Scripts
+
+| Command | Description |
+|---------|-------------|
+| `yarn update-project-references` | Update TypeScript references |
+| `yarn verify-project-references` | Check TypeScript references |
+| `yarn type-check` | Type-check all packages |
+| `yarn type-check:force` | Type-check with cache purge |
+
+## Next Steps
+
+- Learn how to [Run Development Servers](/development/running-apps)
+- Read about [Testing](/development/testing)
+- Review [Code Style Guidelines](https://github.com/trezor/trezor-suite/blob/develop/skills/index.md)

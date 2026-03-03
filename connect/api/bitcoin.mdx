@@ -1,0 +1,387 @@
+---
+title: 'Bitcoin Methods'
+description: 'Methods for Bitcoin and Bitcoin-like blockchains'
+---
+
+Bitcoin methods handle transactions, addresses, and public keys for Bitcoin and Bitcoin-like cryptocurrencies.
+
+## signTransaction
+
+Signs a Bitcoin transaction with inputs and outputs. User must confirm transaction details on device.
+
+<ParamField path="inputs" type="array" required>
+  Array of transaction inputs.
+  <Expandable title="properties">
+    <ParamField path="address_n" type="number[]">
+      BIP32 derivation path for this input.
+    </ParamField>
+    <ParamField path="prev_hash" type="string" required>
+      Previous transaction hash (txid).
+    </ParamField>
+    <ParamField path="prev_index" type="number" required>
+      Index of output in previous transaction.
+    </ParamField>
+    <ParamField path="amount" type="string" required>
+      Amount in satoshis.
+    </ParamField>
+    <ParamField path="script_type" type="string">
+      Script type: `SPENDADDRESS`, `SPENDWITNESS`, `SPENDP2SHWITNESS`, `SPENDTAPROOT`.
+    </ParamField>
+    <ParamField path="sequence" type="number">
+      Sequence number (for RBF and timelocks).
+    </ParamField>
+    <ParamField path="multisig" type="object">
+      Multisig configuration.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="outputs" type="array" required>
+  Array of transaction outputs.
+  <Expandable title="properties">
+    <ParamField path="address" type="string">
+      Destination address (for external outputs).
+    </ParamField>
+    <ParamField path="address_n" type="number[]">
+      BIP32 path (for change outputs).
+    </ParamField>
+    <ParamField path="amount" type="string" required>
+      Amount in satoshis.
+    </ParamField>
+    <ParamField path="script_type" type="string">
+      Script type for output.
+    </ParamField>
+    <ParamField path="op_return_data" type="string">
+      OP_RETURN data (hex).
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="coin" type="string" required>
+  Coin name (e.g., `Bitcoin`, `Litecoin`, `btc`, `ltc`).
+</ParamField>
+
+<ParamField path="refTxs" type="array">
+  Referenced transactions (previous transactions for inputs).
+</ParamField>
+
+<ParamField path="account" type="object">
+  Account information with addresses and transactions.
+  <Expandable title="properties">
+    <ParamField path="addresses" type="object">
+      Account addresses (used, unused, change).
+    </ParamField>
+    <ParamField path="transactions" type="array">
+      Previous transactions in different format.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="locktime" type="number">
+  Transaction locktime.
+</ParamField>
+
+<ParamField path="timestamp" type="number">
+  Transaction timestamp (Peercoin).
+</ParamField>
+
+<ParamField path="version" type="number">
+  Transaction version.
+</ParamField>
+
+<ParamField path="expiry" type="number">
+  Transaction expiry (Zcash).
+</ParamField>
+
+<ParamField path="overwintered" type="boolean">
+  Overwintered flag (Zcash).
+</ParamField>
+
+<ParamField path="versionGroupId" type="number">
+  Version group ID (Zcash).
+</ParamField>
+
+<ParamField path="branchId" type="number">
+  Branch ID (Zcash).
+</ParamField>
+
+<ParamField path="push" type="boolean">
+  Broadcast transaction to network after signing.
+</ParamField>
+
+<ParamField path="preauthorized" type="boolean">
+  Use preauthorized flow (for coinjoin).
+</ParamField>
+
+<ParamField path="amountUnit" type="string">
+  Display unit: `BITCOIN`, `MILLIBITCOIN`, `MICROBITCOIN`, `SATOSHI`.
+</ParamField>
+
+<ParamField path="unlockPath" type="object">
+  Unlock path configuration.
+</ParamField>
+
+<ParamField path="serialize" type="boolean" default="true">
+  Return serialized transaction.
+</ParamField>
+
+<ParamField path="coinjoinRequest" type="object">
+  Coinjoin request parameters.
+</ParamField>
+
+<ParamField path="chunkify" type="boolean">
+  Split large requests into chunks.
+</ParamField>
+
+<ResponseField name="signatures" type="array">
+  Array of signature strings (hex).
+</ResponseField>
+
+<ResponseField name="serializedTx" type="string">
+  Serialized transaction in hex format.
+</ResponseField>
+
+<ResponseField name="witnesses" type="array">
+  Witness data for SegWit transactions.
+</ResponseField>
+
+<ResponseField name="txid" type="string">
+  Transaction ID (hash).
+</ResponseField>
+
+```typescript
+const result = await TrezorConnect.signTransaction({
+    inputs: [
+        {
+            address_n: [84 | 0x80000000, 0 | 0x80000000, 0 | 0x80000000, 0, 0],
+            prev_hash: '3ac...',
+            prev_index: 0,
+            amount: '100000',
+            script_type: 'SPENDWITNESS',
+        },
+    ],
+    outputs: [
+        {
+            address: 'bc1q...',
+            amount: '90000',
+            script_type: 'PAYTOADDRESS',
+        },
+        {
+            address_n: [84 | 0x80000000, 0 | 0x80000000, 0 | 0x80000000, 1, 0],
+            amount: '9000',
+            script_type: 'PAYTOWITNESS',
+        },
+    ],
+    coin: 'Bitcoin',
+});
+
+if (result.success) {
+    console.log('Transaction ID:', result.payload.txid);
+    console.log('Serialized:', result.payload.serializedTx);
+}
+```
+
+## signMessage
+
+Signs a message using the private key derived from the given path.
+
+<ParamField path="path" type="string | number[]" required>
+  BIP32 derivation path.
+</ParamField>
+
+<ParamField path="coin" type="string">
+  Coin name or shortcut.
+</ParamField>
+
+<ParamField path="message" type="string" required>
+  Message to sign (UTF-8 string or hex).
+</ParamField>
+
+<ParamField path="hex" type="boolean">
+  Interpret message as hex string.
+</ParamField>
+
+<ParamField path="no_script_type" type="boolean">
+  Don't include script type in signature.
+</ParamField>
+
+<ResponseField name="address" type="string">
+  Address corresponding to the signing key.
+</ResponseField>
+
+<ResponseField name="signature" type="string">
+  Message signature (base64).
+</ResponseField>
+
+```typescript
+const result = await TrezorConnect.signMessage({
+    path: "m/84'/0'/0'/0/0",
+    coin: 'btc',
+    message: 'Hello Trezor',
+});
+
+if (result.success) {
+    console.log('Signature:', result.payload.signature);
+    console.log('Address:', result.payload.address);
+}
+```
+
+## verifyMessage
+
+Verifies a message signature.
+
+<ParamField path="address" type="string" required>
+  Address that signed the message.
+</ParamField>
+
+<ParamField path="signature" type="string" required>
+  Message signature (base64).
+</ParamField>
+
+<ParamField path="message" type="string" required>
+  Original message that was signed.
+</ParamField>
+
+<ParamField path="coin" type="string" required>
+  Coin name or shortcut.
+</ParamField>
+
+<ParamField path="hex" type="boolean">
+  Interpret message as hex string.
+</ParamField>
+
+<ResponseField name="success" type="boolean">
+  Whether signature is valid.
+</ResponseField>
+
+```typescript
+const result = await TrezorConnect.verifyMessage({
+    address: 'bc1q...',
+    signature: 'IFqU...',
+    message: 'Hello Trezor',
+    coin: 'btc',
+});
+```
+
+## composeTransaction
+
+Composes a Bitcoin transaction from given outputs, automatically selecting inputs and calculating fees.
+
+<ParamField path="outputs" type="array" required>
+  Desired transaction outputs.
+</ParamField>
+
+<ParamField path="coin" type="string" required>
+  Coin name.
+</ParamField>
+
+<ParamField path="account" type="object" required>
+  Account information with UTXOs and addresses.
+</ParamField>
+
+<ParamField path="feeLevels" type="array">
+  Fee levels to compute (e.g., `[{feePerUnit: '10'}]`).
+</ParamField>
+
+<ParamField path="sequence" type="number">
+  Default sequence number.
+</ParamField>
+
+<ResponseField name="success" type="boolean">
+  Whether composition succeeded.
+</ResponseField>
+
+<ResponseField name="payload" type="object">
+  Composed transaction ready for signing, or error.
+</ResponseField>
+
+```typescript
+const result = await TrezorConnect.composeTransaction({
+    outputs: [{ address: 'bc1q...', amount: '100000' }],
+    coin: 'btc',
+    account: accountInfo,
+    feeLevels: [{ feePerUnit: '10' }],
+});
+```
+
+## authorizeCoinjoin
+
+Authorizes coinjoin transactions for privacy-enhanced Bitcoin transactions.
+
+<ParamField path="path" type="string | number[]" required>
+  Account derivation path.
+</ParamField>
+
+<ParamField path="coordinator" type="string" required>
+  Coinjoin coordinator name.
+</ParamField>
+
+<ParamField path="maxRounds" type="number" required>
+  Maximum number of coinjoin rounds.
+</ParamField>
+
+<ParamField path="maxCoordinatorFeeRate" type="number" required>
+  Maximum coordinator fee rate.
+</ParamField>
+
+<ParamField path="maxFeePerKvbyte" type="number" required>
+  Maximum mining fee per kvbyte.
+</ParamField>
+
+<ParamField path="coin" type="string" required>
+  Coin name (only Bitcoin supported).
+</ParamField>
+
+<ParamField path="scriptType" type="string">
+  Script type for coinjoin.
+</ParamField>
+
+<ResponseField name="success" type="boolean">
+  Whether authorization succeeded.
+</ResponseField>
+
+```typescript
+const result = await TrezorConnect.authorizeCoinjoin({
+    path: "m/84'/0'/0'",
+    coordinator: 'zkSNACKs',
+    maxRounds: 10,
+    maxCoordinatorFeeRate: 50000000,
+    maxFeePerKvbyte: 3500,
+    coin: 'Bitcoin',
+});
+```
+
+## cancelCoinjoinAuthorization
+
+Cancels previously authorized coinjoin session.
+
+<ResponseField name="success" type="boolean">
+  Whether cancellation succeeded.
+</ResponseField>
+
+```typescript
+const result = await TrezorConnect.cancelCoinjoinAuthorization();
+```
+
+## pushTransaction
+
+Broadcasts a signed transaction to the blockchain network.
+
+<ParamField path="tx" type="string" required>
+  Serialized transaction in hex format.
+</ParamField>
+
+<ParamField path="coin" type="string" required>
+  Coin name or shortcut.
+</ParamField>
+
+<ResponseField name="txid" type="string">
+  Transaction ID after broadcasting.
+</ResponseField>
+
+```typescript
+const result = await TrezorConnect.pushTransaction({
+    tx: '0100000...',
+    coin: 'btc',
+});
+```

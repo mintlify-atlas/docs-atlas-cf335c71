@@ -1,0 +1,303 @@
+---
+title: 'Solana Methods'
+description: 'Methods for Solana blockchain operations'
+---
+
+Solana methods handle addresses, transactions, and public keys for the Solana blockchain.
+
+## solanaGetAddress
+
+Retrieves a Solana address from the device.
+
+<ParamField path="path" type="string | number[]" required>
+  BIP32 derivation path (e.g., `m/44'/501'/0'/0'`).
+</ParamField>
+
+<ParamField path="address" type="string">
+  Expected address for verification.
+</ParamField>
+
+<ParamField path="showOnTrezor" type="boolean">
+  Display address on device screen.
+</ParamField>
+
+<ParamField path="chunkify" type="boolean">
+  Split large requests into chunks.
+</ParamField>
+
+<ResponseField name="address" type="string">
+  Solana address (base58 encoded).
+</ResponseField>
+
+<ResponseField name="path" type="number[]">
+  Derivation path as integer array.
+</ResponseField>
+
+<ResponseField name="serializedPath" type="string">
+  Derivation path as string.
+</ResponseField>
+
+```typescript
+const result = await TrezorConnect.solanaGetAddress({
+    path: "m/44'/501'/0'/0'",
+    showOnTrezor: true,
+});
+
+if (result.success) {
+    console.log('Solana address:', result.payload.address);
+}
+```
+
+## solanaGetPublicKey
+
+Retrieves a Solana public key from the device.
+
+<ParamField path="path" type="string | number[]" required>
+  BIP32 derivation path.
+</ParamField>
+
+<ParamField path="showOnTrezor" type="boolean">
+  Display public key on device screen.
+</ParamField>
+
+<ResponseField name="publicKey" type="string">
+  Public key (hex).
+</ResponseField>
+
+<ResponseField name="publicKeyBase58" type="string">
+  Public key (base58).
+</ResponseField>
+
+<ResponseField name="path" type="number[]">
+  Derivation path.
+</ResponseField>
+
+<ResponseField name="serializedPath" type="string">
+  Path as string.
+</ResponseField>
+
+```typescript
+const result = await TrezorConnect.solanaGetPublicKey({
+    path: "m/44'/501'/0'/0'",
+});
+
+if (result.success) {
+    console.log('Public key:', result.payload.publicKeyBase58);
+}
+```
+
+## solanaSignTransaction
+
+Signs a Solana transaction. The transaction must be serialized and provided as a hex string.
+
+<ParamField path="path" type="string | number[]" required>
+  BIP32 derivation path for signing key.
+</ParamField>
+
+<ParamField path="serializedTx" type="string" required>
+  Serialized transaction (hex string).
+</ParamField>
+
+<ParamField path="additionalInfo" type="object">
+  Additional transaction information for better device display.
+  <Expandable title="properties">
+    <ParamField path="tokenAccountsInfos" type="array">
+      Token account information.
+      <Expandable title="properties">
+        <ParamField path="baseAddress" type="string" required>
+          Base address.
+        </ParamField>
+        <ParamField path="tokenProgram" type="string" required>
+          Token program ID.
+        </ParamField>
+        <ParamField path="tokenMint" type="string" required>
+          Token mint address.
+        </ParamField>
+        <ParamField path="tokenAccount" type="string" required>
+          Token account address.
+        </ParamField>
+        <ParamField path="symbol" type="string">
+          Token symbol.
+        </ParamField>
+      </Expandable>
+    </ParamField>
+    <ParamField path="isDevnet" type="boolean">
+      Whether transaction is for devnet.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="serialize" type="boolean">
+  Return serialized transaction.
+</ParamField>
+
+<ParamField path="chunkify" type="boolean">
+  Split large transactions into chunks.
+</ParamField>
+
+<ResponseField name="signature" type="string">
+  Transaction signature (hex).
+</ResponseField>
+
+<ResponseField name="serializedTx" type="string">
+  Serialized signed transaction (if serialize=true).
+</ResponseField>
+
+```typescript
+import { Transaction } from '@solana/web3.js';
+
+// Create and serialize transaction
+const transaction = new Transaction();
+// ... add instructions
+
+const serialized = transaction.serializeMessage().toString('hex');
+
+const result = await TrezorConnect.solanaSignTransaction({
+    path: "m/44'/501'/0'/0'",
+    serializedTx: serialized,
+    additionalInfo: {
+        tokenAccountsInfos: [
+            {
+                baseAddress: 'base...',
+                tokenProgram: 'Token...',
+                tokenMint: 'mint...',
+                tokenAccount: 'acc...',
+                symbol: 'USDC',
+            },
+        ],
+    },
+});
+
+if (result.success) {
+    console.log('Signature:', result.payload.signature);
+}
+```
+
+## solanaComposeTransaction
+
+Composes a Solana transaction, automatically handling token accounts and priority fees.
+
+<ParamField path="fromAddress" type="string" required>
+  Sender's address.
+</ParamField>
+
+<ParamField path="toAddress" type="string">
+  Recipient's address (required if serializedTx not provided).
+</ParamField>
+
+<ParamField path="amount" type="string" required>
+  Amount to send (in lamports or token units).
+</ParamField>
+
+<ParamField path="blockHash" type="string" required>
+  Recent block hash.
+</ParamField>
+
+<ParamField path="lastValidBlockHeight" type="number" required>
+  Last valid block height.
+</ParamField>
+
+<ParamField path="priorityFees" type="object">
+  Priority fee configuration.
+  <Expandable title="properties">
+    <ParamField path="computeUnitPrice" type="string" required>
+      Compute unit price in micro-lamports.
+    </ParamField>
+    <ParamField path="computeUnitLimit" type="string" required>
+      Compute unit limit.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="token" type="object">
+  SPL token transfer information.
+  <Expandable title="properties">
+    <ParamField path="mint" type="string" required>
+      Token mint address.
+    </ParamField>
+    <ParamField path="program" type="string" required>
+      Token program: `spl-token` or `spl-token-2022`.
+    </ParamField>
+    <ParamField path="decimals" type="number" required>
+      Token decimals.
+    </ParamField>
+    <ParamField path="accounts" type="array" required>
+      Available token accounts.
+      <Expandable title="properties">
+        <ParamField path="publicKey" type="string" required>
+          Account public key.
+        </ParamField>
+        <ParamField path="balance" type="string" required>
+          Account balance.
+        </ParamField>
+      </Expandable>
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="serializedTx" type="string">
+  Pre-serialized transaction (alternative to toAddress).
+</ParamField>
+
+<ParamField path="coin" type="string">
+  Coin identifier.
+</ParamField>
+
+<ParamField path="identity" type="string">
+  Device identity.
+</ParamField>
+
+<ResponseField name="serializedTx" type="string">
+  Serialized transaction ready for signing.
+</ResponseField>
+
+<ResponseField name="additionalInfo" type="object">
+  Additional information about the composed transaction.
+  <Expandable title="properties">
+    <ResponseField name="newAccountProgramName" type="string">
+      Token program name if account creation needed.
+    </ResponseField>
+    <ResponseField name="tokenAccountInfo" type="object">
+      Token account information.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+```typescript
+// SOL transfer
+const result = await TrezorConnect.solanaComposeTransaction({
+    fromAddress: 'sender...',
+    toAddress: 'recipient...',
+    amount: '1000000000', // 1 SOL
+    blockHash: 'recent...',
+    lastValidBlockHeight: 123456789,
+    priorityFees: {
+        computeUnitPrice: '1000',
+        computeUnitLimit: '200000',
+    },
+});
+
+// SPL Token transfer
+const tokenResult = await TrezorConnect.solanaComposeTransaction({
+    fromAddress: 'sender...',
+    toAddress: 'recipient...',
+    amount: '1000000', // 1 USDC (6 decimals)
+    blockHash: 'recent...',
+    lastValidBlockHeight: 123456789,
+    token: {
+        mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+        program: 'spl-token',
+        decimals: 6,
+        accounts: [
+            {
+                publicKey: 'account...',
+                balance: '5000000',
+            },
+        ],
+    },
+});
+
+if (result.success) {
+    console.log('Composed tx:', result.payload.serializedTx);
+}
+```

@@ -1,0 +1,493 @@
+---
+title: 'Supported Cryptocurrencies'
+description: 'Complete list of cryptocurrencies and networks supported by Trezor Connect'
+keywords: ['supported coins', 'cryptocurrencies', 'bitcoin', 'ethereum', 'altcoins', 'networks']
+icon: 'coins'
+---
+
+## Overview
+
+Trezor Connect supports a wide range of cryptocurrencies across multiple blockchain networks. This page provides an overview of supported coins and how coin definitions are maintained.
+
+<Info>
+  Coin support depends on both the firmware version of your Trezor device and the Connect library version. Always check the `support` field in coin definitions for device-specific compatibility.
+</Info>
+
+## Supported Blockchain Types
+
+Trezor Connect supports the following blockchain types:
+
+<CardGroup cols={2}>
+  <Card title="Bitcoin & Forks" icon="bitcoin">
+    Bitcoin, Litecoin, Bitcoin Cash, Zcash, Dash, and other UTXO-based coins
+  </Card>
+  <Card title="Ethereum & EVM" icon="ethereum">
+    Ethereum mainnet, testnets, and EVM-compatible chains
+  </Card>
+  <Card title="Cardano" icon="layer-group">
+    Cardano mainnet and testnets with full staking support
+  </Card>
+  <Card title="Solana" icon="circle-nodes">
+    Solana mainnet with SPL token support
+  </Card>
+  <Card title="Ripple (XRP)" icon="water">
+    Ripple mainnet and testnets
+  </Card>
+  <Card title="Stellar (XLM)" icon="star">
+    Stellar network with asset support
+  </Card>
+  <Card title="Tezos" icon="square">
+    Tezos mainnet
+  </Card>
+  <Card title="Monero" icon="shield">
+    Monero mainnet with full privacy features
+  </Card>
+  <Card title="Tron" icon="bolt">
+    Tron mainnet with TRC token support
+  </Card>
+</CardGroup>
+
+## Bitcoin and Bitcoin-like Coins
+
+Trezor devices have extensive support for Bitcoin and UTXO-based cryptocurrencies:
+
+### Bitcoin Networks
+
+<Tabs>
+  <Tab title="Mainnet">
+    ```typescript
+    const result = await TrezorConnect.getAddress({
+      path: "m/84'/0'/0'/0/0",
+      coin: 'btc',
+      showOnTrezor: true,
+    });
+    ```
+    
+    **Features:**
+    - Native SegWit (Bech32)
+    - SegWit P2SH
+    - Legacy addresses
+    - Taproot (BIP86)
+    - Multisig
+    
+    **SLIP44:** 0
+  </Tab>
+  <Tab title="Testnet">
+    ```typescript
+    const result = await TrezorConnect.getAddress({
+      path: "m/84'/1'/0'/0/0",
+      coin: 'test',
+      showOnTrezor: true,
+    });
+    ```
+    
+    **Features:**
+    - Full Bitcoin testnet support
+    - All address types
+    - Ideal for development
+    
+    **SLIP44:** 1
+  </Tab>
+  <Tab title="Regtest">
+    ```typescript
+    const result = await TrezorConnect.getAddress({
+      path: "m/84'/1'/0'/0/0",
+      coin: 'regtest',
+    });
+    ```
+    
+    **Features:**
+    - Local regression testing
+    - No blockchain link required
+    
+    **SLIP44:** 1
+  </Tab>
+</Tabs>
+
+### Popular Bitcoin Forks
+
+<AccordionGroup>
+  <Accordion title="Litecoin (LTC)">
+    - **Coin shortcut:** `ltc`
+    - **SLIP44:** 2
+    - **Features:** SegWit, Native SegWit (ltc1...)
+    - **Block time:** 2.5 minutes
+    
+    ```typescript
+    await TrezorConnect.getAddress({
+      path: "m/84'/2'/0'/0/0",
+      coin: 'ltc',
+    });
+    ```
+  </Accordion>
+  <Accordion title="Bitcoin Cash (BCH)">
+    - **Coin shortcut:** `bch`
+    - **SLIP44:** 145
+    - **Features:** CashAddr format, larger blocks
+    - **Note:** Post-fork Bitcoin Cash
+    
+    ```typescript
+    await TrezorConnect.getAddress({
+      path: "m/44'/145'/0'/0/0",
+      coin: 'bch',
+    });
+    ```
+  </Accordion>
+  <Accordion title="Dash (DASH)">
+    - **Coin shortcut:** `dash`
+    - **SLIP44:** 5
+    - **Features:** InstantSend, PrivateSend compatible
+    
+    ```typescript
+    await TrezorConnect.getAddress({
+      path: "m/44'/5'/0'/0/0",
+      coin: 'dash',
+    });
+    ```
+  </Accordion>
+  <Accordion title="Zcash (ZEC)">
+    - **Coin shortcut:** `zec`
+    - **SLIP44:** 133
+    - **Features:** Transparent addresses (shielded transactions not supported)
+    
+    ```typescript
+    await TrezorConnect.getAddress({
+      path: "m/44'/133'/0'/0/0",
+      coin: 'zec',
+    });
+    ```
+  </Accordion>
+  <Accordion title="Dogecoin (DOGE)">
+    - **Coin shortcut:** `doge`
+    - **SLIP44:** 3
+    - **Features:** Compatible with Litecoin-like operations
+    
+    ```typescript
+    await TrezorConnect.getAddress({
+      path: "m/44'/3'/0'/0/0",
+      coin: 'doge',
+    });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Ethereum and EVM Networks
+
+Trezor Connect supports Ethereum and all EVM-compatible networks:
+
+### Ethereum Mainnet
+
+```typescript
+const result = await TrezorConnect.ethereumGetAddress({
+  path: "m/44'/60'/0'/0/0",
+  showOnTrezor: true,
+});
+```
+
+**Supported features:**
+- ETH transfers
+- ERC-20 token transfers
+- ERC-721 (NFT) transfers
+- ERC-1155 tokens
+- Contract interactions
+- EIP-1559 transactions
+- Message signing (EIP-712)
+
+### EVM-Compatible Networks
+
+Trezor Connect works with any EVM-compatible network:
+
+<Tabs>
+  <Tab title="Polygon">
+    ```typescript
+    await TrezorConnect.ethereumSignTransaction({
+      path: "m/44'/60'/0'/0/0",
+      transaction: {
+        to: '0x...',
+        value: '0x0',
+        gasLimit: '0x5208',
+        gasPrice: '0x...',
+        nonce: '0x0',
+        chainId: 137, // Polygon mainnet
+      },
+    });
+    ```
+  </Tab>
+  <Tab title="Arbitrum">
+    ```typescript
+    await TrezorConnect.ethereumSignTransaction({
+      path: "m/44'/60'/0'/0/0",
+      transaction: {
+        to: '0x...',
+        value: '0x0',
+        chainId: 42161, // Arbitrum One
+      },
+    });
+    ```
+  </Tab>
+  <Tab title="Optimism">
+    ```typescript
+    await TrezorConnect.ethereumSignTransaction({
+      path: "m/44'/60'/0'/0/0",
+      transaction: {
+        to: '0x...',
+        value: '0x0',
+        chainId: 10, // Optimism mainnet
+      },
+    });
+    ```
+  </Tab>
+  <Tab title="BSC">
+    ```typescript
+    await TrezorConnect.ethereumSignTransaction({
+      path: "m/44'/60'/0'/0/0",
+      transaction: {
+        to: '0x...',
+        value: '0x0',
+        chainId: 56, // Binance Smart Chain
+      },
+    });
+    ```
+  </Tab>
+</Tabs>
+
+## Other Supported Networks
+
+### Cardano (ADA)
+
+```typescript
+const result = await TrezorConnect.cardanoGetAddress({
+  addressParameters: {
+    addressType: 0, // Base address
+    path: "m/1852'/1815'/0'/0/0",
+    stakingPath: "m/1852'/1815'/0'/2/0",
+  },
+  showOnTrezor: true,
+});
+```
+
+**Features:**
+- Shelley-era addresses
+- Stake pool delegation
+- Native token support
+- Multi-asset transactions
+
+### Solana (SOL)
+
+```typescript
+const result = await TrezorConnect.solanaGetAddress({
+  path: "m/44'/501'/0'/0'",
+  showOnTrezor: true,
+});
+```
+
+**Features:**
+- SOL transfers
+- SPL token support
+- Program interactions
+
+### Ripple (XRP)
+
+```typescript
+const result = await TrezorConnect.rippleGetAddress({
+  path: "m/44'/144'/0'/0/0",
+  showOnTrezor: true,
+});
+```
+
+**Features:**
+- XRP transfers
+- Destination tags
+- Payment operations
+
+### Stellar (XLM)
+
+```typescript
+const result = await TrezorConnect.stellarGetAddress({
+  path: "m/44'/148'/0'",
+  showOnTrezor: true,
+});
+```
+
+**Features:**
+- XLM transfers
+- Asset support
+- Memo fields
+
+### Tezos (XTZ)
+
+```typescript
+const result = await TrezorConnect.tezosGetAddress({
+  path: "m/44'/1729'/0'/0'",
+  showOnTrezor: true,
+});
+```
+
+**Features:**
+- XTZ transfers
+- Smart contract operations
+
+## Coin Definition Pipeline
+
+Coin definitions in Trezor Connect are maintained through a structured pipeline:
+
+<Steps>
+  <Step title="Source of Truth">
+    All coin definitions originate from the [trezor-firmware repository](https://github.com/trezor/trezor-firmware/tree/main/common/defs) as JSON files.
+  </Step>
+  <Step title="Trezor Common">
+    Definitions are exported to the read-only [trezor-common repository](https://github.com/trezor/trezor-common), which is included in Connect as a git submodule at `submodules/trezor-common`.
+  </Step>
+  <Step title="Connect Integration">
+    The `coins.json` file in `@trezor/connect-data` is built from the submodule using the `cointool` script.
+  </Step>
+</Steps>
+
+<Warning>
+  **Do not manually edit** `@trezor/connect-data/files/coins.json`. Changes should be made in the firmware repository and synced through the official pipeline.
+</Warning>
+
+## Checking Coin Support
+
+Use the `getCoinInfo` method to verify coin support and retrieve coin metadata:
+
+```typescript
+const coinInfo = await TrezorConnect.getCoinInfo({ coin: 'btc' });
+
+if (coinInfo.success) {
+  console.log('Coin name:', coinInfo.payload.name);
+  console.log('Shortcut:', coinInfo.payload.shortcut);
+  console.log('SLIP44:', coinInfo.payload.slip44);
+  console.log('Support:', coinInfo.payload.support);
+}
+```
+
+## Device-Specific Support
+
+Different Trezor models support coins starting from different firmware versions:
+
+<Tabs>
+  <Tab title="Trezor One (T1B1)">
+    First-generation Trezor device
+    
+    **Bitcoin support:** 1.5.2+
+    
+    **Ethereum support:** 1.4.0+
+  </Tab>
+  <Tab title="Trezor Model T (T2T1)">
+    Touchscreen model with broader support
+    
+    **Bitcoin support:** 2.0.5+
+    
+    **Cardano support:** 2.3.0+
+    
+    **Solana support:** 2.5.1+
+  </Tab>
+  <Tab title="Trezor Safe 3 (T2B1)">
+    Compact model with modern features
+    
+    **Bitcoin support:** 2.6.1+
+    
+    **Full altcoin support:** 2.6.1+
+  </Tab>
+  <Tab title="Trezor Safe 5 (T3T1)">
+    Latest touchscreen model
+    
+    **All coins supported:** 2.6.1+
+  </Tab>
+</Tabs>
+
+## Coin Support by Category
+
+### UTXO-based Coins
+Bitcoin, Litecoin, Bitcoin Cash, Dogecoin, Dash, Zcash, Digibyte, Vertcoin, and 50+ more
+
+### EVM Networks
+Ethereum and all EVM-compatible chains (Polygon, Arbitrum, Optimism, Avalanche C-Chain, BNB Chain, etc.)
+
+### Smart Contract Platforms
+Cardano, Solana, Tezos, Tron
+
+### Specialized Networks
+Ripple (XRP), Stellar (XLM), Monero (XMR)
+
+## Adding New Coins
+
+To add support for a new coin:
+
+<Steps>
+  <Step title="Check Compatibility">
+    Verify the coin is compatible with Trezor's supported blockchain types (UTXO, EVM, etc.)
+  </Step>
+  <Step title="Firmware Definition">
+    Create a coin definition in the [trezor-firmware repository](https://github.com/trezor/trezor-firmware/tree/main/common/defs) following the specification format.
+  </Step>
+  <Step title="Enable Connect Support">
+    Enable Connect support in the [support.json](https://github.com/trezor/trezor-firmware/blob/main/common/defs/support.json) configuration.
+  </Step>
+  <Step title="Update Submodule">
+    After the coin is merged in firmware, update the `trezor-common` submodule:
+    ```bash
+    yarn update-submodules
+    ```
+  </Step>
+  <Step title="Rebuild Coin Data">
+    Regenerate the `coins.json` file:
+    ```bash
+    yarn update-coins
+    ```
+  </Step>
+</Steps>
+
+<Info>
+  For detailed instructions on the coin addition process, see the [supported-coins documentation](https://github.com/trezor/trezor-suite/blob/develop/docs/packages/connect/supported-coins.md) in the repository.
+</Info>
+
+## API Methods by Blockchain
+
+Different blockchains have specialized API methods:
+
+<Tabs>
+  <Tab title="Bitcoin">
+    - `getAddress` - Get Bitcoin address
+    - `getPublicKey` - Get xpub
+    - `signTransaction` - Sign Bitcoin transaction
+    - `composeTransaction` - Compose UTXO transaction
+    - `getAccountInfo` - Get account balance and history
+  </Tab>
+  <Tab title="Ethereum">
+    - `ethereumGetAddress` - Get Ethereum address
+    - `ethereumGetPublicKey` - Get public key
+    - `ethereumSignTransaction` - Sign transaction
+    - `ethereumSignMessage` - Sign message (EIP-191)
+    - `ethereumSignTypedData` - Sign typed data (EIP-712)
+  </Tab>
+  <Tab title="Cardano">
+    - `cardanoGetAddress` - Get Cardano address
+    - `cardanoGetPublicKey` - Get public key
+    - `cardanoSignTransaction` - Sign transaction
+    - `cardanoGetNativeScriptHash` - Get script hash
+  </Tab>
+  <Tab title="Solana">
+    - `solanaGetAddress` - Get Solana address
+    - `solanaGetPublicKey` - Get public key
+    - `solanaSignTransaction` - Sign transaction
+  </Tab>
+</Tabs>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="API Reference" icon="book" href="/api-reference">
+    Explore all API methods and parameters
+  </Card>
+  <Card title="Bitcoin API" icon="bitcoin" href="/api-reference/bitcoin">
+    Bitcoin-specific API methods
+  </Card>
+  <Card title="Ethereum API" icon="ethereum" href="/api-reference/ethereum">
+    Ethereum and EVM API methods
+  </Card>
+  <Card title="Coin Definitions" icon="github" href="https://github.com/trezor/trezor-firmware/tree/main/common/defs">
+    View coin definition files in firmware repo
+  </Card>
+</CardGroup>

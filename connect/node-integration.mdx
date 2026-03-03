@@ -1,0 +1,497 @@
+---
+title: Node.js Integration
+description: Use @trezor/connect in Node.js applications for server-side Trezor hardware wallet integration.
+---
+
+# Node.js Integration
+
+The `@trezor/connect` package provides a Node.js-compatible interface for integrating Trezor hardware wallets into server-side applications, CLI tools, and Electron apps.
+
+<Warning>
+This package is designed for **Node.js environments only**. For web applications, use [@trezor/connect-web](/connect/web-integration) instead.
+</Warning>
+
+## Installation
+
+Install the package using npm or yarn:
+
+<CodeGroup>
+```bash npm
+npm install @trezor/connect
+```
+
+```bash yarn
+yarn add @trezor/connect
+```
+</CodeGroup>
+
+## Prerequisites
+
+Before using TrezorConnect in Node.js, ensure you have:
+
+<Steps>
+  <Step title="Trezor Bridge Running">
+    Download and install [Trezor Bridge](https://suite.trezor.io/web/bridge/) or run Trezor Suite.
+  </Step>
+  
+  <Step title="Device Connected">
+    Connect your Trezor device via USB.
+  </Step>
+  
+  <Step title="Node.js Version">
+    Use Node.js 16 or higher (recommended: Node.js 18+).
+  </Step>
+</Steps>
+
+## Basic Setup
+
+### CommonJS (require)
+
+```javascript
+const TrezorConnect = require('@trezor/connect').default;
+
+async function main() {
+    await TrezorConnect.init({
+        manifest: {
+            appUrl: 'my-node-app',
+            appName: 'My Node Application',
+            email: 'developer@example.com',
+        },
+    });
+    
+    // Your code here
+}
+
+main();
+```
+
+### ES Modules (import)
+
+```javascript
+import TrezorConnect from '@trezor/connect';
+
+await TrezorConnect.init({
+    manifest: {
+        appUrl: 'my-node-app',
+        appName: 'My Node Application',
+        email: 'developer@example.com',
+    },
+});
+```
+
+<Note>
+For ES modules, ensure your `package.json` includes `"type": "module"` or use `.mjs` file extensions.
+</Note>
+
+## Complete Example
+
+Here's a complete Node.js script that initializes TrezorConnect, listens to events, and gets device features:
+
+```javascript
+import TrezorConnect, { DEVICE_EVENT, TRANSPORT_EVENT } from '@trezor/connect';
+
+const runExample = async () => {
+    // Initialize TrezorConnect
+    await TrezorConnect.init({
+        manifest: {
+            appUrl: 'my-node-app',
+            appName: 'Trezor Connect Example',
+            email: 'developer@example.com',
+        },
+    });
+
+    // Listen to transport events
+    TrezorConnect.on(TRANSPORT_EVENT, (event) => {
+        console.log('Transport event:', event);
+        // Fired when bridge starts/stops or connection status changes
+    });
+
+    // Listen to device events
+    TrezorConnect.on(DEVICE_EVENT, (event) => {
+        console.log('Device event:', event);
+        // Fired when device connects, disconnects, or changes state
+    });
+
+    // Get device features
+    const result = await TrezorConnect.getFeatures();
+
+    if (result.success) {
+        console.log('Device info:', result.payload);
+        console.log('Model:', result.payload.model);
+        console.log('Firmware version:', result.payload.firmware_version);
+        process.exit(0);
+    } else {
+        console.error('Error:', result.payload.error);
+        process.exit(1);
+    }
+};
+
+runExample();
+```
+
+## Common Operations
+
+### Get Bitcoin Address
+
+```javascript
+const result = await TrezorConnect.getAddress({
+    path: "m/49'/0'/0'/0/0",
+    coin: 'btc',
+    showOnTrezor: false, // Set to true to show on device screen
+});
+
+if (result.success) {
+    console.log('BTC Address:', result.payload.address);
+    console.log('Derivation path:', result.payload.serializedPath);
+}
+```
+
+### Get Multiple Addresses
+
+```javascript
+const result = await TrezorConnect.getAddress({
+    bundle: [
+        { path: "m/49'/0'/0'/0/0", coin: 'btc' },
+        { path: "m/49'/0'/0'/0/1", coin: 'btc' },
+        { path: "m/49'/0'/0'/0/2", coin: 'btc' },
+    ],
+});
+
+if (result.success) {
+    result.payload.forEach((item, index) => {
+        console.log(`Address ${index}:`, item.address);
+    });
+}
+```
+
+### Get Public Key
+
+```javascript
+const result = await TrezorConnect.getPublicKey({
+    path: "m/49'/0'/0'",
+    coin: 'btc',
+});
+
+if (result.success) {
+    console.log('xpub:', result.payload.xpub);
+    console.log('Chaincode:', result.payload.chainCode);
+    console.log('Public key:', result.payload.publicKey);
+}
+```
+
+### Sign Transaction
+
+```javascript
+const result = await TrezorConnect.signTransaction({
+    coin: 'btc',
+    inputs: [
+        {
+            address_n: [49 | 0x80000000, 0 | 0x80000000, 0 | 0x80000000, 0, 0],
+            prev_hash: 'b4dc0ffeee...',
+            prev_index: 0,
+            amount: '12345',
+        },
+    ],
+    outputs: [
+        {
+            address: '1BitcoinEaterAddressDontSendf59kuE',
+            amount: '10000',
+            script_type: 'PAYTOADDRESS',
+        },
+    ],
+});
+
+if (result.success) {
+    console.log('Signed transaction:', result.payload.serializedTx);
+}
+```
+
+## Event Handling
+
+Monitor device and transport events in your Node.js application:
+
+```javascript
+import TrezorConnect, { DEVICE_EVENT, TRANSPORT_EVENT } from '@trezor/connect';
+
+// Device connection events
+TrezorConnect.on(DEVICE_EVENT, (event) => {
+    switch (event.type) {
+        case 'device-connect':
+            console.log('Device connected:', event.payload.features.model);
+            break;
+        case 'device-disconnect':
+            console.log('Device disconnected');
+            break;
+        case 'device-changed':
+            console.log('Device state changed');
+            break;
+    }
+});
+
+// Transport layer events
+TrezorConnect.on(TRANSPORT_EVENT, (event) => {
+    switch (event.type) {
+        case 'transport-start':
+            console.log('Bridge started');
+            break;
+        case 'transport-error':
+            console.log('Bridge error:', event.payload);
+            break;
+    }
+});
+```
+
+<CardGroup cols={2}>
+  <Card title="DEVICE_EVENT" icon="usb">
+    Emitted when devices connect, disconnect, or change state.
+  </Card>
+  
+  <Card title="TRANSPORT_EVENT" icon="bridge">
+    Emitted when Trezor Bridge starts, stops, or encounters errors.
+  </Card>
+</CardGroup>
+
+## Error Handling
+
+Properly handle errors in your Node.js application:
+
+```javascript
+const result = await TrezorConnect.getAddress({
+    path: "m/49'/0'/0'/0/0",
+    coin: 'btc',
+});
+
+if (result.success) {
+    // Success case
+    const { address, path, serializedPath } = result.payload;
+    console.log('Address retrieved:', address);
+} else {
+    // Error case
+    const { error, code } = result.payload;
+    
+    switch (code) {
+        case 'Device_NotFound':
+            console.error('No Trezor device connected');
+            break;
+        case 'Device_UsedElsewhere':
+            console.error('Device is being used by another application');
+            break;
+        case 'Transport_Missing':
+            console.error('Trezor Bridge is not running');
+            break;
+        default:
+            console.error('Error:', error);
+    }
+}
+```
+
+## TypeScript Support
+
+TrezorConnect has full TypeScript support with comprehensive type definitions:
+
+```typescript
+import TrezorConnect, { 
+    DEVICE_EVENT, 
+    Device, 
+    Success, 
+    Unsuccessful,
+    Address,
+} from '@trezor/connect';
+
+const getAddress = async (): Promise<void> => {
+    const result = await TrezorConnect.getAddress({
+        path: "m/49'/0'/0'/0/0",
+        coin: 'btc',
+    });
+
+    if (result.success) {
+        // TypeScript knows this is Success<Address>
+        const address: string = result.payload.address;
+        console.log('Address:', address);
+    } else {
+        // TypeScript knows this is Unsuccessful
+        console.error('Error:', result.payload.error);
+    }
+};
+
+// Typed event listeners
+TrezorConnect.on(DEVICE_EVENT, (event: Device.DeviceEvent) => {
+    console.log('Device event type:', event.type);
+    console.log('Device payload:', event.payload);
+});
+```
+
+## CLI Application Example
+
+Create a simple CLI tool using TrezorConnect:
+
+```javascript
+#!/usr/bin/env node
+import TrezorConnect from '@trezor/connect';
+import { program } from 'commander';
+
+program
+    .name('trezor-cli')
+    .description('CLI tool for Trezor operations')
+    .version('1.0.0');
+
+program
+    .command('get-address')
+    .description('Get Bitcoin address')
+    .option('-p, --path <path>', 'Derivation path', "m/49'/0'/0'/0/0")
+    .action(async (options) => {
+        await TrezorConnect.init({
+            manifest: {
+                appUrl: 'trezor-cli',
+                appName: 'Trezor CLI',
+                email: 'developer@example.com',
+            },
+        });
+
+        const result = await TrezorConnect.getAddress({
+            path: options.path,
+            coin: 'btc',
+        });
+
+        if (result.success) {
+            console.log('Address:', result.payload.address);
+        } else {
+            console.error('Error:', result.payload.error);
+            process.exit(1);
+        }
+
+        TrezorConnect.dispose();
+    });
+
+program.parse();
+```
+
+## Electron Integration
+
+For Electron applications, use TrezorConnect in the **main process**:
+
+```javascript
+// main.js (Electron main process)
+import { app } from 'electron';
+import TrezorConnect from '@trezor/connect';
+
+app.whenReady().then(async () => {
+    await TrezorConnect.init({
+        manifest: {
+            appUrl: 'my-electron-app',
+            appName: 'My Electron App',
+            email: 'developer@example.com',
+        },
+    });
+
+    // Set up IPC handlers for renderer process
+    ipcMain.handle('trezor-get-address', async (event, params) => {
+        return await TrezorConnect.getAddress(params);
+    });
+});
+
+app.on('before-quit', () => {
+    TrezorConnect.dispose();
+});
+```
+
+<Note>
+For a complete Electron example, see the [electron-main-process example](https://github.com/trezor/trezor-suite/tree/develop/packages/connect-examples/electron-main-process) in the Trezor Suite repository.
+</Note>
+
+## Environment Configuration
+
+Configure TrezorConnect for different environments:
+
+```javascript
+await TrezorConnect.init({
+    manifest: {
+        appUrl: 'my-node-app',
+        appName: 'My Application',
+        email: 'developer@example.com',
+    },
+    // Enable debug logging
+    debug: process.env.NODE_ENV === 'development',
+    
+    // Custom transport settings
+    transportReconnect: true,
+});
+```
+
+## Cleanup
+
+Always dispose of TrezorConnect when shutting down:
+
+```javascript
+// Graceful shutdown
+process.on('SIGINT', () => {
+    console.log('Shutting down...');
+    TrezorConnect.dispose();
+    process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+    TrezorConnect.dispose();
+    process.exit(0);
+});
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Initialize Once" icon="1">
+    Call `TrezorConnect.init()` only once at application startup, not before each operation.
+  </Accordion>
+
+  <Accordion title="Handle Errors Gracefully" icon="triangle-exclamation">
+    Always check the `success` field and handle errors appropriately for your use case.
+  </Accordion>
+
+  <Accordion title="Listen to Events" icon="radio">
+    Monitor `DEVICE_EVENT` and `TRANSPORT_EVENT` to handle device connection changes.
+  </Accordion>
+
+  <Accordion title="Dispose on Exit" icon="power-off">
+    Call `TrezorConnect.dispose()` during application shutdown to clean up resources.
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Transport_Missing Error" icon="bridge">
+    This error means Trezor Bridge is not running. Install and start [Trezor Bridge](https://suite.trezor.io/web/bridge/) or run Trezor Suite.
+  </Accordion>
+
+  <Accordion title="Device_NotFound Error" icon="usb">
+    Ensure your Trezor device is connected via USB and unlocked. Check USB cable and port.
+  </Accordion>
+
+  <Accordion title="Device_UsedElsewhere Error" icon="lock">
+    Close other applications (like Trezor Suite) that might be using the device.
+  </Accordion>
+
+  <Accordion title="Import Errors" icon="file-import">
+    For CommonJS, use `require('@trezor/connect').default`. For ES modules, ensure `package.json` has `"type": "module"`.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="API Methods" icon="code" href="/connect/methods">
+    Explore all available TrezorConnect methods
+  </Card>
+  
+  <Card title="Node Example" icon="node" href="https://github.com/trezor/trezor-suite/tree/develop/packages/connect-examples/node" target="_blank">
+    Complete Node.js example project
+  </Card>
+  
+  <Card title="Electron Example" icon="electron" href="https://github.com/trezor/trezor-suite/tree/develop/packages/connect-examples/electron-main-process" target="_blank">
+    Full Electron integration example
+  </Card>
+  
+  <Card title="TypeScript Types" icon="code" href="/connect/typescript">
+    TypeScript type definitions guide
+  </Card>
+</CardGroup>

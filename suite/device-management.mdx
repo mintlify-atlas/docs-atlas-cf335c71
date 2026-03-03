@@ -1,0 +1,439 @@
+---
+title: 'Device management'
+description: 'Managing Trezor devices in Suite - connecting, ejecting, and handling multiple devices'
+keywords: ['device', 'connect', 'eject', 'multiple devices', 'device selection', 'remember device']
+---
+
+# Device management
+
+Trezor Suite provides comprehensive device management capabilities, allowing you to connect, manage, and switch between multiple Trezor devices seamlessly.
+
+## Connecting devices
+
+### First-time connection
+
+When connecting a Trezor device for the first time:
+
+<Steps>
+  <Step title="Connect device">
+    Plug your Trezor device into your computer using the USB cable.
+  </Step>
+  
+  <Step title="Device detection">
+    Suite automatically detects the device and displays it in the interface.
+  </Step>
+  
+  <Step title="Unlock device">
+    Enter your PIN on the device when prompted. The PIN layout is displayed in Suite but entered on the device.
+  </Step>
+  
+  <Step title="Device ready">
+    Once unlocked, your device is ready to use. Suite begins account discovery automatically.
+  </Step>
+</Steps>
+
+<Info>
+Suite uses WebUSB (web) or native USB communication (desktop) to connect to your device. No additional drivers are required on most systems.
+</Info>
+
+### Device states
+
+Your Trezor device can be in several states:
+
+<Tabs>
+  <Tab title="Connected">
+    - Device is plugged in and detected
+    - Shows in device dropdown
+    - Ready for authentication
+  </Tab>
+  
+  <Tab title="Acquired">
+    - Device is connected and Suite has acquired exclusive access
+    - Shows device information (model, firmware version)
+    - Ready for PIN entry
+  </Tab>
+  
+  <Tab title="Unlocked">
+    - Device is connected, acquired, and PIN entered
+    - Ready for operations
+    - Accounts are visible
+  </Tab>
+  
+  <Tab title="Authorized">
+    - Device is unlocked and has an active session
+    - Full access to wallet features
+    - Can perform transactions
+  </Tab>
+</Tabs>
+
+```typescript
+// Device state types
+type DeviceStatus = 
+  | 'available'      // Connected but not acquired
+  | 'occupied'       // Used by another application
+  | 'used'           // Acquired by Suite
+  | 'released';      // Released from Suite
+
+type DeviceMode =
+  | 'normal'         // Standard operation
+  | 'bootloader'     // Firmware update mode
+  | 'initialize'     // Needs setup
+  | 'seedless';      // No seed loaded
+```
+
+## Device selection
+
+When multiple devices are connected, Suite allows you to switch between them.
+
+### Switching devices
+
+<Steps>
+  <Step title="Open device menu">
+    Click the device name in the top-left corner of Suite.
+  </Step>
+  
+  <Step title="Select device">
+    Choose the device you want to use from the dropdown list.
+  </Step>
+  
+  <Step title="Authenticate">
+    Enter the PIN for the selected device.
+  </Step>
+  
+  <Step title="Access accounts">
+    Suite loads the accounts for the selected device.
+  </Step>
+</Steps>
+
+<Note>
+Each device is identified by its device ID, which is derived from its internal configuration and firmware.
+</Note>
+
+### Device identification
+
+Suite identifies devices using:
+
+- **Device ID**: Unique identifier based on device internals
+- **Device label**: Custom name you set in device settings
+- **Model**: Trezor One, Trezor Model T, Trezor Safe 3, etc.
+- **Firmware version**: Current firmware installed
+
+## Multiple device support
+
+Suite can manage multiple Trezor devices simultaneously.
+
+### Use cases
+
+<AccordionGroup>
+  <Accordion title="Multiple hardware wallets">
+    Use different devices for different purposes:
+    - One for daily transactions
+    - One for long-term savings
+    - One for business funds
+  </Accordion>
+  
+  <Accordion title="Testing and development">
+    Developers can:
+    - Test with multiple device configurations
+    - Compare different firmware versions
+    - Verify cross-device compatibility
+  </Accordion>
+  
+  <Accordion title="Family accounts">
+    Manage devices for:
+    - Family members
+    - Business partners
+    - Separate entities
+  </Accordion>
+</AccordionGroup>
+
+### Device memory
+
+Suite remembers recently used devices:
+
+- Device list persists across sessions
+- Each device stores its own wallet instances
+- Settings are per-device when applicable
+- Account discovery state is cached
+
+```typescript
+// Device storage structure
+interface RememberedDevice {
+  id: string;                    // Device ID
+  label?: string;                // Custom label
+  state: string;                 // Device state
+  staticSessionId?: string;      // Session identifier
+  remember: boolean;             // Persist device memory
+  connected: boolean;            // Currently connected
+  available: boolean;            // Available for use
+  features: {
+    vendor: string;
+    model: string;
+    firmware_version: [number, number, number];
+    // ... more features
+  };
+}
+```
+
+## Ejecting devices
+
+Properly ejecting a device clears its session and memory from Suite.
+
+### Manual eject
+
+<Steps>
+  <Step title="Open settings">
+    Navigate to **Settings → Device**.
+  </Step>
+  
+  <Step title="Eject device">
+    Click **Eject device** or use the eject icon in the device dropdown.
+  </Step>
+  
+  <Step title="Confirm action">
+    Suite clears the device session and removes it from the active device list.
+  </Step>
+  
+  <Step title="Physical disconnect">
+    You can now safely unplug the device.
+  </Step>
+</Steps>
+
+<Info>
+Ejecting a device doesn't delete any data. When you reconnect, you can access all wallets and accounts again.
+</Info>
+
+### Auto-eject feature
+
+Suite can automatically eject devices when appropriate.
+
+**Enable auto-eject**:
+
+1. Go to **Settings → Application**
+2. Enable **Auto-eject device**
+3. Device will be ejected when:
+   - Discovery completes
+   - Switching to another device
+   - Suite closes (desktop)
+
+<Tip>
+Auto-eject is useful for enhanced security when using multiple devices or shared computers.
+</Tip>
+
+## Device sessions
+
+Sessions manage the state between Suite and your device.
+
+### Session lifecycle
+
+<Steps>
+  <Step title="Acquire session">
+    Suite requests exclusive access to the device.
+  </Step>
+  
+  <Step title="Initialize device">
+    Device features are fetched and validated.
+  </Step>
+  
+  <Step title="Create state">
+    Device state is created after PIN entry and optional passphrase.
+  </Step>
+  
+  <Step title="Active session">
+    Full access to device features and accounts.
+  </Step>
+  
+  <Step title="Release session">
+    Session ends when device is ejected or disconnected.
+  </Step>
+</Steps>
+
+### Static session IDs
+
+Suite uses static session IDs for device state management:
+
+```typescript
+interface DeviceState {
+  staticSessionId: string;  // Persistent identifier
+  state: string;            // Current state hash
+}
+
+// Static session ID format: "stateHash:instanceNumber"
+// Example: "d4f5e6a7b8c9:0"
+```
+
+<Note>
+Static session IDs allow Suite to track different wallet instances (passphrases) for the same physical device.
+</Note>
+
+## Device compatibility
+
+### Supported devices
+
+<Tabs>
+  <Tab title="Trezor Model One">
+    - **Display**: 128×64 OLED
+    - **Buttons**: 2 physical buttons
+    - **Connection**: USB-A
+    - **Features**: All core features
+  </Tab>
+  
+  <Tab title="Trezor Model T">
+    - **Display**: 240×240 color touchscreen
+    - **Input**: Touchscreen
+    - **Connection**: USB-C
+    - **Features**: All features including advanced crypto
+  </Tab>
+  
+  <Tab title="Trezor Safe 3">
+    - **Display**: Color touchscreen
+    - **Security**: Enhanced secure element
+    - **Connection**: USB-C
+    - **Features**: Latest security and feature set
+  </Tab>
+</Tabs>
+
+### Firmware requirements
+
+Some Suite features require minimum firmware versions:
+
+- **Basic features**: Any firmware version
+- **Passphrase on device**: T1: 1.9.0+, TT: 2.3.0+
+- **Cardano**: T1: Not supported, TT: 2.3.2+
+- **CoinJoin**: T1: 1.10.0+, TT: 2.4.0+
+- **Solana**: T1: Not supported, TT: 2.4.3+
+
+<Warning>
+Using outdated firmware may limit available features or cause compatibility issues. Keep your firmware updated.
+</Warning>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Device not detected">
+    **Windows**:
+    - Install Trezor Bridge (desktop) or use web version
+    - Check USB cable and port
+    - Try different USB port
+    
+    **macOS**:
+    - Grant USB permissions in System Preferences
+    - Try different USB port
+    - Restart Suite
+    
+    **Linux**:
+    - Install udev rules
+    - Check user permissions
+    - Verify USB access
+  </Accordion>
+  
+  <Accordion title="Device already in use">
+    **Cause**: Another application is using the device
+    
+    **Solution**:
+    - Close other crypto applications
+    - Close duplicate Suite tabs/windows
+    - Disconnect and reconnect device
+    - Restart Suite
+  </Accordion>
+  
+  <Accordion title="Wrong device displayed">
+    **Cause**: Multiple devices or cached state
+    
+    **Solution**:
+    - Use device selector to choose correct device
+    - Eject other devices
+    - Clear application data (Settings → Application)
+  </Accordion>
+  
+  <Accordion title="Device disconnected unexpectedly">
+    **Causes**:
+    - Loose USB connection
+    - Power-saving mode
+    - USB hub issues
+    
+    **Solutions**:
+    - Use direct connection (not USB hub)
+    - Disable USB power saving
+    - Try different cable
+  </Accordion>
+</AccordionGroup>
+
+## Security considerations
+
+### Physical security
+
+<Check>Never leave your device unattended while unlocked</Check>
+<Check>Use the eject feature when done with a session</Check>
+<Check>Enable auto-eject for shared computers</Check>
+<Check>Store devices in secure locations when not in use</Check>
+
+### Session management
+
+<Warning>
+Active sessions grant full access to your wallets. Always eject devices when:
+- Leaving your computer
+- Sharing your computer
+- Finished using Suite
+</Warning>
+
+### Device authentication
+
+Verify device authenticity:
+
+1. Check the device arrives sealed
+2. Verify the packaging
+3. Use firmware verification in Suite
+4. Check firmware signatures
+
+See [Firmware updates](/suite/firmware-updates) for authentication details.
+
+## Advanced features
+
+### Device fingerprint
+
+Unique device fingerprint based on:
+
+```typescript
+interface DeviceFingerprint {
+  model: string;
+  deviceId: string;
+  firmware: [number, number, number];
+  bootloaderHash: string;
+  vendorHeader: string;
+}
+```
+
+### Bootloader mode
+
+Accessing bootloader for firmware updates:
+
+1. Disconnect device
+2. Hold both buttons (Model One) or touch screen (Model T)
+3. Connect device while holding
+4. Device enters bootloader mode
+5. Ready for firmware installation
+
+<Note>
+Bootloader mode is required for firmware updates. See [Firmware updates](/suite/firmware-updates) for complete instructions.
+</Note>
+
+## Related topics
+
+<Columns cols={2}>
+  <Card title="Firmware updates" icon="download" href="/suite/firmware-updates">
+    Update your device firmware
+  </Card>
+  
+  <Card title="Device settings" icon="gear" href="/suite/device-settings">
+    Configure device-specific settings
+  </Card>
+  
+  <Card title="Backup and recovery" icon="shield" href="/suite/backup-recovery">
+    Backup and recover your device
+  </Card>
+  
+  <Card title="Security" icon="lock" href="/suite/security">
+    Device security best practices
+  </Card>
+</Columns>
