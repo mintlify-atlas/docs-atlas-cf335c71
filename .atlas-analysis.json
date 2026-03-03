@@ -1,0 +1,228 @@
+{
+  "projectType": "saas",
+  "projectName": "Trezor Suite",
+  "projectDescription": "Comprehensive cryptocurrency wallet management platform for Trezor hardware wallets across desktop, web, and mobile",
+  "theme": "aspen",
+  "primaryColor": "#0F6148",
+  "lightColor": "#00854D",
+  "darkColor": "#0D4F3A",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Overview",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation"
+            ]
+          },
+          {
+            "group": "Architecture",
+            "pages": [
+              "architecture/monorepo-structure",
+              "architecture/suite-desktop",
+              "architecture/suite-web",
+              "architecture/suite-mobile"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Suite Application",
+        "groups": [
+          {
+            "group": "Core Features",
+            "pages": [
+              "suite/wallet-management",
+              "suite/account-discovery",
+              "suite/transactions",
+              "suite/send-receive"
+            ]
+          },
+          {
+            "group": "Advanced Features",
+            "pages": [
+              "suite/coinjoin-privacy",
+              "suite/metadata-labeling",
+              "suite/device-management",
+              "suite/firmware-updates"
+            ]
+          },
+          {
+            "group": "Settings & Security",
+            "pages": [
+              "suite/security",
+              "suite/backup-recovery",
+              "suite/device-settings",
+              "suite/application-settings"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Connect SDK",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "connect/overview",
+              "connect/installation",
+              "connect/initialization",
+              "connect/supported-coins"
+            ]
+          },
+          {
+            "group": "Integration Guide",
+            "pages": [
+              "connect/web-integration",
+              "connect/node-integration",
+              "connect/react-native-integration",
+              "connect/webextension-integration"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "connect/methods",
+              "connect/events",
+              "connect/device-management",
+              "connect/error-handling"
+            ]
+          },
+          {
+            "group": "API Reference",
+            "pages": [
+              "connect/api/accounts",
+              "connect/api/bitcoin",
+              "connect/api/ethereum",
+              "connect/api/cardano",
+              "connect/api/solana",
+              "connect/api/stellar",
+              "connect/api/other-chains"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Development",
+        "groups": [
+          {
+            "group": "Setup",
+            "pages": [
+              "development/environment-setup",
+              "development/project-structure",
+              "development/building",
+              "development/running-apps"
+            ]
+          },
+          {
+            "group": "Contributing",
+            "pages": [
+              "development/code-style",
+              "development/typescript-guide",
+              "development/testing",
+              "development/debugging"
+            ]
+          },
+          {
+            "group": "Packages",
+            "pages": [
+              "development/packages/overview",
+              "development/packages/creating-packages",
+              "development/packages/blockchain-link",
+              "development/packages/utilities"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Features",
+        "groups": [
+          {
+            "group": "User Features",
+            "pages": [
+              "features/onboarding",
+              "features/portfolio-tracker",
+              "features/fiat-rates",
+              "features/trading-integration",
+              "features/localization"
+            ]
+          },
+          {
+            "group": "Privacy & Security",
+            "pages": [
+              "features/coinjoin",
+              "features/tor-integration",
+              "features/device-authenticity",
+              "features/encryption"
+            ]
+          },
+          {
+            "group": "Technical Features",
+            "pages": [
+              "features/message-system",
+              "features/feature-flags",
+              "features/analytics",
+              "features/error-reporting"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Resources",
+        "groups": [
+          {
+            "group": "Guides",
+            "pages": [
+              "resources/migration-guide",
+              "resources/troubleshooting",
+              "resources/faq",
+              "resources/best-practices"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "resources/supported-cryptocurrencies",
+              "resources/changelog",
+              "resources/releases",
+              "resources/security"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Multi-platform cryptocurrency wallet (Desktop, Web, Mobile)",
+    "Hardware wallet integration with Trezor devices",
+    "Multi-chain support (Bitcoin, Ethereum, Cardano, Solana, and more)",
+    "Privacy features including CoinJoin and Tor",
+    "Trezor Connect SDK for third-party integration",
+    "Account discovery and portfolio tracking",
+    "Transaction history and management",
+    "Firmware updates and device management",
+    "Metadata labeling and backup",
+    "Trading integration and fiat rates"
+  ],
+  "publicApiSurface": [
+    "TrezorConnect.init()",
+    "TrezorConnect.getAddress()",
+    "TrezorConnect.signTransaction()",
+    "TrezorConnect.getPublicKey()",
+    "TrezorConnect.ethereumSignTransaction()",
+    "TrezorConnect.cardanoSignTransaction()",
+    "TrezorConnect.solanaSignTransaction()",
+    "TrezorConnect.stellarSignTransaction()",
+    "TrezorConnect.rippleSignTransaction()",
+    "TrezorConnect.getAccountInfo()",
+    "TrezorConnect.blockchainSubscribe()",
+    "TrezorConnect.deviceManagement()",
+    "Suite Desktop Application",
+    "Suite Web Application",
+    "Suite Mobile Application"
+  ]
+}
